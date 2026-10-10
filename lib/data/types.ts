@@ -155,6 +155,24 @@ export interface Order {
   events?: OrderEvent[];
   complaint?: Complaint;
   transaction_id?: string;
+  dispatch_status?: "searching" | "assigned" | "exhausted";
+  customer_preferred_worker_name?: string;
+  allow_reassign?: boolean;
+  dispatch_offers?: DispatchOffer[];
+}
+
+export interface DispatchOffer {
+  id: string;
+  attempt_number: number;
+  worker_id: string;
+  worker_name: string;
+  worker_avatar?: string;
+  worker_area?: string;
+  status: "pending" | "accepted" | "declined" | "expired";
+  decline_reason?: string;
+  sent_at: string;
+  responded_at?: string;
+  expires_at?: string;
 }
 
 export interface Payment {

@@ -6,6 +6,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { WaButton } from "@/components/shared/WaButton";
 import { getOrders, OrderFilter } from "@/lib/data/orders";
+import { MOCK_ORDERS } from "@/lib/mock/data";
 import { Order } from "@/lib/data/types";
 import { formatRupiah, formatRelativeTime, formatDateId } from "@/lib/format";
 import { WA_TEMPLATES } from "@/lib/wa-templates";
@@ -25,7 +26,7 @@ export default function AdminOrdersPage() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [customerType, setCustomerType] = useState<"all" | "free" | "plus">("all");
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>(() => MOCK_ORDERS);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -109,10 +110,11 @@ export default function AdminOrdersPage() {
           {[
             { id: "all", label: "Semua" },
             { id: "action_needed", label: "Perlu Tindakan", urgent: true },
+            { id: "finding_worker", label: "Mencari Tukang" },
             { id: "active", label: "Aktif" },
             { id: "completed", label: "Selesai" },
             { id: "cancelled", label: "Dibatalkan" },
-            { id: "complaints", label: "Komplain" },
+            { id: "complaint", label: "Komplain" },
           ].map((tab) => (
             <button
               key={tab.id}

@@ -5,7 +5,7 @@ import { Actor, canTransition, OrderStatus } from "../orders/transitions";
 const inMemoryOrders = [...MOCK_ORDERS];
 
 export interface OrderFilter {
-  tab?: "all" | "action_needed" | "active" | "completed" | "cancelled" | "complaints";
+  tab?: "all" | "action_needed" | "finding_worker" | "active" | "completed" | "cancelled" | "complaint" | "complaints";
   search?: string;
   category?: string;
   customerType?: "all" | "free" | "plus";
@@ -20,14 +20,17 @@ export async function getOrders(filter: OrderFilter = {}): Promise<Order[]> {
         list = list.filter(
           (o) =>
             o.worker_response === "declined" ||
+            o.dispatch_status === "exhausted" ||
             o.complaint?.status === "open" ||
-            (o.status === "awaiting_confirmation" && !o.completed_at)
+            (o.status === "paid" && !o.worker)
         );
+        break;
+      case "finding_worker":
+        list = list.filter((o) => o.status === "paid");
         break;
       case "active":
         list = list.filter(
           (o) =>
-            o.status === "paid" ||
             o.status === "worker_confirmed" ||
             o.status === "on_the_way" ||
             o.status === "in_progress" ||
@@ -40,6 +43,7 @@ export async function getOrders(filter: OrderFilter = {}): Promise<Order[]> {
       case "cancelled":
         list = list.filter((o) => o.status === "cancelled");
         break;
+      case "complaint":
       case "complaints":
         list = list.filter((o) => !!o.complaint);
         break;
@@ -235,3 +239,116 @@ export async function resolveComplaint(
 
   return { success: true };
 }
+
+export async function manualAssignWorker(
+  orderId: string,
+  worker: {
+    id: string;
+    name: string;
+    phone: string;
+    service_area: string;
+    is_verified?: boolean;
+    has_account?: boolean;
+    avatar_url?: string;
+  },
+  note?: string
+): Promise<{ success: boolean; order?: Order }> {
+  const order = inMemoryOrders.find((o) => o.id === orderId);
+  if (!order) return { success: false };
+
+  order.worker_id = worker.id;
+  order.worker = {
+    id: worker.id,
+    name: worker.name,
+    phone: worker.phone,
+    service_area: worker.service_area,
+    is_verified: worker.is_verified ?? true,
+    has_account: worker.has_account ?? true,
+    avatar_url: worker.avatar_url,
+  };
+  order.worker_response = "accepted";
+  order.dispatch_status = "assigned";
+  order.status = "worker_confirmed";
+  order.worker_confirmed_at = new Date().toISOString();
+
+  const event = {
+    id: `ev-${Date.now()}`,
+    order_id: order.id,
+    event_type: "worker_assigned_manual",
+    actor_type: "admin" as Actor,
+    actor_name: "Admin BuildMate",
+    note: `Tukang ${worker.name} ditugaskan secara manual oleh admin.${note ? ` Catatan: ${note}` : ""}`,
+    created_at: new Date().toISOString(),
+  };
+
+  order.events = [event, ...(order.events || [])];
+  return { success: true, order };
+}
+
+export async function retryDispatch(
+  orderId: string
+): Promise<{ success: boolean; order?: Order }> {
+  const order = inMemoryOrders.find((o) => o.id === orderId);
+  if (!order) return { success: false };
+
+  order.dispatch_status = "searching";
+  order.worker_id = null;
+  order.worker = undefined;
+  order.worker_response = "pending";
+
+  const newOffer = {
+    id: `off-${Date.now()}`,
+    attempt_number: (order.dispatch_offers?.length || 0) + 1,
+    worker_id: "w-new",
+    worker_name: "Slamet Santoso (Kandidat Baru)",
+    worker_area: "Jakarta Selatan",
+    status: "pending" as const,
+    sent_at: new Date().toISOString(),
+    expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+  };
+
+  order.dispatch_offers = [newOffer, ...(order.dispatch_offers || [])];
+
+  const event = {
+    id: `ev-${Date.now()}`,
+    order_id: order.id,
+    event_type: "offer_sent",
+    actor_type: "system" as Actor,
+    actor_name: "Sistem Dispatch",
+    note: `Mencari ulang kandidat tukang. Mengirim tawaran #${newOffer.attempt_number} ke ${newOffer.worker_name}.`,
+    created_at: new Date().toISOString(),
+  };
+
+  order.events = [event, ...(order.events || [])];
+  return { success: true, order };
+}
+
+export async function releaseWorkerAndRedispatch(
+  orderId: string,
+  reason: string,
+  customerConsentChecked: boolean
+): Promise<{ success: boolean; order?: Order }> {
+  const order = inMemoryOrders.find((o) => o.id === orderId);
+  if (!order) return { success: false };
+
+  const prevWorkerName = order.worker?.name || "Tukang sebelumnya";
+  order.worker_id = null;
+  order.worker = undefined;
+  order.worker_response = "pending";
+  order.dispatch_status = "searching";
+  order.status = "paid";
+
+  const event = {
+    id: `ev-${Date.now()}`,
+    order_id: order.id,
+    event_type: "worker_released",
+    actor_type: "admin" as Actor,
+    actor_name: "Admin BuildMate",
+    note: `Tukang ${prevWorkerName} dilepas dan pesanan dialihkan kembali ke dispatch. Alasan: ${reason}. Konfirmasi pelanggan: ${customerConsentChecked ? "Sudah disetujui" : "Otomatis (allow_reassign aktif)"}.`,
+    created_at: new Date().toISOString(),
+  };
+
+  order.events = [event, ...(order.events || [])];
+  return { success: true, order };
+}
+

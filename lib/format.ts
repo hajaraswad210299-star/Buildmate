@@ -3,16 +3,28 @@ import { id } from "date-fns/locale";
 
 /**
  * Format angka ke mata uang Rupiah sesuai B7.5:
- * "Rp1.250.000" (tanpa desimal, titik pemisah ribuan)
+ * "Rp1.250.000" — TANPA spasi setelah "Rp", tanpa desimal, titik pemisah ribuan.
  */
 export function formatRupiah(amount: number): string {
-  if (isNaN(amount)) return "Rp0";
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+  if (isNaN(amount) || amount === null || amount === undefined) return "Rp0";
+  const formatted = Math.round(amount).toLocaleString("id-ID");
+  return `Rp${formatted}`;
+}
+
+/**
+ * Format persentase sesuai B7.5:
+ * Menggunakan koma pemisah desimal di id-ID: "+12,5%", "81,3%".
+ */
+export function formatPercent(value: number, withSign: boolean = true): string {
+  if (isNaN(value) || value === null || value === undefined) return "0%";
+  const formatted = Math.abs(value).toLocaleString("id-ID", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  if (withSign) {
+    return value >= 0 ? `+${formatted}%` : `-${formatted}%`;
+  }
+  return `${formatted}%`;
 }
 
 /**

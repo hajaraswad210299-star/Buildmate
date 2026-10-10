@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ActivityTicker } from "@/components/shared/ActivityTicker";
 import { ActivityHeatmap } from "@/components/shared/ActivityHeatmap";
 import { getDashboardStats } from "@/lib/data/dashboard";
+import { getMockDashboardStats } from "@/lib/mock/data";
 import { DashboardStats } from "@/lib/data/types";
 import { formatRupiah, formatRelativeTime } from "@/lib/format";
 import {
@@ -16,6 +17,10 @@ import {
   Clock,
   Like1,
   Flash,
+  CloseCircle,
+  Warning2,
+  UserOctagon,
+  WalletMoney,
 } from "@/lib/icons";
 import {
   BarChart,
@@ -28,7 +33,7 @@ import {
 
 export default function AdminDashboardPage() {
   const [period, setPeriod] = useState<string>("7d");
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(() => getMockDashboardStats("7d"));
   const [topTab, setTopTab] = useState<"workers" | "categories">("workers");
 
   const isClient = useSyncExternalStore(
@@ -295,21 +300,40 @@ export default function AdminDashboardPage() {
 
               {urgentActions.length === 0 ? (
                 <div className="py-12 text-center text-xs text-neutral-400 flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-full bg-success-50 text-success-600 flex items-center justify-center mb-2">
-                    <Like1 size={20} />
+                  <div className="w-12 h-12 rounded-2xl bg-success-50 text-success-600 flex items-center justify-center mb-3">
+                    <Like1 size={24} variant="Bulk" />
                   </div>
-                  <span className="font-semibold text-neutral-700">Semua Beres!</span>
-                  <span>Tidak ada antrean darurat yang perlu ditindaklanjuti.</span>
+                  <span className="font-semibold text-neutral-800 text-sm">Semua Beres!</span>
+                  <span className="text-neutral-500 mt-1 max-w-xs">
+                    Tidak ada antrean darurat yang perlu ditindaklanjuti.
+                  </span>
                 </div>
               ) : (
                 <div className="space-y-2.5">
                   {urgentActions.map((action) => {
                     const typeStyles = {
-                      danger: "border-danger-200 bg-danger-50/50 hover:bg-danger-50 text-danger-800",
-                      warning: "border-warning-200 bg-warning-50/50 hover:bg-warning-50 text-warning-800",
-                      lavender: "border-lavender-200 bg-lavender-50/50 hover:bg-lavender-50 text-lavender-800",
-                      neutral: "border-neutral-200 bg-neutral-50/70 hover:bg-neutral-100 text-neutral-800",
+                      danger: "border-danger-200 bg-danger-50/50 hover:bg-danger-50 text-danger-900",
+                      warning: "border-warning-200 bg-warning-50/50 hover:bg-warning-50 text-warning-900",
+                      lavender: "border-lavender-200 bg-lavender-50/50 hover:bg-lavender-50 text-lavender-900",
+                      neutral: "border-neutral-200 bg-neutral-50/70 hover:bg-neutral-100 text-neutral-900",
                     }[action.type];
+
+                    const renderActionIcon = () => {
+                      switch (action.icon) {
+                        case "CloseCircle":
+                          return <CloseCircle size={16} className="text-danger-600" variant="Bold" />;
+                        case "Clock":
+                          return <Clock size={16} className="text-warning-600" variant="Bold" />;
+                        case "Warning2":
+                          return <Warning2 size={16} className="text-warning-600" variant="Bold" />;
+                        case "UserOctagon":
+                          return <UserOctagon size={16} className="text-lavender-600" variant="Bold" />;
+                        case "WalletMoney":
+                          return <WalletMoney size={16} className="text-neutral-600" variant="Bold" />;
+                        default:
+                          return <Flash size={16} className="text-danger-600" />;
+                      }
+                    };
 
                     return (
                       <Link
@@ -317,15 +341,20 @@ export default function AdminDashboardPage() {
                         href={action.linkHref}
                         className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-150 group ${typeStyles}`}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-6 h-6 rounded-full bg-white shadow-2xs flex items-center justify-center font-bold text-xs shrink-0">
-                            {action.count}
-                          </span>
-                          <span className="text-xs font-medium leading-tight">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-white shadow-xs flex items-center justify-center shrink-0 border border-neutral-100">
+                            {renderActionIcon()}
+                          </div>
+                          <span className="text-xs font-medium leading-tight truncate">
                             {action.title}
                           </span>
                         </div>
-                        <ArrowRight size={14} className="transition-transform group-hover:translate-x-1 shrink-0" />
+                        <div className="flex items-center gap-2 shrink-0 ml-2">
+                          <span className="min-w-5 h-5 px-1.5 rounded-full bg-white shadow-2xs flex items-center justify-center font-bold text-[11px] tabular-nums text-neutral-800 border border-neutral-150">
+                            {action.count}
+                          </span>
+                          <ArrowRight size={14} className="text-neutral-400 group-hover:text-neutral-700 transition-transform group-hover:translate-x-0.5" />
+                        </div>
                       </Link>
                     );
                   })}

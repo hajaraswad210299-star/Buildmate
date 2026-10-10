@@ -1,81 +1,146 @@
+"use client";
+
 import React from "react";
-export {
-  Home2,
-  SearchNormal1,
-  Filter,
-  Sort,
-  ReceiptText,
-  ProfileCircle,
-  User,
-  Element3,
-  UserOctagon,
-  Profile2User,
-  Category2,
-  Card,
-  WalletMoney,
-  Wallet3,
-  Briefcase,
-  Setting2,
-  LogoutCurve,
-  Notification,
-  Calendar1,
-  Clock,
-  Location,
-  Routing2,
-  Setting4,
-  Camera,
-  Gallery,
-  GalleryAdd,
-  GalleryTick,
-  Verify,
-  ShieldTick,
-  Crown1,
-  Sms,
-  SmsTracking,
-  Lock,
-  Eye,
-  EyeSlash,
-  TickCircle,
-  CloseCircle,
-  InfoCircle,
-  Warning2,
-  AddCircle,
-  Edit2,
-  Trash,
-  Copy,
-  ArrowLeft2,
-  ArrowRight,
-  ArrowDown2,
-  ArrowRight3,
-  More,
-  Flash,
-  ShieldCross,
-  Like1,
-  MoneyRecive,
-  Chart,
-  Lock1,
-  UserTick,
-  UserEdit,
-  DocumentDownload,
-  Menu,
-  Drop,
-  Brush2,
-  Ruler,
-  Wind2 as Wind,
-} from "iconsax-react";
+import * as Iconsax from "iconsax-react";
+
+export type IconVariant = "Linear" | "Bold" | "Bulk" | "Outline" | "TwoTone" | "Broken";
+
+export interface IconProps extends React.SVGProps<SVGSVGElement> {
+  size?: number | string;
+  color?: string;
+  variant?: IconVariant;
+  className?: string;
+}
 
 /**
- * WhatsApp SVG Icon (since standard Iconsax may vary or lack WhatsApp branding)
+ * Higher-order component wrapping Iconsax icons.
+ * Crucial fix for React 19:
+ * React 19 no longer applies Component.defaultProps on function/forwardRef components.
+ * This wrapper guarantees that `color="currentColor"`, `size=20`, and `variant="Linear"`
+ * are explicitly passed down to Iconsax so SVG paths render stroke and fill correctly.
+ * In development, if an icon is undefined/missing, it renders a visible placeholder + console.warn.
+ */
+export function createIcon(name: string, Component?: React.ComponentType<IconProps>) {
+  const IconComponent = React.forwardRef<SVGSVGElement, IconProps>(function IconComponent(
+    {
+      size = 20,
+      color = "currentColor",
+      variant = "Linear",
+      className = "",
+      ...rest
+    },
+    ref
+  ) {
+    if (!Component) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`[BuildMate Icons] Icon "${name}" tidak ditemukan di iconsax-react.`);
+      }
+      return (
+        <span
+          className={`inline-block border border-dashed border-neutral-400 bg-neutral-100/90 rounded text-[9px] text-neutral-500 font-mono text-center leading-none ${className}`}
+          style={{ width: size, height: size }}
+          title={`[Missing Icon: ${name}]`}
+        />
+      );
+    }
+
+    return (
+      <Component
+        ref={ref}
+        size={size}
+        color={color}
+        variant={variant}
+        className={className}
+        {...rest}
+      />
+    );
+  });
+
+  IconComponent.displayName = name;
+  return IconComponent;
+}
+
+// Map and wrap all Iconsax icons required by BuildMate (B7.6)
+export const Home2 = createIcon("Home2", Iconsax.Home2);
+export const SearchNormal1 = createIcon("SearchNormal1", Iconsax.SearchNormal1);
+export const Filter = createIcon("Filter", Iconsax.Filter);
+export const Sort = createIcon("Sort", Iconsax.Sort);
+export const ReceiptText = createIcon("ReceiptText", Iconsax.ReceiptText);
+export const ProfileCircle = createIcon("ProfileCircle", Iconsax.ProfileCircle);
+export const User = createIcon("User", Iconsax.User);
+export const Element3 = createIcon("Element3", Iconsax.Element3);
+export const UserOctagon = createIcon("UserOctagon", Iconsax.UserOctagon);
+export const Profile2User = createIcon("Profile2User", Iconsax.Profile2User);
+export const Category2 = createIcon("Category2", Iconsax.Category2);
+export const Card = createIcon("Card", Iconsax.Card);
+export const WalletMoney = createIcon("WalletMoney", Iconsax.WalletMoney);
+export const Wallet3 = createIcon("Wallet3", Iconsax.Wallet3);
+export const Briefcase = createIcon("Briefcase", Iconsax.Briefcase);
+export const Setting2 = createIcon("Setting2", Iconsax.Setting2);
+export const LogoutCurve = createIcon("LogoutCurve", Iconsax.LogoutCurve);
+export const Notification = createIcon("Notification", Iconsax.Notification);
+export const Calendar1 = createIcon("Calendar1", Iconsax.Calendar1);
+export const Clock = createIcon("Clock", Iconsax.Clock);
+export const Location = createIcon("Location", Iconsax.Location);
+export const Map1 = createIcon("Map1", Iconsax.Map1);
+export const Routing2 = createIcon("Routing2", Iconsax.Routing2);
+export const Setting4 = createIcon("Setting4", Iconsax.Setting4);
+export const Camera = createIcon("Camera", Iconsax.Camera);
+export const Gallery = createIcon("Gallery", Iconsax.Gallery);
+export const GalleryAdd = createIcon("GalleryAdd", Iconsax.GalleryAdd);
+export const GalleryTick = createIcon("GalleryTick", Iconsax.GalleryTick);
+export const Verify = createIcon("Verify", Iconsax.Verify);
+export const ShieldTick = createIcon("ShieldTick", Iconsax.ShieldTick);
+export const Crown1 = createIcon("Crown1", Iconsax.Crown1);
+export const Sms = createIcon("Sms", Iconsax.Sms);
+export const SmsTracking = createIcon("SmsTracking", Iconsax.SmsTracking);
+export const Lock = createIcon("Lock", Iconsax.Lock);
+export const Eye = createIcon("Eye", Iconsax.Eye);
+export const EyeSlash = createIcon("EyeSlash", Iconsax.EyeSlash);
+export const TickCircle = createIcon("TickCircle", Iconsax.TickCircle);
+export const CloseCircle = createIcon("CloseCircle", Iconsax.CloseCircle);
+export const InfoCircle = createIcon("InfoCircle", Iconsax.InfoCircle);
+export const Warning2 = createIcon("Warning2", Iconsax.Warning2);
+export const AddCircle = createIcon("AddCircle", Iconsax.AddCircle);
+export const Edit2 = createIcon("Edit2", Iconsax.Edit2);
+export const Trash = createIcon("Trash", Iconsax.Trash);
+export const Copy = createIcon("Copy", Iconsax.Copy);
+export const ArrowLeft2 = createIcon("ArrowLeft2", Iconsax.ArrowLeft2);
+export const ArrowRight = createIcon("ArrowRight", Iconsax.ArrowRight);
+export const ArrowDown2 = createIcon("ArrowDown2", Iconsax.ArrowDown2);
+export const ArrowRight3 = createIcon("ArrowRight3", Iconsax.ArrowRight3);
+export const ArrowUp2 = createIcon("ArrowUp2", Iconsax.ArrowUp2);
+export const ArrowUp = createIcon("ArrowUp", Iconsax.ArrowUp);
+export const ArrowDown = createIcon("ArrowDown", Iconsax.ArrowDown);
+export const More = createIcon("More", Iconsax.More);
+export const Flash = createIcon("Flash", Iconsax.Flash);
+export const ShieldCross = createIcon("ShieldCross", Iconsax.ShieldCross);
+export const Like1 = createIcon("Like1", Iconsax.Like1);
+export const MoneyRecive = createIcon("MoneyRecive", Iconsax.MoneyRecive);
+export const Chart = createIcon("Chart", Iconsax.Chart);
+export const Lock1 = createIcon("Lock1", Iconsax.Lock1);
+export const UserTick = createIcon("UserTick", Iconsax.UserTick);
+export const UserEdit = createIcon("UserEdit", Iconsax.UserEdit);
+export const DocumentDownload = createIcon("DocumentDownload", Iconsax.DocumentDownload);
+export const Menu = createIcon("Menu", Iconsax.Menu);
+export const HambergerMenu = createIcon("HambergerMenu", Iconsax.HambergerMenu);
+export const SidebarLeft = createIcon("SidebarLeft", Iconsax.SidebarLeft);
+export const CardTick = createIcon("CardTick", Iconsax.CardTick);
+export const Drop = createIcon("Drop", Iconsax.Drop);
+export const Brush2 = createIcon("Brush2", Iconsax.Brush2);
+export const Ruler = createIcon("Ruler", Iconsax.Ruler);
+export const Wind = createIcon("Wind", Iconsax.Wind2);
+export const Refresh = createIcon("Refresh", Iconsax.Refresh);
+export const Refresh2 = createIcon("Refresh2", Iconsax.Refresh2);
+
+/**
+ * WhatsApp SVG Icon (since standard Iconsax lacks WhatsApp branding)
  */
 export function WhatsappIcon({
   size = 20,
   className = "",
   color = "currentColor",
-}: {
-  size?: number;
-  className?: string;
-  color?: string;
-}) {
+}: IconProps) {
   return (
     <svg
       width={size}

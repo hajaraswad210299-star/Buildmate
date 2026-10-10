@@ -16,8 +16,13 @@ import {
   addOrderPhoto,
   replaceWorker,
   resolveComplaint,
+  manualAssignWorker,
+  retryDispatch,
+  releaseWorkerAndRedispatch,
 } from "@/lib/data/orders";
+import { DispatchPanel } from "@/components/admin/DispatchPanel";
 import { getWorkers } from "@/lib/data/workers";
+import { MOCK_ORDERS, MOCK_WORKERS } from "@/lib/mock/data";
 import { Order, Worker } from "@/lib/data/types";
 import {
   canTransition,
@@ -47,8 +52,12 @@ function OrderDetailContent({
   const resolvedParams = use(params);
   const orderId = resolvedParams.id;
 
-  const [order, setOrder] = useState<Order | null>(null);
-  const [activeWorkers, setActiveWorkers] = useState<Worker[]>([]);
+  const [order, setOrder] = useState<Order | null>(
+    () => MOCK_ORDERS.find((o) => o.id === orderId) || null
+  );
+  const [activeWorkers, setActiveWorkers] = useState<Worker[]>(
+    () => MOCK_WORKERS.filter((w) => w.application_status === "approved")
+  );
   const [isCopied, setIsCopied] = useState(false);
   const [internalNotes, setInternalNotes] = useState("");
   const [notesSaveStatus, setNotesSaveStatus] = useState<"saved" | "saving">("saved");
@@ -118,6 +127,64 @@ function OrderDetailContent({
       toast.success("Catatan internal tersimpan");
     }, 800);
     return () => clearTimeout(timer);
+  };
+
+  const handleManualAssign = async (worker: Worker, note?: string) => {
+    if (!order) return;
+    const res = await manualAssignWorker(
+      order.id,
+      {
+        id: worker.id,
+        name: worker.full_name,
+        phone: worker.phone,
+        service_area: worker.service_area,
+        is_verified: true,
+        has_account: !!worker.user_id,
+        avatar_url: worker.photo_path,
+      },
+      note
+    );
+    if (res.success && res.order) {
+      setOrder({ ...res.order });
+      toast.success(`Tukang ${worker.full_name} berhasil ditugaskan`);
+    } else {
+      toast.error("Gagal menugaskan tukang");
+    }
+  };
+
+  const handleRetryDispatch = async () => {
+    if (!order) return;
+    const res = await retryDispatch(order.id);
+    if (res.success && res.order) {
+      setOrder({ ...res.order });
+      toast.success("Mencari ulang kandidat dispatch...");
+    } else {
+      toast.error("Gagal mengulang dispatch");
+    }
+  };
+
+  const handleReleaseWorker = async (reason: string, consent: boolean) => {
+    if (!order) return;
+    const res = await releaseWorkerAndRedispatch(order.id, reason, consent);
+    if (res.success && res.order) {
+      setOrder({ ...res.order });
+      toast.success("Tukang dilepas dan proses dispatch dimulai kembali");
+    } else {
+      toast.error("Gagal melepas tukang");
+    }
+  };
+
+  const handleAutoCompleteNow = async (note: string) => {
+    if (!order) return;
+    const res = await transitionOrder(order.id, "completed", "admin", {
+      note: `Override selesai otomatis oleh admin: ${note}`,
+    });
+    if (res.success) {
+      toast.success("Pesanan berhasil diselesaikan");
+      loadData();
+    } else {
+      toast.error(res.error || "Gagal menyelesaikan pesanan");
+    }
   };
 
   if (!order) {
@@ -715,88 +782,15 @@ function OrderDetailContent({
               </div>
             </div>
 
-            {/* 3. WORKER CARD */}
-            <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-                  Mitra / Tukang
-                </h3>
-
-                <button
-                  type="button"
-                  onClick={() => setShowReplaceWorkerModal(true)}
-                  className="text-xs font-semibold text-lavender-600 hover:text-lavender-800"
-                >
-                  Ganti Tukang
-                </button>
-              </div>
-
-              {order.worker ? (
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={
-                          order.worker.avatar_url ||
-                          "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=100"
-                        }
-                        alt={order.worker.name}
-                        className="w-10 h-10 rounded-full object-cover border border-neutral-200 shrink-0"
-                      />
-                      <div>
-                        <span className="font-semibold text-neutral-900 text-xs block">
-                          {order.worker.name}
-                        </span>
-                        <span className="text-[11px] text-neutral-400 block">
-                          Area: {order.worker.service_area}
-                        </span>
-                        <span className="text-[10px] text-neutral-500 font-medium">
-                          {order.worker.has_account ? "Mitra Berakun" : "Dikelola Admin"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <WaButton
-                      phone={order.worker.phone}
-                      messageText={WA_TEMPLATES.adminToWorkerOffer({
-                        workerName: order.worker.name,
-                        orderCode: order.order_code,
-                        packageName: order.package.name,
-                        serviceArea: order.worker.service_area,
-                        date: order.scheduled_date,
-                        timeSlot: order.time_slot,
-                      })}
-                      size="sm"
-                    />
-                  </div>
-
-                  {/* Worker response badge */}
-                  <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-100 flex items-center justify-between text-xs">
-                    <span className="text-neutral-500">Respon Tawaran:</span>
-                    {order.worker_response === "accepted" && (
-                      <span className="font-semibold text-success-700 bg-success-50 px-2 py-0.5 rounded-full text-[11px]">
-                        Diterima
-                      </span>
-                    )}
-                    {order.worker_response === "declined" && (
-                      <span className="font-semibold text-danger-700 bg-danger-50 px-2 py-0.5 rounded-full text-[11px]">
-                        Ditolak Tukang
-                      </span>
-                    )}
-                    {order.worker_response === "pending" && (
-                      <span className="font-semibold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-full text-[11px]">
-                        Menunggu Respon
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="py-4 text-center text-xs text-neutral-400 italic">
-                  Belum ada tukang yang ditugaskan
-                </div>
-              )}
-            </div>
+            {/* 3. PANEL DISPATCH & TUKANG TERPILIH (B25 & A03) */}
+            <DispatchPanel
+              order={order}
+              activeWorkers={activeWorkers}
+              onManualAssign={handleManualAssign}
+              onRetryDispatch={handleRetryDispatch}
+              onReleaseWorker={handleReleaseWorker}
+              onAutoCompleteNow={handleAutoCompleteNow}
+            />
 
             {/* 4. INTERNAL ADMIN NOTES */}
             <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs space-y-2">
