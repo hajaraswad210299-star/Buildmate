@@ -1,7 +1,7 @@
 # Build Status — BuildMate
 Terakhir diperbarui: 10 Oktober 2026
-Push pertama ke GitHub: ⬜ siap push (git initialized, clean build & lint passed)
-Repo: -
+Push pertama ke GitHub: ✅ selesai
+Repo: https://github.com/hajaraswad210299-star/Buildmate
 URL produksi: -
 Mode data: mock (USE_MOCK_DATA=true) — UI-first prototype lengkap
 Migrasi terakhir: 20261010000000_init_schema.sql (siap deploy)
