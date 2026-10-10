@@ -21,6 +21,7 @@ import {
   ArrowUp2,
 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/shared/Button";
 import { CommandPalette } from "./CommandPalette";
 import { toast } from "sonner";
 
@@ -535,20 +536,22 @@ function AdminShellInner({ children }: AdminShellProps) {
               </p>
             </div>
             <div className="flex items-center justify-end gap-2 pt-2">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => setShowLogoutConfirm(false)}
-                className="px-3.5 py-2 rounded-xl text-xs font-medium text-neutral-600 hover:bg-neutral-100 transition-colors"
               >
                 Batal
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="destructive"
+                size="sm"
                 onClick={handleLogout}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-danger-600 hover:bg-danger-700 text-white shadow-xs transition-colors"
               >
                 Ya, Keluar
-              </button>
+              </Button>
             </div>
           </div>
         </div>

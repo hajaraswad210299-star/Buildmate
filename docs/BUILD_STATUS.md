@@ -12,8 +12,8 @@ Keterangan: ⬜ belum · 🟡 sebagian · ✅ selesai
 | Item | Status | Catatan |
 |---|---|---|
 | Setup Next.js + Tailwind v4 + Iconsax | ✅ | Next.js 16.4 App Router, Turbopack, React 19 kompatibel dengan centralized icon HOC |
-| Design system B7 (lavender, Geist + Instrument Serif, Iconsax) | ✅ | Token lavender-50..900, Instrument Serif display, Geist Sans/Mono, Semantic Iconsax |
-| Komponen inti Mindrift™ UI + micro-interaction | ✅ | StatCard (accent dashes + tick bars), 12-month ActivityHeatmap, ActivityTicker, CountUp, OrderStepper, AuditTimeline, Lightbox, Uploader |
+| Design system B7 (lavender, Geist + Instrument Serif, Iconsax) | ✅ | Token lavender-50..900, `--color-primary: #7A5CE6`, Instrument Serif display (`font-serif` ≥28px), Geist Sans/Mono, Semantic Iconsax |
+| Komponen inti B7.9 UI + micro-interaction | ✅ | Standardized `Button` (primary/secondary/destructive/ghost/link), SSR-safe `RelativeTime`, StatCard (accent dashes + tick bars), 12-month ActivityHeatmap, ActivityTicker, CountUp, OrderStepper, AuditTimeline, Lightbox, Uploader |
 | Supabase: skema + RLS + seed | ✅ | `20261010000000_init_schema.sql` (11 tabel, enum, RLS, functions) + `seed.sql` (kategori, paket, tukang) |
 | Auth: layar & validasi admin | ✅ | Split-screen desktop auth, 4-segmen strength meter, 60s countdown, denied page |
 | transitionOrder state machine + audit | ✅ | State machine lengkap `lib/orders/transitions.ts` (8 status, guards, matrix) |

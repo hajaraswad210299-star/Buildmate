@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sms, Lock, Eye, EyeSlash, Chart, ShieldTick, UserOctagon } from "@/lib/icons";
+import { Button } from "@/components/shared/Button";
 import { toast } from "sonner";
 
 export default function AdminLoginPage() {
@@ -123,11 +124,11 @@ export default function AdminLoginPage() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-[400px] bg-white rounded-3xl p-8 border border-neutral-200/90 shadow-sm space-y-6">
           <div>
-            <h2 className="text-2xl font-serif text-neutral-900 tracking-tight">
+            <h2 className="text-[32px] font-serif text-neutral-900 tracking-tight leading-tight">
               Masuk ke dashboard
             </h2>
             <p className="text-xs text-neutral-500 mt-1">
-              Khusus tim operasional dan administrator BuildMate.
+              Khusus tim operasional BuildMate.
             </p>
           </div>
 
@@ -200,13 +201,15 @@ export default function AdminLoginPage() {
               )}
             </div>
 
-            <button
+            <Button
               type="submit"
-              disabled={isLoading}
-              className="w-full py-2.5 bg-lavender-600 hover:bg-lavender-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors h-11 flex items-center justify-center"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              isLoading={isLoading}
             >
-              {isLoading ? "Memeriksa..." : "Masuk"}
-            </button>
+              Masuk
+            </Button>
           </form>
 
           <div className="pt-2 text-center text-[11px] text-neutral-400">

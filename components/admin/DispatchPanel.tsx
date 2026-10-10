@@ -12,6 +12,7 @@ import {
   CloseCircle,
   Warning2,
 } from "@/lib/icons";
+import { Button } from "@/components/shared/Button";
 
 interface DispatchPanelProps {
   order: Order;
@@ -234,36 +235,38 @@ export function DispatchPanel({
         <div className="pt-2 border-t border-neutral-100 flex flex-wrap gap-2">
           {(!order.worker || dispatchStatus === "exhausted") && (
             <>
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => setShowManualModal(true)}
-                className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-lavender-600 hover:bg-lavender-700 text-white font-medium text-xs rounded-xl shadow-xs transition-colors"
+                leftIcon={<UserOctagon size={14} />}
+                className="flex-1 min-w-[130px]"
               >
-                <UserOctagon size={14} />
                 Tugaskan Manual
-              </button>
+              </Button>
 
-              <button
-                type="button"
-                disabled={isRetrying}
+              <Button
+                variant="secondary"
+                size="sm"
+                isLoading={isRetrying}
                 onClick={handleExecuteRetry}
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium text-xs rounded-xl transition-colors disabled:opacity-50"
+                leftIcon={<Refresh size={14} />}
               >
-                <Refresh size={14} className={isRetrying ? "animate-spin" : ""} />
                 Cari Ulang
-              </button>
+              </Button>
             </>
           )}
 
           {canRelease && (
-            <button
-              type="button"
+            <Button
+              variant="destructive"
+              size="sm"
               onClick={() => setShowReleaseModal(true)}
-              className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium text-xs rounded-xl border border-rose-200 transition-colors"
+              leftIcon={<Refresh size={14} />}
+              className="w-full bg-danger-50 hover:bg-danger-100 text-danger-700 border border-danger-200/80 shadow-none"
             >
-              <Refresh size={14} />
               Lepas Tukang & Cari Ulang
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -422,22 +425,24 @@ export function DispatchPanel({
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end gap-2 border-t border-neutral-100">
-              <button
-                type="button"
+            <div className="pt-2 flex justify-end gap-2.5 border-t border-neutral-100">
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={() => setShowManualModal(false)}
-                className="px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-100 rounded-xl"
               >
                 Batal
-              </button>
-              <button
-                type="button"
-                disabled={!selectedWorkerId || isAssigning}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                disabled={!selectedWorkerId}
+                isLoading={isAssigning}
+                loadingText="Menugaskan..."
                 onClick={handleExecuteManualAssign}
-                className="px-4 py-2 text-xs font-semibold bg-lavender-600 hover:bg-lavender-700 text-white rounded-xl disabled:opacity-50 transition-colors"
               >
-                {isAssigning ? "Menugaskan..." : "Konfirmasi Penugasan"}
-              </button>
+                Konfirmasi Penugasan
+              </Button>
             </div>
           </div>
         </div>
@@ -502,26 +507,27 @@ export function DispatchPanel({
               )}
             </div>
 
-            <div className="pt-2 flex justify-end gap-2 border-t border-neutral-100">
-              <button
-                type="button"
+            <div className="pt-2 flex justify-end gap-2.5 border-t border-neutral-100">
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={() => setShowReleaseModal(false)}
-                className="px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-100 rounded-xl"
               >
                 Batal
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="destructive"
+                size="md"
                 disabled={
                   !releaseReason.trim() ||
-                  (order.allow_reassign === false && !releaseConsent) ||
-                  isReleasing
+                  (order.allow_reassign === false && !releaseConsent)
                 }
+                isLoading={isReleasing}
+                loadingText="Memproses..."
                 onClick={handleExecuteRelease}
-                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-xl disabled:opacity-50 transition-colors"
               >
-                {isReleasing ? "Memproses..." : "Lepas & Mulai Dispatch"}
-              </button>
+                Lepas & Mulai Dispatch
+              </Button>
             </div>
           </div>
         </div>
@@ -560,26 +566,26 @@ export function DispatchPanel({
               />
             </div>
 
-            <div className="pt-2 flex justify-end gap-2 border-t border-neutral-100">
-              <button
-                type="button"
+            <div className="pt-2 flex justify-end gap-2.5 border-t border-neutral-100">
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={() => setShowAutoCompleteModal(false)}
-                className="px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-100 rounded-xl"
               >
                 Batal
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
                 disabled={!autoCompleteNote.trim()}
                 onClick={async () => {
                   await onAutoCompleteNow(autoCompleteNote);
                   setShowAutoCompleteModal(false);
                   setAutoCompleteNote("");
                 }}
-                className="px-4 py-2 text-xs font-semibold bg-success-600 hover:bg-success-700 text-white rounded-xl disabled:opacity-50 transition-colors"
               >
                 Selesaikan Pesanan
-              </button>
+              </Button>
             </div>
           </div>
         </div>

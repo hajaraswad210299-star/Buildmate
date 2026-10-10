@@ -10,6 +10,7 @@ import { PhotoUploader } from "@/components/shared/PhotoUploader";
 import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { WaButton } from "@/components/shared/WaButton";
+import { Button } from "@/components/shared/Button";
 import {
   getOrderById,
   transitionOrder,
@@ -364,10 +365,11 @@ function OrderDetailContent({
           {/* RIGHT ACTION BUTTONS */}
           <div className="flex items-center gap-2 flex-wrap">
             {primaryTransition && (
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
                 onClick={() => handleConfirmAction(primaryTransition)}
-                className="px-4 py-2 rounded-xl bg-lavender-600 hover:bg-lavender-700 text-white text-xs font-semibold shadow-xs transition-colors"
               >
                 {primaryTransition === "on_the_way" && "Tandai Dalam Perjalanan"}
                 {primaryTransition === "in_progress" && "Mulai Pekerjaan"}
@@ -375,29 +377,31 @@ function OrderDetailContent({
                 {primaryTransition === "completed" && "Selesaikan Pesanan"}
                 {primaryTransition === "worker_confirmed" && "Konfirmasi Tukang"}
                 {isWorkerAccountManaged && " (atas nama tukang)"}
-              </button>
+              </Button>
             )}
 
             {/* Other transitions or Cancel */}
             {otherTransitions.map((st) => (
-              <button
+              <Button
                 key={st}
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => handleConfirmAction(st)}
-                className="px-3 py-2 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium shadow-xs"
               >
                 {ORDER_STATUS_INFO[st].label}
-              </button>
+              </Button>
             ))}
 
             {canTransition(order.status, "cancelled", "admin") && (
-              <button
+              <Button
                 type="button"
+                variant="destructive"
+                size="sm"
                 onClick={() => handleConfirmAction("cancelled")}
-                className="px-3 py-2 rounded-xl bg-danger-50 hover:bg-danger-100 text-danger-700 text-xs font-semibold border border-danger-200/60 shadow-xs"
               >
                 Batalkan Pesanan
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -897,21 +901,23 @@ function OrderDetailContent({
             </label>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-100">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => setShowReplaceWorkerModal(false)}
-                className="px-3.5 py-2 text-xs text-neutral-600 hover:bg-neutral-100 rounded-xl"
               >
                 Batal
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
                 disabled={!selectedReplacementWorkerId || !replacementConsent}
                 onClick={handleReplaceWorkerSubmit}
-                className="px-4 py-2 bg-lavender-600 hover:bg-lavender-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-xs"
               >
                 Simpan & Kirim Tawaran
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -966,21 +972,24 @@ function OrderDetailContent({
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-100">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => setShowResolveComplaintModal(false)}
-                className="px-3.5 py-2 text-xs text-neutral-600 hover:bg-neutral-100 rounded-xl"
               >
                 Batal
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
                 disabled={!complaintResolution.trim()}
                 onClick={handleResolveComplaintSubmit}
-                className="px-4 py-2 bg-warning-600 hover:bg-warning-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-xs"
+                className="bg-warning-600 hover:bg-warning-700 focus-visible:ring-warning-500"
               >
                 Tutup Komplain
-              </button>
+              </Button>
             </div>
           </div>
         </div>

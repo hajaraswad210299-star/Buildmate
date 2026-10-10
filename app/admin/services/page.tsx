@@ -10,6 +10,7 @@ import {
 } from "@/lib/data/services";
 import { Category, ServicePackage } from "@/lib/data/types";
 import { formatRupiah, slugify } from "@/lib/format";
+import { Button } from "@/components/shared/Button";
 import { toast } from "sonner";
 import {
   AddCircle,
@@ -401,21 +402,21 @@ export default function AdminServicesPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-neutral-100">
-              <button
-                type="button"
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-neutral-100">
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={() => setIsCatDrawerOpen(false)}
-                className="px-4 py-2 text-xs text-neutral-600 hover:bg-neutral-100 rounded-xl"
               >
                 Batal
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
                 onClick={handleSaveCat}
-                className="px-5 py-2 bg-lavender-600 hover:bg-lavender-700 text-white rounded-xl text-xs font-semibold shadow-xs"
               >
                 Simpan Kategori
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -658,21 +659,21 @@ export default function AdminServicesPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-neutral-100">
-              <button
-                type="button"
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-neutral-100">
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={() => setIsPkgDrawerOpen(false)}
-                className="px-4 py-2 text-xs text-neutral-600 hover:bg-neutral-100 rounded-xl"
               >
                 Batal
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
                 onClick={handleSavePkg}
-                className="px-5 py-2 bg-lavender-600 hover:bg-lavender-700 text-white rounded-xl text-xs font-semibold shadow-xs"
               >
                 Simpan Paket
-              </button>
+              </Button>
             </div>
           </div>
         </div>

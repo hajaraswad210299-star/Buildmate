@@ -10,7 +10,9 @@ import { ActivityHeatmap } from "@/components/shared/ActivityHeatmap";
 import { getDashboardStats } from "@/lib/data/dashboard";
 import { getMockDashboardStats } from "@/lib/mock/data";
 import { DashboardStats } from "@/lib/data/types";
-import { formatRupiah, formatRelativeTime } from "@/lib/format";
+import { formatRupiah } from "@/lib/format";
+import { RelativeTime } from "@/components/shared/RelativeTime";
+import { Button } from "@/components/shared/Button";
 import {
   ArrowRight,
   DocumentDownload,
@@ -119,13 +121,14 @@ export default function AdminDashboardPage() {
               ))}
             </div>
 
-            <button
+            <Button
               type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-neutral-200/80 hover:bg-neutral-50 text-xs font-semibold text-neutral-700 shadow-xs transition-colors"
+              variant="secondary"
+              size="sm"
+              leftIcon={<DocumentDownload size={15} />}
             >
-              <DocumentDownload size={15} />
-              <span>Ekspor Data</span>
-            </button>
+              Ekspor Data
+            </Button>
           </div>
         </div>
 
@@ -603,7 +606,7 @@ export default function AdminDashboardPage() {
                       {formatRupiah(ord.total)}
                     </td>
                     <td className="py-3 text-neutral-400 text-right">
-                      {formatRelativeTime(ord.created_at)}
+                      <RelativeTime date={ord.created_at} />
                     </td>
                   </tr>
                 ))}

@@ -12,7 +12,9 @@ import {
 } from "@/lib/data/workers";
 import { getPackages } from "@/lib/data/services";
 import { Worker, ServicePackage } from "@/lib/data/types";
-import { formatDateId, formatRelativeTime, slugify } from "@/lib/format";
+import { formatDateId, slugify } from "@/lib/format";
+import { RelativeTime } from "@/components/shared/RelativeTime";
+import { Button } from "@/components/shared/Button";
 import { toast } from "sonner";
 import {
   SearchNormal1,
@@ -142,14 +144,13 @@ export default function AdminWorkersPage() {
             </p>
           </div>
 
-          <button
-            type="button"
+          <Button
+            variant="primary"
             onClick={handleOpenAddDrawer}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-lavender-600 hover:bg-lavender-700 text-white text-xs font-semibold shadow-xs transition-colors self-start sm:self-auto"
+            leftIcon={<AddCircle size={16} variant="Bold" />}
           >
-            <AddCircle size={16} />
-            <span>Tambah Tukang</span>
-          </button>
+            Tambah Tukang
+          </Button>
         </div>
 
         {/* TABS */}
@@ -340,7 +341,7 @@ export default function AdminWorkersPage() {
                           Area: {w.service_area} · {w.experience_years} th pengalaman
                         </span>
                         <span className="text-[10px] text-neutral-400 block mt-0.5">
-                          Mendaftar {formatRelativeTime(w.created_at)}
+                          Mendaftar <RelativeTime date={w.created_at} />
                         </span>
                       </div>
                     </div>
@@ -642,21 +643,21 @@ export default function AdminWorkersPage() {
             </div>
 
             {/* Sticky Drawer Footer */}
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-neutral-100">
-              <button
-                type="button"
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-neutral-100">
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={() => setIsDrawerOpen(false)}
-                className="px-4 py-2 text-xs text-neutral-600 hover:bg-neutral-100 rounded-xl"
               >
                 Batal
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
                 onClick={handleSaveWorker}
-                className="px-5 py-2 bg-lavender-600 hover:bg-lavender-700 text-white rounded-xl text-xs font-semibold shadow-xs"
               >
                 Simpan Tukang
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -772,21 +773,21 @@ export default function AdminWorkersPage() {
             </div>
 
             {/* Footer Actions */}
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-neutral-100">
-              <button
-                type="button"
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-neutral-100">
+              <Button
+                variant="destructive"
+                size="md"
                 onClick={() => handleReview(false)}
-                className="px-4 py-2 bg-danger-50 hover:bg-danger-100 text-danger-700 rounded-xl text-xs font-semibold border border-danger-200/60"
               >
                 Tolak Pendaftaran
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
                 onClick={() => handleReview(true)}
-                className="px-5 py-2 bg-lavender-600 hover:bg-lavender-700 text-white rounded-xl text-xs font-semibold shadow-xs"
               >
                 Setujui & Publikasikan
-              </button>
+              </Button>
             </div>
           </div>
         </div>

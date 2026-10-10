@@ -1,6 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
 @import "tailwindcss";
 
 @theme {
+  /* Brand Lavender Tokens (B7.1) */
   --color-lavender-50: #F7F5FF;
   --color-lavender-100: #EFEBFF;
   --color-lavender-200: #E0D8FF;
@@ -12,6 +14,13 @@
   --color-lavender-800: #4F38A0;
   --color-lavender-900: #3D2C7A;
 
+  /* Primary Color Mapping: Lavender-600 (B7.8 & B7.9) */
+  --color-primary: #7A5CE6;
+  --color-primary-hover: #6447C7;
+  --color-primary-active: #4F38A0;
+  --color-primary-foreground: #FFFFFF;
+
+  /* Neutrals (B7.2) */
   --color-neutral-0: #FFFFFF;
   --color-neutral-25: #FCFCFE;
   --color-neutral-50: #F7F7FB;
@@ -25,6 +34,7 @@
   --color-neutral-800: #2A2736;
   --color-neutral-900: #16141F;
 
+  /* Semantics (B7.3) */
   --color-success-50: #ECFDF3;
   --color-success-500: #17B26A;
   --color-success-600: #079455;
@@ -55,15 +65,24 @@
   --color-orange-600: #E04F16;
   --color-orange-700: #B93815;
 
+  /* UI Tokens */
+  --color-border: #E6E4EE;
+  --color-ring: #C9BBFF;
+  --color-background: #F7F7FB;
+  --color-foreground: #16141F;
+
+  /* Typography (B7.5) */
   --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --font-serif: var(--font-instrument-serif), Georgia, Cambria, serif;
+  --font-serif: "Instrument Serif", var(--font-instrument-serif), Georgia, Cambria, serif;
 
+  /* Radius (B7.7) */
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
 
+  /* Shadows (B7.7) */
   --shadow-xs: 0 1px 2px rgba(22, 20, 31, 0.05);
   --shadow-sm: 0 1px 3px rgba(22, 20, 31, 0.08), 0 1px 2px rgba(22, 20, 31, 0.04);
   --shadow-md: 0 8px 24px -6px rgba(22, 20, 31, 0.12);
@@ -71,6 +90,12 @@
 }
 
 :root {
+  --primary: #7A5CE6;
+  --primary-hover: #6447C7;
+  --primary-active: #4F38A0;
+  --primary-foreground: #FFFFFF;
+  --ring: #C9BBFF;
+  --border: #E6E4EE;
   --background: #F7F7FB;
   --foreground: #16141F;
 }
@@ -81,6 +106,10 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.font-serif {
+  font-family: "Instrument Serif", var(--font-instrument-serif), Georgia, Cambria, serif !important;
 }
 
 /* Custom scrollbars */

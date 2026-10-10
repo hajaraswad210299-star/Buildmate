@@ -8,8 +8,10 @@ import { WaButton } from "@/components/shared/WaButton";
 import { getOrders, OrderFilter } from "@/lib/data/orders";
 import { MOCK_ORDERS } from "@/lib/mock/data";
 import { Order } from "@/lib/data/types";
-import { formatRupiah, formatRelativeTime, formatDateId } from "@/lib/format";
+import { formatRupiah, formatDateId } from "@/lib/format";
+import { RelativeTime } from "@/components/shared/RelativeTime";
 import { WA_TEMPLATES } from "@/lib/wa-templates";
+import { Button } from "@/components/shared/Button";
 import { toast } from "sonner";
 import {
   SearchNormal1,
@@ -21,7 +23,7 @@ import {
   DocumentDownload,
 } from "@/lib/icons";
 
-export default function AdminOrdersPage() {
+function AdminOrdersContent() {
   const [activeTab, setActiveTab] = useState<OrderFilter["tab"]>("all");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -95,14 +97,16 @@ export default function AdminOrdersPage() {
             </p>
           </div>
 
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
+            leftIcon={<DocumentDownload size={15} />}
             onClick={() => toast.success("Mengekspor semua pesanan ke CSV...")}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-neutral-200 hover:bg-neutral-50 text-xs font-semibold text-neutral-700 shadow-xs transition-colors self-start sm:self-auto"
+            className="self-start sm:self-auto"
           >
-            <DocumentDownload size={15} />
-            <span>Ekspor CSV</span>
-          </button>
+            Ekspor CSV
+          </Button>
         </div>
 
         {/* TABS WITH BADGES */}
@@ -194,13 +198,14 @@ export default function AdminOrdersPage() {
             <span className="font-semibold text-lavender-800">
               {selectedIds.length} pesanan terpilih
             </span>
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="sm"
               onClick={handleExportSelected}
-              className="px-3 py-1 bg-lavender-600 hover:bg-lavender-700 text-white rounded-lg font-medium shadow-xs"
             >
               Ekspor Terpilih
-            </button>
+            </Button>
           </div>
         )}
 
@@ -370,7 +375,7 @@ export default function AdminOrdersPage() {
 
                         {/* Updated */}
                         <td className="py-3.5 px-3 text-neutral-400 text-right whitespace-nowrap">
-                          {formatRelativeTime(ord.updated_at || ord.created_at)}
+                          <RelativeTime date={ord.updated_at || ord.created_at} />
                         </td>
 
                         {/* Actions */}
@@ -431,5 +436,19 @@ export default function AdminOrdersPage() {
         </div>
       </div>
     </AdminShell>
+  );
+}
+
+export default function AdminOrdersPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="h-dvh flex items-center justify-center text-xs text-neutral-400">
+          Memuat daftar pesanan...
+        </div>
+      }
+    >
+      <AdminOrdersContent />
+    </React.Suspense>
   );
 }

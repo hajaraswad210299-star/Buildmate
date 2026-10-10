@@ -2,7 +2,7 @@
 
 import React from "react";
 import { OrderEvent } from "@/lib/data/types";
-import { formatRelativeTime } from "@/lib/format";
+import { RelativeTime } from "@/components/shared/RelativeTime";
 import { cn } from "@/lib/utils";
 import {
   TickCircle,
@@ -53,7 +53,7 @@ export function AuditTimeline({ events = [], className }: AuditTimelineProps) {
                 {ev.actor_name || ev.actor_type}
               </span>
               <span className="text-[11px] text-neutral-400">
-                {formatRelativeTime(ev.created_at)}
+                <RelativeTime date={ev.created_at} />
               </span>
             </div>
 

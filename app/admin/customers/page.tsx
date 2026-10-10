@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Crown1, SearchNormal1, CloseCircle } from "@/lib/icons";
 import { formatRupiah, formatDateId } from "@/lib/format";
+import { Button } from "@/components/shared/Button";
 
 interface CustomerItem {
   id: string;
@@ -256,13 +257,14 @@ export default function AdminCustomersPage() {
             </div>
 
             <div className="pt-4 border-t border-neutral-100">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="md"
+                className="w-full"
                 onClick={() => setSelectedCustomer(null)}
-                className="w-full py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-xl text-xs font-semibold"
               >
                 Tutup
-              </button>
+              </Button>
             </div>
           </div>
         </div>

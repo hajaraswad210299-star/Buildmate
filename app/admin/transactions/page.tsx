@@ -6,7 +6,9 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { StatCard } from "@/components/shared/StatCard";
 import { getPayments, PaymentFilter } from "@/lib/data/transactions";
 import { Payment } from "@/lib/data/types";
-import { formatRupiah, formatRelativeTime } from "@/lib/format";
+import { formatRupiah } from "@/lib/format";
+import { RelativeTime } from "@/components/shared/RelativeTime";
+import { Button } from "@/components/shared/Button";
 import { toast } from "sonner";
 import {
   SearchNormal1,
@@ -204,7 +206,7 @@ export default function AdminTransactionsPage() {
                       </td>
 
                       <td className="py-3.5 px-3 text-neutral-400 text-right whitespace-nowrap">
-                        {p.processed_at ? formatRelativeTime(p.processed_at) : "-"}
+                        {p.processed_at ? <RelativeTime date={p.processed_at} /> : "-"}
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
@@ -312,13 +314,15 @@ export default function AdminTransactionsPage() {
             </div>
 
             <div className="pt-4 border-t border-neutral-100">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="md"
                 onClick={() => setSelectedPayment(null)}
-                className="w-full py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-xl text-xs font-semibold"
+                className="w-full"
               >
                 Tutup
-              </button>
+              </Button>
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Eye, EyeSlash, TickCircle } from "@/lib/icons";
+import { Button } from "@/components/shared/Button";
 import { toast } from "sonner";
 
 export default function AdminResetPasswordPage() {
@@ -38,7 +39,7 @@ export default function AdminResetPasswordPage() {
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
       <div className="w-full max-w-[420px] bg-white rounded-3xl p-8 border border-neutral-200/90 shadow-sm space-y-6">
         <div>
-          <h2 className="text-2xl font-serif text-neutral-900 tracking-tight">
+          <h2 className="text-[30px] font-serif text-neutral-900 tracking-tight leading-tight">
             Atur kata sandi baru
           </h2>
           <p className="text-xs text-neutral-500 mt-1">
@@ -160,13 +161,16 @@ export default function AdminResetPasswordPage() {
             </div>
           </div>
 
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            size="lg"
+            className="w-full"
             disabled={!isValid || isLoading}
-            className="w-full py-2.5 bg-lavender-600 hover:bg-lavender-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors h-11 flex items-center justify-center"
+            isLoading={isLoading}
           >
-            {isLoading ? "Menyimpan..." : "Simpan Kata Sandi"}
-          </button>
+            Simpan Kata Sandi
+          </Button>
         </form>
       </div>
     </div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Sms, SmsTracking, ArrowLeft2 } from "@/lib/icons";
+import { Button } from "@/components/shared/Button";
 
 export default function AdminForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -44,7 +45,7 @@ export default function AdminForgotPasswordPage() {
             <span>Kembali ke halaman masuk</span>
           </Link>
 
-          <h2 className="text-2xl font-serif text-neutral-900 tracking-tight">
+          <h2 className="text-[30px] font-serif text-neutral-900 tracking-tight leading-tight">
             Lupa kata sandi?
           </h2>
           <p className="text-xs text-neutral-500 mt-1">
@@ -74,13 +75,15 @@ export default function AdminForgotPasswordPage() {
               </div>
             </div>
 
-            <button
+            <Button
               type="submit"
-              disabled={isLoading}
-              className="w-full py-2.5 bg-lavender-600 hover:bg-lavender-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors h-11 flex items-center justify-center"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              isLoading={isLoading}
             >
-              {isLoading ? "Mengirim..." : "Kirim link reset"}
-            </button>
+              Kirim link reset
+            </Button>
           </form>
         ) : (
           <div className="space-y-4 animate-in fade-in">

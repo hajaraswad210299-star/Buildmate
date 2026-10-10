@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Warning2 } from "@/lib/icons";
+import { Button } from "@/components/shared/Button";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -62,12 +63,6 @@ export function ConfirmDialog({
     isLoading ||
     (requireReason && !reason.trim()) ||
     (requireConsentCheckbox && !consentChecked);
-
-  const buttonColors = {
-    danger: "bg-danger-600 hover:bg-danger-700 text-white",
-    primary: "bg-lavender-600 hover:bg-lavender-700 text-white",
-    warning: "bg-warning-600 hover:bg-warning-700 text-white",
-  }[variant];
 
   return (
     <div
@@ -131,26 +126,31 @@ export function ConfirmDialog({
 
         {/* Actions */}
         <div className="flex items-center justify-end gap-2.5 mt-3 pt-3 border-t border-neutral-100">
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             disabled={isLoading}
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-medium text-neutral-600 hover:bg-neutral-100 transition-colors"
           >
             {cancelLabel}
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
+            variant={variant === "danger" ? "destructive" : "primary"}
+            size="sm"
             disabled={isConfirmDisabled}
+            isLoading={isLoading}
             onClick={() => onConfirm(reason)}
-            className={cn(
-              "px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-xs disabled:opacity-50",
-              buttonColors
-            )}
+            className={
+              variant === "warning"
+                ? "bg-warning-600 hover:bg-warning-700 focus-visible:ring-warning-500"
+                : undefined
+            }
           >
-            {isLoading ? "Memproses..." : confirmLabel}
-          </button>
+            {confirmLabel}
+          </Button>
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { getPayouts, markPayoutAsPaid, PayoutFilter } from "@/lib/data/payouts";
 import { Payout } from "@/lib/data/types";
 import { formatRupiah, formatDateId } from "@/lib/format";
+import { Button } from "@/components/shared/Button";
 import { toast } from "sonner";
 import { SearchNormal1 } from "@/lib/icons";
 
@@ -365,20 +366,22 @@ export default function AdminPayoutsPage() {
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-100">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => setMarkingPayout(null)}
-                className="px-3.5 py-2 text-xs text-neutral-600 hover:bg-neutral-100 rounded-xl"
               >
                 Batal
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
                 onClick={handleConfirmPayout}
-                className="px-4 py-2 bg-lavender-600 hover:bg-lavender-700 text-white rounded-xl text-xs font-semibold shadow-xs"
               >
                 Konfirmasi Pencairan
-              </button>
+              </Button>
             </div>
           </div>
         </div>
