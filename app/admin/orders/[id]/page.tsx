@@ -1,0 +1,1013 @@
+"use client";
+
+import React, { useState, useEffect, useCallback, use } from "react";
+import Link from "next/link";
+import { AdminShell } from "@/components/admin/AdminShell";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { OrderStepper } from "@/components/shared/OrderStepper";
+import { AuditTimeline } from "@/components/shared/AuditTimeline";
+import { PhotoUploader } from "@/components/shared/PhotoUploader";
+import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { WaButton } from "@/components/shared/WaButton";
+import {
+  getOrderById,
+  transitionOrder,
+  addOrderPhoto,
+  replaceWorker,
+  resolveComplaint,
+} from "@/lib/data/orders";
+import { getWorkers } from "@/lib/data/workers";
+import { Order, Worker } from "@/lib/data/types";
+import {
+  canTransition,
+  getValidNextTransitions,
+  ORDER_STATUS_INFO,
+  OrderStatus,
+} from "@/lib/orders/transitions";
+import { formatRupiah, formatDateId } from "@/lib/format";
+import { WA_TEMPLATES } from "@/lib/wa-templates";
+import { toast } from "sonner";
+import {
+  ArrowLeft2,
+  Copy,
+  TickCircle,
+  Location,
+  Calendar1,
+  Crown1,
+  Warning2,
+  AddCircle,
+} from "@/lib/icons";
+
+function OrderDetailContent({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const resolvedParams = use(params);
+  const orderId = resolvedParams.id;
+
+  const [order, setOrder] = useState<Order | null>(null);
+  const [activeWorkers, setActiveWorkers] = useState<Worker[]>([]);
+  const [isCopied, setIsCopied] = useState(false);
+  const [internalNotes, setInternalNotes] = useState("");
+  const [notesSaveStatus, setNotesSaveStatus] = useState<"saved" | "saving">("saved");
+
+  // Modals & Lightbox
+  const [lightboxImage, setLightboxImage] = useState<{
+    url: string;
+    title: string;
+    subtitle: string;
+  } | null>(null);
+  const [showUploader, setShowUploader] = useState(false);
+
+  // Dialogs
+  const [confirmDialogProps, setConfirmDialogProps] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    targetStatus?: OrderStatus;
+    requireReason?: boolean;
+    requireConsentCheckbox?: boolean;
+    consentCheckboxLabel?: string;
+    variant?: "danger" | "primary" | "warning";
+    onConfirmAction: (reason?: string) => void;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    onConfirmAction: () => {},
+  });
+
+  // Replace worker dialog
+  const [showReplaceWorkerModal, setShowReplaceWorkerModal] = useState(false);
+  const [selectedReplacementWorkerId, setSelectedReplacementWorkerId] = useState("");
+  const [replacementConsent, setReplacementConsent] = useState(false);
+  const [replacementNote, setReplacementNote] = useState("");
+
+  // Complaint dialog
+  const [showResolveComplaintModal, setShowResolveComplaintModal] = useState(false);
+  const [complaintResolution, setComplaintResolution] = useState("");
+  const [complaintAction, setComplaintAction] = useState<
+    "warranty_rework" | "close_without_action" | "cancel_refund"
+  >("warranty_rework");
+
+  const loadData = useCallback(() => {
+    getOrderById(orderId).then((res) => {
+      if (res) {
+        setOrder(res);
+        setInternalNotes(res.admin_notes || "");
+      }
+    });
+    getWorkers({ tab: "active" }).then((workers) => {
+      setActiveWorkers(workers);
+    });
+  }, [orderId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Autosave internal notes
+  const handleNotesChange = (val: string) => {
+    setInternalNotes(val);
+    setNotesSaveStatus("saving");
+    const timer = setTimeout(() => {
+      if (order) order.admin_notes = val;
+      setNotesSaveStatus("saved");
+      toast.success("Catatan internal tersimpan");
+    }, 800);
+    return () => clearTimeout(timer);
+  };
+
+  if (!order) {
+    return (
+      <AdminShell>
+        <div className="py-20 text-center text-xs text-neutral-400">
+          Memuat data detail pesanan...
+        </div>
+      </AdminShell>
+    );
+  }
+
+  const validNextTransitions = getValidNextTransitions(order.status, "admin");
+  const primaryTransition = validNextTransitions[0];
+  const otherTransitions = validNextTransitions.slice(1);
+
+  const handleExecuteTransition = async (
+    targetStatus: OrderStatus,
+    reason?: string
+  ) => {
+    const res = await transitionOrder(order.id, targetStatus, "admin", {
+      note: reason,
+      cancelReason: reason,
+    });
+
+    if (!res.success) {
+      toast.error(res.error || "Gagal mengubah status");
+      return;
+    }
+
+    toast.success(
+      `Status pesanan berhasil diubah menjadi ${ORDER_STATUS_INFO[targetStatus].label}`
+    );
+    loadData();
+  };
+
+  const handleConfirmAction = (targetStatus: OrderStatus) => {
+    if (targetStatus === "cancelled") {
+      setConfirmDialogProps({
+        isOpen: true,
+        title: "Batalkan Pesanan?",
+        description:
+          "Pesanan akan dibatalkan dan proses refund simulasi Midtrans akan dicatat.",
+        variant: "danger",
+        requireReason: true,
+        onConfirmAction: (reason) => {
+          setConfirmDialogProps((prev) => ({ ...prev, isOpen: false }));
+          handleExecuteTransition("cancelled", reason);
+        },
+      });
+    } else if (targetStatus === "completed") {
+      setConfirmDialogProps({
+        isOpen: true,
+        title: "Selesaikan Pesanan Sekarang?",
+        description:
+          "Admin akan menyelesaikan pesanan ini dan membuat hak pencairan dana tukang di ledger.",
+        variant: "primary",
+        requireReason: true,
+        onConfirmAction: (reason) => {
+          setConfirmDialogProps((prev) => ({ ...prev, isOpen: false }));
+          handleExecuteTransition("completed", reason);
+        },
+      });
+    } else {
+      handleExecuteTransition(targetStatus);
+    }
+  };
+
+  const handleSavePhoto = async (photo: {
+    storage_path: string;
+    source_note: string;
+    type: "problem" | "result";
+  }) => {
+    await addOrderPhoto(order.id, {
+      ...photo,
+      uploaded_by: "admin",
+    });
+    setShowUploader(false);
+    loadData();
+  };
+
+  const handleReplaceWorkerSubmit = async () => {
+    const w = activeWorkers.find((item) => item.id === selectedReplacementWorkerId);
+    if (!w) {
+      toast.error("Pilih tukang pengganti");
+      return;
+    }
+    if (!replacementConsent) {
+      toast.error("Centang persetujuan pelanggan terlebih dahulu");
+      return;
+    }
+
+    await replaceWorker(
+      order.id,
+      {
+        id: w.id,
+        name: w.full_name,
+        phone: w.phone,
+        service_area: w.service_area,
+        is_verified: w.is_verified,
+        has_account: !!w.user_id,
+      },
+      replacementNote
+    );
+
+    toast.success(`Tukang berhasil diganti ke ${w.full_name}`);
+    setShowReplaceWorkerModal(false);
+    loadData();
+  };
+
+  const handleResolveComplaintSubmit = async () => {
+    if (!complaintResolution.trim()) {
+      toast.error("Tuliskan deskripsi resolusi komplain");
+      return;
+    }
+
+    await resolveComplaint(order.id, complaintResolution, complaintAction);
+    toast.success("Komplain berhasil ditutup dan ditindaklanjuti");
+    setShowResolveComplaintModal(false);
+    loadData();
+  };
+
+  const isWorkerAccountManaged = !order.worker?.has_account;
+
+  return (
+    <AdminShell>
+      <div className="space-y-6">
+        {/* STICKY HEADER */}
+        <div className="bg-white rounded-2xl border border-neutral-200/90 p-4 shadow-xs sticky top-20 z-20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/orders"
+              className="p-2 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-500 transition-colors"
+              title="Kembali ke daftar pesanan"
+            >
+              <ArrowLeft2 size={16} />
+            </Link>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-lg font-bold text-neutral-900 tracking-tight">
+                  {order.order_code}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(order.order_code);
+                    setIsCopied(true);
+                    toast.success("Kode pesanan disalin");
+                    setTimeout(() => setIsCopied(false), 1500);
+                  }}
+                  className="text-neutral-400 hover:text-neutral-700 transition-colors"
+                  title="Salin kode"
+                >
+                  {isCopied ? (
+                    <TickCircle size={15} className="text-success-600" />
+                  ) : (
+                    <Copy size={15} />
+                  )}
+                </button>
+
+                <StatusBadge status={order.status} size="md" />
+
+                {order.customer.is_plus && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-lavender-100 text-lavender-700 font-bold">
+                    <Crown1 size={13} variant="Bold" />
+                    <span>Plus</span>
+                  </span>
+                )}
+              </div>
+              <span className="text-xs text-neutral-400 block mt-0.5">
+                Dibuat pada {formatDateId(order.created_at, "d MMMM yyyy, HH:mm")}
+              </span>
+            </div>
+          </div>
+
+          {/* RIGHT ACTION BUTTONS */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {primaryTransition && (
+              <button
+                type="button"
+                onClick={() => handleConfirmAction(primaryTransition)}
+                className="px-4 py-2 rounded-xl bg-lavender-600 hover:bg-lavender-700 text-white text-xs font-semibold shadow-xs transition-colors"
+              >
+                {primaryTransition === "on_the_way" && "Tandai Dalam Perjalanan"}
+                {primaryTransition === "in_progress" && "Mulai Pekerjaan"}
+                {primaryTransition === "awaiting_confirmation" && "Kirim Foto & Minta Konfirmasi"}
+                {primaryTransition === "completed" && "Selesaikan Pesanan"}
+                {primaryTransition === "worker_confirmed" && "Konfirmasi Tukang"}
+                {isWorkerAccountManaged && " (atas nama tukang)"}
+              </button>
+            )}
+
+            {/* Other transitions or Cancel */}
+            {otherTransitions.map((st) => (
+              <button
+                key={st}
+                type="button"
+                onClick={() => handleConfirmAction(st)}
+                className="px-3 py-2 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium shadow-xs"
+              >
+                {ORDER_STATUS_INFO[st].label}
+              </button>
+            ))}
+
+            {canTransition(order.status, "cancelled", "admin") && (
+              <button
+                type="button"
+                onClick={() => handleConfirmAction("cancelled")}
+                className="px-3 py-2 rounded-xl bg-danger-50 hover:bg-danger-100 text-danger-700 text-xs font-semibold border border-danger-200/60 shadow-xs"
+              >
+                Batalkan Pesanan
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 2-COLUMN MAIN CONTENT (8 / 4) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* LEFT COLUMN (8/12) */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* 1. PROGRESS STEPPER */}
+            <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs">
+              <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-3">
+                Tahapan Pengerjaan
+              </h3>
+              <OrderStepper
+                currentStatus={order.status}
+                timestamps={{
+                  paid_at: order.paid_at,
+                  worker_confirmed_at: order.worker_confirmed_at,
+                  on_the_way_at: order.on_the_way_at,
+                  in_progress_at: order.in_progress_at,
+                  awaiting_confirmation_at: order.awaiting_confirmation_at,
+                  completed_at: order.completed_at,
+                }}
+              />
+            </div>
+
+            {/* 2. ORDER DETAILS CARD */}
+            <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
+                <div>
+                  <span className="text-[11px] font-semibold text-lavender-600 uppercase tracking-wider">
+                    {order.package.category_name}
+                  </span>
+                  <h3 className="text-base font-bold text-neutral-900 mt-0.5">
+                    {order.package.name}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Schedule and Location */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                <div className="p-3 rounded-xl bg-neutral-50 border border-neutral-100 flex items-start gap-2.5">
+                  <Calendar1 size={18} className="text-lavender-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-neutral-400 font-medium block">
+                      Jadwal Pengerjaan
+                    </span>
+                    <span className="font-semibold text-neutral-800 block mt-0.5">
+                      {formatDateId(order.scheduled_date, "EEEE, d MMMM yyyy")}
+                    </span>
+                    <span className="text-neutral-500">{order.time_slot}</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-neutral-50 border border-neutral-100 flex items-start gap-2.5">
+                  <Location size={18} className="text-lavender-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-neutral-400 font-medium block">
+                      Alamat Pelanggan
+                    </span>
+                    <span className="font-semibold text-neutral-800 block mt-0.5">
+                      {order.address}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Problem description */}
+              <div>
+                <span className="text-xs font-semibold text-neutral-600 block mb-1">
+                  Keluhan / Deskripsi Masalah:
+                </span>
+                <p className="text-xs text-neutral-700 bg-neutral-50/70 p-3 rounded-xl border border-neutral-100 leading-relaxed">
+                  {order.description}
+                </p>
+              </div>
+
+              {/* Inclusions Accordion */}
+              {order.package.inclusions && (
+                <div className="pt-2">
+                  <span className="text-xs font-semibold text-neutral-600 block mb-1.5">
+                    Cakupan Pekerjaan (Termasuk):
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs text-neutral-600">
+                    {order.package.inclusions.map((inc, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <TickCircle size={14} className="text-success-600 shrink-0" />
+                        <span>{inc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. PHOTOS: SEBELUM & SESUDAH */}
+            <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
+                <div>
+                  <h3 className="text-sm font-bold text-neutral-800">
+                    Dokumentasi Foto Pekerjaan
+                  </h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Bandingkan foto keluhan awal dengan hasil pengerjaan tukang
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowUploader(!showUploader)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-lavender-50 hover:bg-lavender-100 text-lavender-700 text-xs font-semibold transition-colors"
+                >
+                  <AddCircle size={15} />
+                  <span>{showUploader ? "Tutup Uploader" : "Unggah Foto Hasil"}</span>
+                </button>
+              </div>
+
+              {/* Uploader Component */}
+              {showUploader && (
+                <PhotoUploader
+                  defaultType="result"
+                  onUploadSuccess={handleSavePhoto}
+                  className="mb-4"
+                />
+              )}
+
+              {/* Photo Galleries: Sebelum vs Sesudah */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Panel Sebelum */}
+                <div className="p-3.5 rounded-xl border border-neutral-100 bg-neutral-50/50 flex flex-col">
+                  <span className="text-xs font-bold text-neutral-700 mb-2 flex items-center justify-between">
+                    <span>Foto Sebelum (Keluhan Awal)</span>
+                    <span className="text-[10px] text-neutral-400 font-normal">Dari Pelanggan</span>
+                  </span>
+
+                  {order.photos?.filter((p) => p.type === "problem").length ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {order.photos
+                        .filter((p) => p.type === "problem")
+                        .map((photo) => (
+                          <div
+                            key={photo.id}
+                            onClick={() =>
+                              setLightboxImage({
+                                url: photo.storage_path,
+                                title: "Foto Keluhan Sebelum Pengerjaan",
+                                subtitle: photo.source_note || "Diunggah pelanggan",
+                              })
+                            }
+                            className="group relative h-28 rounded-xl overflow-hidden border border-neutral-200 cursor-pointer shadow-xs"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={photo.storage_path}
+                              alt="Sebelum"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[11px] font-medium">
+                              Perbesar
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-neutral-400 text-xs italic">
+                      Tidak ada foto keluhan awal
+                    </div>
+                  )}
+                </div>
+
+                {/* Panel Sesudah */}
+                <div className="p-3.5 rounded-xl border border-neutral-100 bg-neutral-50/50 flex flex-col">
+                  <span className="text-xs font-bold text-neutral-700 mb-2 flex items-center justify-between">
+                    <span>Foto Sesudah (Hasil Selesai)</span>
+                    <span className="text-[10px] text-lavender-600 font-normal">Bukti Tukang</span>
+                  </span>
+
+                  {order.photos?.filter((p) => p.type === "result").length ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {order.photos
+                        .filter((p) => p.type === "result")
+                        .map((photo) => (
+                          <div
+                            key={photo.id}
+                            onClick={() =>
+                              setLightboxImage({
+                                url: photo.storage_path,
+                                title: "Foto Hasil Pengerjaan Selesai",
+                                subtitle: photo.source_note || "Bukti pekerjaan selesai",
+                              })
+                            }
+                            className="group relative h-28 rounded-xl overflow-hidden border border-neutral-200 cursor-pointer shadow-xs"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={photo.storage_path}
+                              alt="Sesudah"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[11px] font-medium">
+                              Perbesar
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-neutral-400 text-xs italic">
+                      Belum ada foto hasil diunggah
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 4. COMPLAINT SECTION (IF ANY) */}
+            {order.complaint && (
+              <div className="bg-warning-50/60 border border-warning-200 p-5 rounded-2xl shadow-xs space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <Warning2 size={20} className="text-warning-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-warning-800">
+                          Komplain Terbuka dari Pelanggan
+                        </h4>
+                        {order.complaint.is_warranty && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-warning-200 text-warning-800 font-bold">
+                            Garansi Plus
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-warning-700 mt-1 leading-relaxed">
+                        {order.complaint.description}
+                      </p>
+                      <span className="text-[11px] text-warning-600 block mt-1">
+                        Diajukan pada {formatDateId(order.complaint.created_at, "d MMM yyyy, HH:mm")}
+                      </span>
+                    </div>
+                  </div>
+
+                  {order.complaint.status === "open" && (
+                    <button
+                      type="button"
+                      onClick={() => setShowResolveComplaintModal(true)}
+                      className="px-3 py-1.5 rounded-xl bg-warning-600 hover:bg-warning-700 text-white text-xs font-semibold shadow-xs transition-colors shrink-0"
+                    >
+                      Tutup Komplain
+                    </button>
+                  )}
+                </div>
+
+                {order.complaint.status === "closed" && (
+                  <div className="p-3 bg-white/80 rounded-xl border border-warning-200 text-xs text-neutral-700">
+                    <span className="font-semibold block mb-0.5">
+                      Resolusi: {order.complaint.resolution}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      Ditutup pada {formatDateId(order.complaint.closed_at || "", "d MMM yyyy, HH:mm")}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 5. AUDIT TIMELINE */}
+            <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs">
+              <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-4">
+                Jejak Audit & Riwayat Perubahan
+              </h3>
+              <AuditTimeline events={order.events || []} />
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN (4/12) */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* 1. COST SUMMARY */}
+            <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs space-y-3">
+              <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+                Ringkasan Biaya
+              </h3>
+
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between text-neutral-600">
+                  <span>Harga Paket Jasa</span>
+                  <span className="font-medium text-neutral-900 tabular-nums">
+                    {formatRupiah(order.package_price)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-neutral-600">
+                  <div className="flex items-center gap-1">
+                    <span>Biaya Layanan Platform</span>
+                    {order.customer.is_plus && (
+                      <span className="text-[10px] text-lavender-600 font-bold">
+                        (Plus Rp0)
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-medium text-neutral-900 tabular-nums">
+                    {order.customer.is_plus ? (
+                      <span>
+                        <s className="text-neutral-400 mr-1.5">Rp5.000</s>
+                        <span className="text-lavender-700 font-bold">Rp0</span>
+                      </span>
+                    ) : (
+                      formatRupiah(order.service_fee)
+                    )}
+                  </span>
+                </div>
+
+                <div className="pt-2 border-t border-neutral-100 flex items-center justify-between text-sm font-bold text-neutral-900">
+                  <span>Total Transaksi</span>
+                  <span className="text-lavender-700 tabular-nums">
+                    {formatRupiah(order.total)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Payment Status & Trans ID */}
+              <div className="pt-3 border-t border-neutral-100 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-400">Status Bayar</span>
+                  <span className="font-semibold text-success-700 bg-success-50 px-2 py-0.5 rounded-full text-[11px]">
+                    Lunas (Midtrans)
+                  </span>
+                </div>
+
+                {order.transaction_id && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-400">ID Transaksi</span>
+                    <Link
+                      href="/admin/transactions"
+                      className="font-mono text-lavender-600 hover:underline text-[11px]"
+                    >
+                      {order.transaction_id}
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 2. CUSTOMER CARD */}
+            <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs space-y-3">
+              <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+                Informasi Pelanggan
+              </h3>
+
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-full bg-lavender-100 text-lavender-800 flex items-center justify-center font-bold text-sm shrink-0">
+                    {order.customer.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-neutral-900 text-xs">
+                        {order.customer.name}
+                      </span>
+                      {order.customer.is_plus && (
+                        <Crown1 size={14} className="text-lavender-600" variant="Bold" />
+                      )}
+                    </div>
+                    <span className="text-[11px] text-neutral-400 block mt-0.5">
+                      {order.customer.email}
+                    </span>
+                    <span className="text-[11px] text-neutral-600 font-medium block">
+                      {order.customer.phone}
+                    </span>
+                  </div>
+                </div>
+
+                <WaButton
+                  phone={order.customer.phone}
+                  messageText={WA_TEMPLATES.adminToCustomer({
+                    customerName: order.customer.name,
+                    orderCode: order.order_code,
+                    workerName: order.worker?.name || "Tukang kami",
+                    date: order.scheduled_date,
+                    timeSlot: order.time_slot,
+                  })}
+                  size="sm"
+                />
+              </div>
+            </div>
+
+            {/* 3. WORKER CARD */}
+            <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+                  Mitra / Tukang
+                </h3>
+
+                <button
+                  type="button"
+                  onClick={() => setShowReplaceWorkerModal(true)}
+                  className="text-xs font-semibold text-lavender-600 hover:text-lavender-800"
+                >
+                  Ganti Tukang
+                </button>
+              </div>
+
+              {order.worker ? (
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={
+                          order.worker.avatar_url ||
+                          "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=100"
+                        }
+                        alt={order.worker.name}
+                        className="w-10 h-10 rounded-full object-cover border border-neutral-200 shrink-0"
+                      />
+                      <div>
+                        <span className="font-semibold text-neutral-900 text-xs block">
+                          {order.worker.name}
+                        </span>
+                        <span className="text-[11px] text-neutral-400 block">
+                          Area: {order.worker.service_area}
+                        </span>
+                        <span className="text-[10px] text-neutral-500 font-medium">
+                          {order.worker.has_account ? "Mitra Berakun" : "Dikelola Admin"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <WaButton
+                      phone={order.worker.phone}
+                      messageText={WA_TEMPLATES.adminToWorkerOffer({
+                        workerName: order.worker.name,
+                        orderCode: order.order_code,
+                        packageName: order.package.name,
+                        serviceArea: order.worker.service_area,
+                        date: order.scheduled_date,
+                        timeSlot: order.time_slot,
+                      })}
+                      size="sm"
+                    />
+                  </div>
+
+                  {/* Worker response badge */}
+                  <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-100 flex items-center justify-between text-xs">
+                    <span className="text-neutral-500">Respon Tawaran:</span>
+                    {order.worker_response === "accepted" && (
+                      <span className="font-semibold text-success-700 bg-success-50 px-2 py-0.5 rounded-full text-[11px]">
+                        Diterima
+                      </span>
+                    )}
+                    {order.worker_response === "declined" && (
+                      <span className="font-semibold text-danger-700 bg-danger-50 px-2 py-0.5 rounded-full text-[11px]">
+                        Ditolak Tukang
+                      </span>
+                    )}
+                    {order.worker_response === "pending" && (
+                      <span className="font-semibold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-full text-[11px]">
+                        Menunggu Respon
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="py-4 text-center text-xs text-neutral-400 italic">
+                  Belum ada tukang yang ditugaskan
+                </div>
+              )}
+            </div>
+
+            {/* 4. INTERNAL ADMIN NOTES */}
+            <div className="bg-white rounded-2xl border border-neutral-200/80 p-5 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+                  Catatan Internal
+                </h3>
+                <span className="text-[10px] text-neutral-400">
+                  {notesSaveStatus === "saving" ? "Menyimpan..." : "Tersimpan"}
+                </span>
+              </div>
+
+              <textarea
+                rows={4}
+                value={internalNotes}
+                onChange={(e) => handleNotesChange(e.target.value)}
+                placeholder="Tuliskan catatan khusus tim operasional (hanya dilihat oleh admin)..."
+                className="w-full text-xs p-3 rounded-xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-lavender-300 resize-none"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CONFIRM DIALOG */}
+      <ConfirmDialog
+        isOpen={confirmDialogProps.isOpen}
+        onClose={() => setConfirmDialogProps((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmDialogProps.onConfirmAction}
+        title={confirmDialogProps.title}
+        description={confirmDialogProps.description}
+        variant={confirmDialogProps.variant}
+        requireReason={confirmDialogProps.requireReason}
+      />
+
+      {/* LIGHTBOX MODAL */}
+      {lightboxImage && (
+        <PhotoLightbox
+          isOpen={!!lightboxImage}
+          onClose={() => setLightboxImage(null)}
+          imageUrl={lightboxImage.url}
+          title={lightboxImage.title}
+          subtitle={lightboxImage.subtitle}
+        />
+      )}
+
+      {/* REPLACE WORKER MODAL */}
+      {showReplaceWorkerModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+          onClick={() => setShowReplaceWorkerModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl border border-neutral-200 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-neutral-900">Ganti Tukang Pesanan</h3>
+            <p className="text-xs text-neutral-500">
+              Pilih tukang aktif lain yang melayani paket ini.
+            </p>
+
+            <div>
+              <label className="text-xs font-medium text-neutral-700 block mb-1">
+                Pilih Tukang Pengganti
+              </label>
+              <select
+                value={selectedReplacementWorkerId}
+                onChange={(e) => setSelectedReplacementWorkerId(e.target.value)}
+                className="w-full text-xs p-2.5 rounded-xl border border-neutral-200 bg-white focus:outline-none focus:ring-2 focus:ring-lavender-300"
+              >
+                <option value="">-- Pilih Tukang --</option>
+                {activeWorkers.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.full_name} ({w.service_area})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-neutral-700 block mb-1">
+                Catatan Alasan Penggantian
+              </label>
+              <textarea
+                rows={2}
+                value={replacementNote}
+                onChange={(e) => setReplacementNote(e.target.value)}
+                placeholder="Misal: Tukang sebelumnya kendaraannya mogok"
+                className="w-full text-xs p-2.5 rounded-xl border border-neutral-200 resize-none"
+              />
+            </div>
+
+            {/* MANDATORY CONSENT CHECKBOX */}
+            <label className="flex items-start gap-2 text-xs text-neutral-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={replacementConsent}
+                onChange={(e) => setReplacementConsent(e.target.checked)}
+                className="w-4 h-4 rounded text-lavender-600 focus:ring-lavender-300 border-neutral-300 mt-0.5"
+              />
+              <span>Pelanggan sudah menyetujui penggantian tukang ini via chat/telepon.</span>
+            </label>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-100">
+              <button
+                type="button"
+                onClick={() => setShowReplaceWorkerModal(false)}
+                className="px-3.5 py-2 text-xs text-neutral-600 hover:bg-neutral-100 rounded-xl"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={!selectedReplacementWorkerId || !replacementConsent}
+                onClick={handleReplaceWorkerSubmit}
+                className="px-4 py-2 bg-lavender-600 hover:bg-lavender-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-xs"
+              >
+                Simpan & Kirim Tawaran
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESOLVE COMPLAINT MODAL */}
+      {showResolveComplaintModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+          onClick={() => setShowResolveComplaintModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl border border-neutral-200 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-neutral-900">
+              Penyelesaian Komplain
+            </h3>
+
+            <div>
+              <label className="text-xs font-medium text-neutral-700 block mb-1">
+                Tindakan Penyelesaian
+              </label>
+              <select
+                value={complaintAction}
+                onChange={(e) =>
+                  setComplaintAction(
+                    e.target.value as "warranty_rework" | "close_without_action" | "cancel_refund"
+                  )
+                }
+                className="w-full text-xs p-2.5 rounded-xl border border-neutral-200 bg-white"
+              >
+                <option value="warranty_rework">Kirim tukang lagi (Garansi Plus)</option>
+                <option value="close_without_action">Selesai tanpa tindakan lanjutan</option>
+                <option value="cancel_refund">Batalkan & refund pesanan</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-neutral-700 block mb-1">
+                Penjelasan Resolusi <span className="text-danger-600">*</span>
+              </label>
+              <textarea
+                rows={3}
+                value={complaintResolution}
+                onChange={(e) => setComplaintResolution(e.target.value)}
+                placeholder="Tuliskan hasil mediasi atau kesepakatan dengan pelanggan..."
+                className="w-full text-xs p-2.5 rounded-xl border border-neutral-200 resize-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-100">
+              <button
+                type="button"
+                onClick={() => setShowResolveComplaintModal(false)}
+                className="px-3.5 py-2 text-xs text-neutral-600 hover:bg-neutral-100 rounded-xl"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={!complaintResolution.trim()}
+                onClick={handleResolveComplaintSubmit}
+                className="px-4 py-2 bg-warning-600 hover:bg-warning-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-xs"
+              >
+                Tutup Komplain
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </AdminShell>
+  );
+}
+
+export default function AdminOrderDetailPage(props: {
+  params: Promise<{ id: string }>;
+}) {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="min-h-screen bg-neutral-100/60 p-6 flex items-center justify-center text-xs text-neutral-400">
+          Memuat data detail pesanan...
+        </div>
+      }
+    >
+      <OrderDetailContent {...props} />
+    </React.Suspense>
+  );
+}
+

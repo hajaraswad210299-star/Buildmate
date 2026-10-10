@@ -1,0 +1,115 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { Sms, SmsTracking, ArrowLeft2 } from "@/lib/icons";
+
+export default function AdminForgotPasswordPage() {
+  const [email, setEmail] = useState("");
+  const [isSent, setIsSent] = useState(false);
+  const [countdown, setCountdown] = useState(60);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | undefined;
+    if (isSent && countdown > 0) {
+      timer = setInterval(() => setCountdown((prev) => prev - 1), 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isSent, countdown]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      setIsSent(true);
+      setCountdown(60);
+    }, 600);
+  };
+
+  return (
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6">
+      <div className="w-full max-w-[400px] bg-white rounded-3xl p-8 border border-neutral-200/90 shadow-sm space-y-6">
+        <div>
+          <Link
+            href="/admin/login"
+            className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-lavender-700 transition-colors mb-4"
+          >
+            <ArrowLeft2 size={14} />
+            <span>Kembali ke halaman masuk</span>
+          </Link>
+
+          <h2 className="text-2xl font-serif text-neutral-900 tracking-tight">
+            Lupa kata sandi?
+          </h2>
+          <p className="text-xs text-neutral-500 mt-1">
+            Masukkan email terdaftar untuk menerima tautan pemulihan kata sandi.
+          </p>
+        </div>
+
+        {!isSent ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-neutral-700 block mb-1">
+                Alamat Email Admin
+              </label>
+              <div className="relative">
+                <Sms
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@buildmate.id"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-neutral-200 text-xs focus:outline-none focus:ring-2 focus:ring-lavender-300"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-2.5 bg-lavender-600 hover:bg-lavender-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors h-11 flex items-center justify-center"
+            >
+              {isLoading ? "Mengirim..." : "Kirim link reset"}
+            </button>
+          </form>
+        ) : (
+          <div className="space-y-4 animate-in fade-in">
+            <div className="p-4 bg-lavender-50 rounded-2xl border border-lavender-200 text-center space-y-2">
+              <div className="w-10 h-10 rounded-full bg-white shadow-xs flex items-center justify-center text-lavender-600 mx-auto">
+                <SmsTracking size={20} />
+              </div>
+              <h3 className="text-xs font-bold text-lavender-900">Email Terkirim</h3>
+              <p className="text-[11px] text-lavender-800 leading-relaxed">
+                Jika email terdaftar, tautan reset sudah kami kirim. Silakan cek inbox atau folder spam email kamu.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              disabled={countdown > 0}
+              onClick={() => {
+                setIsSent(false);
+                setCountdown(60);
+              }}
+              className="w-full py-2.5 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+            >
+              {countdown > 0
+                ? `Kirim ulang dalam (${countdown}s)`
+                : "Kirim ulang link reset"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
