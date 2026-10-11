@@ -173,7 +173,7 @@ export default function HomePage() {
   return (
     <CustomerShell>
       {/* 1. HERO STAGE: FLAMINGO ESTATE STUDIO LIGHTING + AIRBNB FLOATING CAPSULE SEARCH */}
-      <section className="w-full px-6 pt-4 sm:pt-6 mb-[50px]">
+      <section className="w-full px-6 pt-4 sm:pt-6 mb-[90px]">
         <div className="w-full">
           {/* Hero Photography Container */}
           <div className="relative rounded-[32px] sm:rounded-[40px] overflow-hidden bg-[#242220] min-h-[560px] sm:min-h-[640px] lg:min-h-[680px] flex flex-col justify-between p-8 sm:p-14 lg:p-20 text-white shadow-md border border-neutral-800/40">
@@ -252,7 +252,7 @@ export default function HomePage() {
       </section>
 
       {/* 2. FLAMINGO ESTATE ROW 1: "PILIHAN TERKURASI" (4-COLUMN PRODUCT GRID) */}
-      <section className="w-full px-6 mb-[50px]">
+      <section className="w-full px-6 mb-[90px]">
         <div className="text-center max-w-2xl mx-auto mb-[40px]">
           <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-2 font-sans">
             PILIHAN TERKURASI
@@ -302,7 +302,7 @@ export default function HomePage() {
       />
 
       {/* 5. FLAMINGO ESTATE ROW 2: "KOLEKSI PERBAIKAN POPULER" (4-COLUMN GRID) */}
-      <section className="w-full px-6 mb-[50px]">
+      <section className="w-full px-6 mb-[90px]">
         <div className="flex items-end justify-between mb-[40px]">
           <div>
             <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-2 font-sans">
@@ -362,7 +362,7 @@ export default function HomePage() {
       />
 
       {/* 8. MITRA PILIHAN TERVERIFIKASI (AIRBNB HOST CARD & FLAMINGO REFINED STYLING) */}
-      <section className="w-full px-6 mb-[50px]">
+      <section className="w-full px-6 mb-[90px]">
         <div className="flex items-end justify-between mb-[40px]">
           <div>
             <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-2 font-sans">
@@ -400,7 +400,7 @@ export default function HomePage() {
       </section>
 
       {/* 9. THE AMBIENT FEATURE BANNER: "THE BUILDMATE SHIELD" */}
-      <section className="w-full px-6 mb-[50px]">
+      <section className="w-full px-6 mb-[90px]">
         <div className="relative rounded-[32px] sm:rounded-[44px] overflow-hidden bg-neutral-900 min-h-[460px] sm:min-h-[540px] flex flex-col justify-center items-center text-center p-10 sm:p-20 lg:p-24 text-white shadow-md">
           {/* Natural Lush Light Terrace Landscape */}
           <img
@@ -438,7 +438,7 @@ export default function HomePage() {
       </section>
 
       {/* 10. CARA KERJA (01 02 03 MAGAZINE STYLE) */}
-      <section id="cara-kerja" className="w-full px-6 mb-[50px]">
+      <section id="cara-kerja" className="w-full px-6 mb-[90px]">
         <div className="bg-[#FAF8F5] rounded-[32px] sm:rounded-[40px] p-[40px] border border-[#EBE7DF]">
           <div className="text-center max-w-lg mx-auto mb-[40px]">
             <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-2 font-sans">
@@ -496,7 +496,7 @@ export default function HomePage() {
       </section>
 
       {/* 11. FLAMINGO ESTATE STORIES / EDITORIAL JOURNAL */}
-      <section className="w-full px-6 mb-[50px]">
+      <section className="w-full px-6 mb-[90px]">
         <div className="text-center max-w-xl mx-auto mb-[40px]">
           <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-2 font-sans">
             CATATAN RUMAH & PERAWATAN
@@ -533,7 +533,7 @@ export default function HomePage() {
       </section>
 
       {/* 12. PITA CTA MITRA (DEEP FOREST / OBSIDIAN RIBBON) */}
-      <section className="w-full px-6 pb-[50px]">
+      <section className="w-full px-6 pb-[90px]">
         <div className="rounded-[32px] bg-[#1E241E] text-white p-10 sm:p-14 lg:p-16 flex flex-col sm:flex-row items-center justify-between gap-8 text-center sm:text-left border border-neutral-800 font-sans">
           <div>
             <p className="text-[11px] font-semibold tracking-widest text-emerald-300 uppercase mb-2">
