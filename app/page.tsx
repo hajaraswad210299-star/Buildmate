@@ -173,43 +173,61 @@ export default function HomePage() {
 
   return (
     <CustomerShell>
-      {/* 1. HERO STAGE: FLAMINGO ESTATE WARM PHOTOGRAPHY + AIRBNB FLOATING CAPSULE SEARCH */}
+      {/* 1. HERO STAGE: FLAMINGO ESTATE STUDIO LIGHTING + AIRBNB FLOATING CAPSULE SEARCH */}
       <section className="w-full px-6 pt-4 sm:pt-6">
         <div className="w-full">
           {/* Hero Photography Container */}
-          <div className="relative rounded-[28px] sm:rounded-[36px] overflow-hidden bg-[#1E1B26] min-h-[480px] sm:min-h-[540px] flex flex-col justify-between p-6 sm:p-12 lg:p-16 text-white shadow-sm border border-neutral-800/40">
-            {/* Background Still Life Workshop Image with Natural Organic Lighting */}
+          <div className="relative rounded-[32px] sm:rounded-[40px] overflow-hidden bg-[#242220] min-h-[560px] sm:min-h-[640px] lg:min-h-[680px] flex flex-col justify-between p-8 sm:p-14 lg:p-20 text-white shadow-md border border-neutral-800/40">
+            {/* Background Studio Light Architecture Image - Bright, Warm & Crisp */}
             <img
-              src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=1600&auto=format&fit=crop&q=80"
-              alt="BuildMate Workshop Artisan Still Life"
-              className="absolute inset-0 w-full h-full object-cover object-center opacity-30 scale-105 transition-transform duration-1000"
+              src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1800&auto=format&fit=crop&q=85"
+              alt="BuildMate Artisan Architecture & Still Life"
+              className="absolute inset-0 w-full h-full object-cover object-center sm:object-right opacity-95 transition-transform duration-1000"
             />
-            {/* Subtle Gradient Veil */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#15121E] via-[#1B1824]/60 to-transparent" />
+            {/* Soft Directional Horizontal Gradient: Gentle shade behind left typography, completely transparent on right for glowing natural light */}
+            <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/85 via-neutral-950/45 to-transparent sm:from-neutral-950/80 sm:via-neutral-950/25 sm:to-transparent" />
+            {/* Faint ground vignette for bottom trust badges */}
+            <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/60 via-transparent to-transparent pointer-events-none" />
 
             {/* Top Minimal Editorial Badge */}
             <div className="relative z-10 flex items-center justify-between">
-              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-semibold tracking-wider uppercase text-lavender-200 border border-white/15">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-semibold tracking-wider uppercase text-lavender-200 border border-white/20">
                 <Crown1 size={14} className="text-lavender-300" variant="Bold" />
                 <span>Standar Artisan & Rekber Surabaya</span>
               </span>
             </div>
 
-            {/* Center Editorial Headlines */}
-            <div className="relative z-10 max-w-3xl my-auto py-6 sm:py-8 text-center sm:text-left">
-              <p className="text-xs uppercase tracking-[0.25em] text-lavender-300 mb-2 font-medium font-sans">
+            {/* Center Editorial Headlines & Flamingo White Pill CTA */}
+            <div className="relative z-10 max-w-2xl my-auto py-8 sm:py-12 text-left">
+              <p className="text-xs uppercase tracking-[0.25em] text-lavender-300 mb-3 font-medium font-sans">
                 KUALITAS TERJAMIN · BAYAR AMAN
               </p>
               <h1 className="font-serif text-3xl sm:text-5xl lg:text-[62px] text-white leading-[1.08] tracking-tight">
                 Tukang yang <span className="italic text-lavender-300 font-normal">tepat</span>, saat hunian membutuhkan.
               </h1>
-              <p className="text-xs sm:text-sm text-neutral-300 mt-3 sm:mt-4 leading-relaxed max-w-xl font-normal font-sans">
+              <p className="text-xs sm:text-sm text-neutral-200 mt-4 sm:mt-5 leading-relaxed max-w-xl font-normal font-sans">
                 Pilih tukang terverifikasi di Surabaya dengan tarif paket pasti. Pembayaran diamankan di rekening bersama platform dan baru dicairkan setelah kamu puas dengan foto hasil kerja.
               </p>
+
+              {/* White Pill Action Button (Flamingo Estate signature) */}
+              <div className="pt-6 sm:pt-8 flex flex-wrap items-center gap-3.5">
+                <Link
+                  href="/search"
+                  className="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-white text-neutral-950 hover:bg-neutral-100 active:scale-95 text-xs font-semibold tracking-wider uppercase transition-all shadow-md font-sans"
+                >
+                  Jelajahi Semua Layanan
+                </Link>
+                <Link
+                  href="/#cara-kerja"
+                  className="inline-flex items-center justify-center px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white text-xs font-semibold tracking-wider uppercase transition-all border border-white/20 font-sans"
+                >
+                  Cara Kerja
+                </Link>
+              </div>
             </div>
 
             {/* Bottom 3 Trust Bullets */}
-            <div className="relative z-10 pt-4 border-t border-white/10 flex flex-wrap items-center justify-center sm:justify-start gap-4 sm:gap-8 text-xs text-neutral-200 font-medium font-sans">
+            <div className="relative z-10 pt-5 border-t border-white/15 flex flex-wrap items-center justify-start gap-5 sm:gap-10 text-xs text-neutral-200 font-medium font-sans">
               <div className="flex items-center gap-2">
                 <ShieldTick size={16} variant="Bulk" className="text-lavender-300" />
                 <span>Rekber Midtrans Escrow</span>
@@ -225,28 +243,28 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Airbnb Floating Capsule Search Bar (Overlapping Hero Base) */}
-          <div className="-mt-8 sm:-mt-9 relative z-20 px-3">
+          {/* Airbnb Floating Capsule Search Bar (Overlapping Hero Base with Generous Bottom Cushion) */}
+          <div className="-mt-8 sm:-mt-9 relative z-20 px-3 pb-16 sm:pb-24 lg:pb-28">
             <AirbnbSearchBar />
           </div>
         </div>
       </section>
 
       {/* 2. FLAMINGO ESTATE ROW 1: "PILIHAN TERKURASI" (4-COLUMN PRODUCT GRID) */}
-      <section className="w-full px-6 pt-16 sm:pt-20">
-        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
-          <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-1.5">
+      <section className="w-full px-6 py-20 sm:py-28 lg:py-36">
+        <div className="text-center max-w-2xl mx-auto mb-14 sm:mb-20">
+          <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-2 font-sans">
             PILIHAN TERKURASI · SURABAYA
           </p>
-          <h2 className="font-serif text-3xl sm:text-4xl text-neutral-900 tracking-tight">
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-[42px] text-neutral-900 tracking-tight">
             Paket Perbaikan Paling Dibutuhkan
           </h2>
-          <p className="text-xs sm:text-sm text-neutral-500 mt-2 leading-relaxed">
+          <p className="text-xs sm:text-sm text-neutral-500 mt-3 leading-relaxed font-sans">
             Pilihan solusi harian dengan tarif transparan tanpa biaya siluman. Lengkap dengan estimasi waktu dan garansi pengerjaan.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-10">
           {CURATED_PACKAGES_ROW_1.map((pkg) => (
             <FlamingoProductCard key={pkg.id} {...pkg} />
           ))}
@@ -283,26 +301,26 @@ export default function HomePage() {
       />
 
       {/* 5. FLAMINGO ESTATE ROW 2: "KOLEKSI PERBAIKAN POPULER" (4-COLUMN GRID) */}
-      <section className="w-full px-6 py-8 sm:py-12">
-        <div className="flex items-end justify-between mb-8 sm:mb-10">
+      <section className="w-full px-6 py-20 sm:py-28 lg:py-36">
+        <div className="flex items-end justify-between mb-14 sm:mb-20">
           <div>
-            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-1">
+            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-2 font-sans">
               KATALOG REKOMENDASI
             </p>
-            <h2 className="font-serif text-3xl sm:text-4xl text-neutral-900 tracking-tight">
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-[42px] text-neutral-900 tracking-tight">
               Solusi Tepat untuk Setiap Sudut Hunian
             </h2>
           </div>
           <Link
             href="/search"
-            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-900 hover:text-lavender-700 transition-colors uppercase tracking-wider"
+            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-900 hover:text-lavender-700 transition-colors uppercase tracking-wider font-sans"
           >
             <span>Semua Paket</span>
             <ArrowRight size={14} />
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-10">
           {CURATED_PACKAGES_ROW_2.map((pkg) => (
             <FlamingoProductCard key={pkg.id} {...pkg} />
           ))}
@@ -310,14 +328,12 @@ export default function HomePage() {
       </section>
 
       {/* 6. FLAMINGO ESTATE EDITORIAL MANIFESTO QUOTE (CENTERPIECE STATEMENTS & PRESS/TRUST HALLMARKS) */}
-      {/* Inspired by the screenshot's centered quote block & press logos */}
       <EditorialQuote
         attribution="KOMITMEN KUALITAS BUILDMATE"
         quote="Rumah bukan sekadar bangunan fisik, melainkan tempat di mana rasa tenang bermula. Kami memastikan setiap pengerjaan ditangani oleh tangan ahli yang terampil, jujur, dan berdedikasi."
       />
 
       {/* 7. FLAMINGO ESTATE SIGNATURE: EDITORIAL DUO CARDS #2 */}
-      {/* Inspired by the screenshot's second duo: "Saved by Sage" & "Ripe for the Pluck" */}
       <EditorialDuoCards
         cardLeft={{
           tag: "TRANSPARANSI",
@@ -346,26 +362,26 @@ export default function HomePage() {
       />
 
       {/* 8. MITRA PILIHAN SURABAYA (AIRBNB HOST CARD & FLAMINGO REFINED STYLING) */}
-      <section className="w-full px-6 py-10 sm:py-16">
-        <div className="flex items-end justify-between mb-8 sm:mb-10">
+      <section className="w-full px-6 py-20 sm:py-28 lg:py-36">
+        <div className="flex items-end justify-between mb-14 sm:mb-20">
           <div>
-            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-1">
+            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-2 font-sans">
               MITRA TERVERIFIKASI
             </p>
-            <h2 className="font-serif text-3xl sm:text-4xl text-neutral-900 tracking-tight">
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-[42px] text-neutral-900 tracking-tight">
               Tukang Ahli dengan Dedikasi Nyata
             </h2>
           </div>
           <Link
             href="/search?tab=workers"
-            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-900 hover:text-lavender-700 transition-colors uppercase tracking-wider"
+            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-900 hover:text-lavender-700 transition-colors uppercase tracking-wider font-sans"
           >
             <span>Semua Tukang</span>
             <ArrowRight size={14} />
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {workers.map((worker) => (
             <WorkerCard
               key={worker.id}
@@ -385,9 +401,8 @@ export default function HomePage() {
       </section>
 
       {/* 9. THE AMBIENT FEATURE BANNER: "THE BUILDMATE SHIELD" */}
-      {/* Inspired by the screenshot's full-width landscape "The Flamingo Fund" banner */}
-      <section className="w-full px-6 py-8 sm:py-14">
-        <div className="relative rounded-[32px] sm:rounded-[40px] overflow-hidden bg-neutral-900 min-h-[380px] sm:min-h-[460px] flex flex-col justify-center items-center text-center p-8 sm:p-14 text-white shadow-md">
+      <section className="w-full px-6 py-20 sm:py-28 lg:py-36">
+        <div className="relative rounded-[32px] sm:rounded-[44px] overflow-hidden bg-neutral-900 min-h-[460px] sm:min-h-[540px] flex flex-col justify-center items-center text-center p-10 sm:p-20 lg:p-24 text-white shadow-md">
           {/* Natural Lush Light Terrace Landscape */}
           <img
             src="https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=1800&auto=format&fit=crop&q=80"
@@ -397,24 +412,24 @@ export default function HomePage() {
           {/* Subtle warm tint overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/80 via-neutral-900/40 to-neutral-900/60" />
 
-          <div className="relative z-10 max-w-2xl space-y-4">
-            <p className="text-[11px] font-semibold tracking-[0.3em] uppercase text-lavender-300">
+          <div className="relative z-10 max-w-2xl space-y-5">
+            <p className="text-[11px] font-semibold tracking-[0.3em] uppercase text-lavender-300 font-sans">
               MEMBERSHIP EKSKLUSIF
             </p>
-            <h3 className="font-serif text-3xl sm:text-5xl text-white tracking-tight leading-tight">
+            <h3 className="font-serif text-3xl sm:text-5xl lg:text-[56px] text-white tracking-tight leading-tight">
               The BuildMate Shield
             </h3>
-            <p className="font-serif italic text-lg sm:text-xl text-neutral-200">
+            <p className="font-serif italic text-lg sm:text-2xl text-neutral-200">
               Ketenangan Hunian Sepanjang Tahun
             </p>
-            <p className="text-xs sm:text-sm text-neutral-300 max-w-lg mx-auto leading-relaxed font-normal">
+            <p className="text-xs sm:text-sm text-neutral-300 max-w-lg mx-auto leading-relaxed font-normal font-sans">
               Bebas biaya layanan untuk setiap pesanan perbaikan, jaminan garansi pengerjaan ulang 14 hari, dan prioritas penugasan tukang hanya Rp49.000 / bulan.
             </p>
 
             <div className="pt-4">
               <Link
                 href="/plus"
-                className="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-white text-neutral-900 hover:bg-neutral-100 active:scale-95 text-xs font-semibold tracking-wider uppercase transition-all shadow-md"
+                className="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-white text-neutral-900 hover:bg-neutral-100 active:scale-95 text-xs font-semibold tracking-wider uppercase transition-all shadow-md font-sans"
               >
                 Bergabung ke BuildMate Plus
               </Link>
@@ -424,27 +439,27 @@ export default function HomePage() {
       </section>
 
       {/* 10. CARA KERJA (01 02 03 MAGAZINE STYLE) */}
-      <section id="cara-kerja" className="w-full px-6 py-12 sm:py-16">
-        <div className="bg-[#FAF8F5] rounded-[32px] p-8 sm:p-14 border border-[#EBE7DF]">
-          <div className="text-center max-w-lg mx-auto mb-12">
-            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-1">
+      <section id="cara-kerja" className="w-full px-6 py-20 sm:py-28 lg:py-36">
+        <div className="bg-[#FAF8F5] rounded-[32px] sm:rounded-[40px] p-10 sm:p-18 lg:p-24 border border-[#EBE7DF]">
+          <div className="text-center max-w-lg mx-auto mb-16 sm:mb-20">
+            <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-2 font-sans">
               CARA KERJA
             </p>
-            <h2 className="font-serif text-3xl sm:text-4xl text-neutral-900 tracking-tight">
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-[42px] text-neutral-900 tracking-tight">
               Tiga Langkah Tanpa Rasa Khawatir
             </h2>
-            <p className="text-xs text-neutral-500 mt-2">
+            <p className="text-xs text-neutral-500 mt-2.5 font-sans">
               Kepastian transaksi dan transparansi penuh dari awal pemesanan hingga selesai.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12 relative">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 sm:gap-16 lg:gap-20 relative font-sans">
             {/* Step 1 */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <span className="font-serif text-5xl sm:text-6xl text-lavender-400 block font-normal">
                 01
               </span>
-              <h3 className="font-semibold text-neutral-900 text-sm">
+              <h3 className="font-semibold text-neutral-900 text-sm sm:text-base">
                 Pilih Layanan & Wilayahmu
               </h3>
               <p className="text-xs text-neutral-600 leading-relaxed font-normal">
@@ -453,11 +468,11 @@ export default function HomePage() {
             </div>
 
             {/* Step 2 */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <span className="font-serif text-5xl sm:text-6xl text-lavender-400 block font-normal">
                 02
               </span>
-              <h3 className="font-semibold text-neutral-900 text-sm">
+              <h3 className="font-semibold text-neutral-900 text-sm sm:text-base">
                 Bayar Aman ke Rekber Escrow
               </h3>
               <p className="text-xs text-neutral-600 leading-relaxed font-normal">
@@ -466,11 +481,11 @@ export default function HomePage() {
             </div>
 
             {/* Step 3 */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <span className="font-serif text-5xl sm:text-6xl text-lavender-400 block font-normal">
                 03
               </span>
-              <h3 className="font-semibold text-neutral-900 text-sm">
+              <h3 className="font-semibold text-neutral-900 text-sm sm:text-base">
                 Periksa Foto & Konfirmasi Selesai
               </h3>
               <p className="text-xs text-neutral-600 leading-relaxed font-normal">
@@ -482,36 +497,35 @@ export default function HomePage() {
       </section>
 
       {/* 11. FLAMINGO ESTATE STORIES / EDITORIAL JOURNAL */}
-      {/* Inspired by the screenshot's 4-card recipe/story row at the bottom ("Recipes & Stories") */}
-      <section className="w-full px-6 py-10 sm:py-16">
-        <div className="text-center max-w-xl mx-auto mb-10">
-          <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-1">
+      <section className="w-full px-6 py-20 sm:py-28 lg:py-36">
+        <div className="text-center max-w-xl mx-auto mb-14 sm:mb-20">
+          <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-2 font-sans">
             CATATAN RUMAH & PERAWATAN
           </p>
-          <h2 className="font-serif text-3xl sm:text-4xl text-neutral-900 tracking-tight">
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-[42px] text-neutral-900 tracking-tight">
             Panduan Menjaga Hunian Tetap Prima
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-10">
           {EDITORIAL_JOURNAL_STORIES.map((story, idx) => (
             <Link
               key={idx}
               href={story.href}
-              className="group block text-left rounded-[22px] bg-[#FAF8F5] border border-[#EBE7DF] p-4 hover:border-lavender-400 hover:shadow-md transition-all duration-300"
+              className="group block text-left rounded-[24px] bg-[#FAF8F5] border border-[#EBE7DF] p-5 sm:p-6 hover:border-lavender-400 hover:shadow-md transition-all duration-300 font-sans"
             >
-              <div className="aspect-[4/3] rounded-[16px] overflow-hidden bg-neutral-100 mb-3.5 border border-[#E5E0D5]">
+              <div className="aspect-[4/3] rounded-[18px] overflow-hidden bg-neutral-100 mb-4 border border-[#E5E0D5]">
                 <img
                   src={story.imageUrl}
                   alt={story.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
-              <div className="flex items-center justify-between text-[10px] text-neutral-400 uppercase tracking-wider mb-1 font-semibold">
+              <div className="flex items-center justify-between text-[10px] text-neutral-400 uppercase tracking-wider mb-2 font-semibold">
                 <span>{story.tag}</span>
                 <span>{story.readTime}</span>
               </div>
-              <h4 className="font-serif text-[18px] text-neutral-900 leading-snug tracking-tight group-hover:text-lavender-700 transition-colors">
+              <h4 className="font-serif text-[19px] sm:text-[20px] text-neutral-900 leading-snug tracking-tight group-hover:text-lavender-700 transition-colors">
                 {story.title}
               </h4>
             </Link>
@@ -520,22 +534,22 @@ export default function HomePage() {
       </section>
 
       {/* 12. PITA CTA MITRA (DEEP FOREST / OBSIDIAN RIBBON) */}
-      <section className="w-full px-6 pb-16">
-        <div className="rounded-[28px] bg-[#1E241E] text-white p-8 sm:p-10 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left border border-neutral-800">
-          <div className="space-y-1">
+      <section className="w-full px-6 pb-28 sm:pb-36 lg:pb-44">
+        <div className="rounded-[32px] bg-[#1E241E] text-white p-10 sm:p-14 lg:p-16 flex flex-col sm:flex-row items-center justify-between gap-8 text-center sm:text-left border border-neutral-800 font-sans">
+          <div className="space-y-2">
             <p className="text-[11px] font-semibold tracking-widest text-emerald-300 uppercase">
               BERGABUNG DENGAN KOMUNITAS MITRA
             </p>
-            <h4 className="font-serif text-2xl sm:text-3xl text-white">
+            <h4 className="font-serif text-2xl sm:text-3xl lg:text-4xl text-white">
               Kamu tukang berpengalaman di Surabaya?
             </h4>
-            <p className="text-xs text-neutral-300 max-w-lg leading-relaxed font-normal">
+            <p className="text-xs sm:text-sm text-neutral-300 max-w-lg leading-relaxed font-normal">
               Dapatkan pesanan pekerjaan teratur tanpa potongan sepihak, sistem escrow aman, dan pencairan dana langsung setiap pekerjaan selesai.
             </p>
           </div>
           <Link
             href="/mitra/register"
-            className="px-6 py-3 rounded-full bg-white text-neutral-900 hover:bg-neutral-100 active:scale-95 text-xs font-semibold tracking-wider uppercase transition-all shrink-0 shadow-sm"
+            className="px-8 py-3.5 rounded-full bg-white text-neutral-900 hover:bg-neutral-100 active:scale-95 text-xs font-semibold tracking-wider uppercase transition-all shrink-0 shadow-sm font-sans"
           >
             Daftar Sebagai Mitra Tukang
           </Link>

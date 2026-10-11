@@ -27,25 +27,25 @@ export function EditorialDuoCards({
   className = "",
 }: EditorialDuoCardsProps) {
   return (
-    <section className={`w-full px-6 py-10 sm:py-16 ${className}`}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+    <section className={`w-full px-6 py-20 sm:py-28 lg:py-36 ${className}`}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 sm:gap-14 lg:gap-20">
         {/* Left Card */}
         <div className="flex flex-col text-center group">
-          <div className="relative aspect-[4/5] sm:aspect-[3/4] rounded-[28px] sm:rounded-[36px] overflow-hidden bg-neutral-100 border border-neutral-200/80 shadow-xs mb-6 sm:mb-8">
+          <div className="relative aspect-[4/5] sm:aspect-[3/4] rounded-[28px] sm:rounded-[36px] overflow-hidden bg-neutral-100 border border-neutral-200/80 shadow-xs mb-8 sm:mb-10">
             <img
               src={cardLeft.imageUrl}
               alt={cardLeft.imageAlt}
               className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
             />
             {cardLeft.tag && (
-              <span className="absolute top-5 left-5 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur-md text-[11px] font-semibold tracking-wider uppercase text-neutral-800 shadow-xs">
+              <span className="absolute top-6 left-6 px-4 py-1.5 rounded-full bg-white/90 backdrop-blur-md text-[11px] font-semibold tracking-wider uppercase text-neutral-800 shadow-xs">
                 {cardLeft.tag}
               </span>
             )}
           </div>
 
-          <div className="max-w-md mx-auto space-y-3 px-2">
-            <h3 className="font-serif text-3xl sm:text-[36px] text-neutral-900 leading-tight tracking-tight">
+          <div className="max-w-md mx-auto space-y-4 px-3 font-sans">
+            <h3 className="font-serif text-3xl sm:text-[38px] text-neutral-900 leading-tight tracking-tight">
               {cardLeft.title}{" "}
               {cardLeft.italicTitle && (
                 <span className="italic text-lavender-700 font-normal">
@@ -53,13 +53,13 @@ export function EditorialDuoCards({
                 </span>
               )}
             </h3>
-            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed font-normal">
+            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed font-normal font-sans">
               {cardLeft.description}
             </p>
-            <div className="pt-2">
+            <div className="pt-3 sm:pt-4">
               <Link
                 href={cardLeft.ctaHref}
-                className="inline-flex items-center justify-center px-7 py-3 rounded-full bg-[#222923] hover:bg-neutral-900 active:scale-95 text-white text-xs font-semibold tracking-wider uppercase transition-all shadow-xs hover:shadow-md"
+                className="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-[#222923] hover:bg-neutral-900 active:scale-95 text-white text-xs font-semibold tracking-wider uppercase transition-all shadow-xs hover:shadow-md"
               >
                 <span>{cardLeft.ctaText}</span>
               </Link>
@@ -69,21 +69,21 @@ export function EditorialDuoCards({
 
         {/* Right Card */}
         <div className="flex flex-col text-center group">
-          <div className="relative aspect-[4/5] sm:aspect-[3/4] rounded-[28px] sm:rounded-[36px] overflow-hidden bg-neutral-100 border border-neutral-200/80 shadow-xs mb-6 sm:mb-8">
+          <div className="relative aspect-[4/5] sm:aspect-[3/4] rounded-[28px] sm:rounded-[36px] overflow-hidden bg-neutral-100 border border-neutral-200/80 shadow-xs mb-8 sm:mb-10">
             <img
               src={cardRight.imageUrl}
               alt={cardRight.imageAlt}
               className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
             />
             {cardRight.tag && (
-              <span className="absolute top-5 left-5 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur-md text-[11px] font-semibold tracking-wider uppercase text-neutral-800 shadow-xs">
+              <span className="absolute top-6 left-6 px-4 py-1.5 rounded-full bg-white/90 backdrop-blur-md text-[11px] font-semibold tracking-wider uppercase text-neutral-800 shadow-xs">
                 {cardRight.tag}
               </span>
             )}
           </div>
 
-          <div className="max-w-md mx-auto space-y-3 px-2">
-            <h3 className="font-serif text-3xl sm:text-[36px] text-neutral-900 leading-tight tracking-tight">
+          <div className="max-w-md mx-auto space-y-4 px-3 font-sans">
+            <h3 className="font-serif text-3xl sm:text-[38px] text-neutral-900 leading-tight tracking-tight">
               {cardRight.title}{" "}
               {cardRight.italicTitle && (
                 <span className="italic text-lavender-700 font-normal">
@@ -91,13 +91,13 @@ export function EditorialDuoCards({
                 </span>
               )}
             </h3>
-            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed font-normal">
+            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed font-normal font-sans">
               {cardRight.description}
             </p>
-            <div className="pt-2">
+            <div className="pt-3 sm:pt-4">
               <Link
                 href={cardRight.ctaHref}
-                className="inline-flex items-center justify-center px-7 py-3 rounded-full bg-[#222923] hover:bg-neutral-900 active:scale-95 text-white text-xs font-semibold tracking-wider uppercase transition-all shadow-xs hover:shadow-md"
+                className="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-[#222923] hover:bg-neutral-900 active:scale-95 text-white text-xs font-semibold tracking-wider uppercase transition-all shadow-xs hover:shadow-md"
               >
                 <span>{cardRight.ctaText}</span>
               </Link>
