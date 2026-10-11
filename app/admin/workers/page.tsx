@@ -47,7 +47,8 @@ export default function AdminWorkersPage() {
   // Drawer Review Pendaftaran
   const [reviewingWorker, setReviewingWorker] = useState<Worker | null>(null);
   const [reviewReason, setReviewReason] = useState("");
-  const [reviewIsVerified, setReviewIsVerified] = useState(true);
+  const [reviewIsVerified, setReviewIsVerified] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
 
   // Lightbox
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -60,6 +61,13 @@ export default function AdminWorkersPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const handleOpenReviewDrawer = (w: Worker) => {
+    setReviewingWorker(w);
+    setReviewReason("");
+    setReviewIsVerified(false);
+    setIsRejectModalOpen(false);
+  };
 
   const handleOpenAddDrawer = () => {
     setEditingWorker({
@@ -138,8 +146,10 @@ export default function AdminWorkersPage() {
           ? `Pendaftaran ${reviewingWorker.full_name} disetujui!`
           : `Pendaftaran ${reviewingWorker.full_name} ditolak.`
       );
+      setIsRejectModalOpen(false);
       setReviewingWorker(null);
       setReviewReason("");
+      setReviewIsVerified(false);
       loadData();
     } catch (err: any) {
       toast.error(err.message || "Gagal memproses review pendaftaran");
@@ -391,7 +401,7 @@ export default function AdminWorkersPage() {
 
                   <button
                     type="button"
-                    onClick={() => setReviewingWorker(w)}
+                    onClick={() => handleOpenReviewDrawer(w)}
                     className="w-full py-2 rounded-xl bg-lavender-50 hover:bg-lavender-100 text-lavender-700 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
                   >
                     <span>Tinjau Pendaftaran</span>
@@ -762,31 +772,22 @@ export default function AdminWorkersPage() {
               )}
 
               {/* Verified switch */}
-              <label className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 border border-neutral-100 text-xs cursor-pointer">
-                <span className="font-semibold text-neutral-800">
-                  Berikan Lencana Terverifikasi
-                </span>
+              <label className="flex items-center justify-between p-3.5 rounded-xl bg-neutral-50 hover:bg-neutral-100/60 transition-colors border border-neutral-100 text-xs cursor-pointer">
+                <div>
+                  <span className="font-semibold text-neutral-800 block">
+                    Berikan Lencana Terverifikasi
+                  </span>
+                  <span className="text-[11px] text-neutral-500 block mt-0.5">
+                    Centang untuk memverifikasi berkas dan mengaktifkan tombol persetujuan
+                  </span>
+                </div>
                 <input
                   type="checkbox"
                   checked={reviewIsVerified}
                   onChange={(e) => setReviewIsVerified(e.target.checked)}
-                  className="w-4 h-4 rounded text-lavender-600 focus:ring-lavender-300"
+                  className="w-4 h-4 rounded text-lavender-600 focus:ring-lavender-300 cursor-pointer"
                 />
               </label>
-
-              {/* Rejection reason (if rejecting) */}
-              <div>
-                <label className="text-xs font-medium text-neutral-700 block mb-1">
-                  Alasan Penolakan (Wajib jika menolak)
-                </label>
-                <textarea
-                  rows={2}
-                  value={reviewReason}
-                  onChange={(e) => setReviewReason(e.target.value)}
-                  placeholder="Misal: Foto portofolio buram atau nomor WA tidak aktif"
-                  className="w-full text-xs p-2.5 rounded-xl border border-neutral-200 resize-none"
-                />
-              </div>
             </div>
 
             {/* Footer Actions */}
@@ -794,16 +795,75 @@ export default function AdminWorkersPage() {
               <Button
                 variant="destructive"
                 size="md"
-                onClick={() => handleReview(false)}
+                onClick={() => setIsRejectModalOpen(true)}
               >
                 Tolak Pendaftaran
               </Button>
               <Button
                 variant="primary"
                 size="md"
+                disabled={!reviewIsVerified}
                 onClick={() => handleReview(true)}
               >
                 Setujui & Publikasikan
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ALASAN PENOLAKAN PENDAFTARAN */}
+      {isRejectModalOpen && reviewingWorker && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setIsRejectModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-neutral-200 space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h3 className="text-base font-bold text-neutral-900">
+                Tolak Pendaftaran Mitra
+              </h3>
+              <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+                Pendaftaran untuk <strong className="text-neutral-800">{reviewingWorker.full_name}</strong> akan ditolak. Berikan alasan penolakan di bawah ini agar mitra mendapatkan kejelasan.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-neutral-700 block mb-1.5">
+                Alasan Penolakan <span className="text-danger-600">*</span>
+              </label>
+              <textarea
+                rows={3}
+                value={reviewReason}
+                onChange={(e) => setReviewReason(e.target.value)}
+                placeholder="Misal: Foto portofolio buram, nomor WhatsApp tidak aktif, atau berkas persyaratan belum lengkap..."
+                className="w-full text-xs p-3 rounded-xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-danger-300 resize-none text-neutral-800 placeholder:text-neutral-400"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-neutral-100">
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={() => setIsRejectModalOpen(false)}
+              >
+                Batalkan
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="md"
+                disabled={!reviewReason.trim()}
+                onClick={() => handleReview(false)}
+              >
+                Tolak Pendaftaran
               </Button>
             </div>
           </div>
