@@ -27,7 +27,7 @@ export function EditorialDuoCards({
   className = "",
 }: EditorialDuoCardsProps) {
   return (
-    <section className={`w-full px-6 py-20 sm:py-28 lg:py-36 ${className}`}>
+    <section className={`w-full px-6 mb-[50px] ${className}`}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-[20px]">
         {/* Left Card */}
         <div className="flex flex-col text-center group">
