@@ -28,10 +28,10 @@ export function EditorialDuoCards({
 }: EditorialDuoCardsProps) {
   return (
     <section className={`w-full px-6 py-20 sm:py-28 lg:py-36 ${className}`}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 sm:gap-14 lg:gap-20">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-[20px]">
         {/* Left Card */}
         <div className="flex flex-col text-center group">
-          <div className="relative aspect-[4/5] sm:aspect-[3/4] rounded-[28px] sm:rounded-[36px] overflow-hidden bg-neutral-100 border border-neutral-200/80 shadow-xs mb-8 sm:mb-10">
+          <div className="relative aspect-[10/9] sm:aspect-[25/24] rounded-[28px] sm:rounded-[36px] overflow-hidden bg-neutral-100 border border-neutral-200/80 shadow-xs mb-8 sm:mb-10">
             <img
               src={cardLeft.imageUrl}
               alt={cardLeft.imageAlt}
@@ -69,7 +69,7 @@ export function EditorialDuoCards({
 
         {/* Right Card */}
         <div className="flex flex-col text-center group">
-          <div className="relative aspect-[4/5] sm:aspect-[3/4] rounded-[28px] sm:rounded-[36px] overflow-hidden bg-neutral-100 border border-neutral-200/80 shadow-xs mb-8 sm:mb-10">
+          <div className="relative aspect-[10/9] sm:aspect-[25/24] rounded-[28px] sm:rounded-[36px] overflow-hidden bg-neutral-100 border border-neutral-200/80 shadow-xs mb-8 sm:mb-10">
             <img
               src={cardRight.imageUrl}
               alt={cardRight.imageAlt}

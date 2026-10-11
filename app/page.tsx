@@ -13,7 +13,6 @@ import {
   Verify,
   Camera,
   Crown1,
-  ArrowRight,
   Clock,
   Sparkles,
   Award,
@@ -266,7 +265,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[24px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[20px]">
           {CURATED_PACKAGES_ROW_1.map((pkg) => (
             <FlamingoProductCard key={pkg.id} {...pkg} />
           ))}
@@ -315,14 +314,13 @@ export default function HomePage() {
           </div>
           <Link
             href="/search"
-            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-900 hover:text-lavender-700 transition-colors uppercase tracking-wider font-sans"
+            className="hidden sm:inline-flex items-center text-xs font-semibold text-lavender-600 hover:text-lavender-700 transition-colors uppercase tracking-wider font-sans"
           >
-            <span>Semua Paket</span>
-            <ArrowRight size={14} />
+            Lihat Semua Paket
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[24px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[20px]">
           {CURATED_PACKAGES_ROW_2.map((pkg) => (
             <FlamingoProductCard key={pkg.id} {...pkg} />
           ))}
@@ -376,14 +374,13 @@ export default function HomePage() {
           </div>
           <Link
             href="/search?tab=workers"
-            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-900 hover:text-lavender-700 transition-colors uppercase tracking-wider font-sans"
+            className="hidden sm:inline-flex items-center text-xs font-semibold text-lavender-600 hover:text-lavender-700 transition-colors uppercase tracking-wider font-sans"
           >
-            <span>Semua Tukang</span>
-            <ArrowRight size={14} />
+            Semua Tukang
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[24px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[20px]">
           {workers.map((worker) => (
             <WorkerCard
               key={worker.id}
