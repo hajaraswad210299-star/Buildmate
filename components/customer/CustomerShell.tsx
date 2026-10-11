@@ -521,28 +521,22 @@ export function CustomerShell({
         </nav>
       )}
 
-      {/* 4. Desktop Footer (lavender-900, Instrument Serif titles, A2 & A3) */}
+      {/* 4. Desktop Footer (lavender-900, Flamingo Estate Centered Concept & Instrument Serif titles) */}
       <footer className="hidden lg:block bg-lavender-900 text-lavender-100 pt-16 pb-12 mt-20 border-t border-lavender-800">
-        <div className="w-full px-6">
-          <div className="grid grid-cols-4 gap-12 mb-16">
-            {/* Col 1: Brand */}
+        <div className="max-w-5xl mx-auto px-6">
+          {/* 5 Centered Columns (Matching Flamingo Estate layout: Shop, Category, The Estate, Help, Get The Dirt) */}
+          <div className="grid grid-cols-5 gap-8 lg:gap-10 xl:gap-12 mb-16">
+            {/* Col 1: Layanan (Shop) */}
             <div>
-              <h3 className="font-serif text-2xl text-white tracking-tight mb-4">
-                BuildMate
-              </h3>
-              <p className="text-xs text-lavender-200 leading-relaxed mb-4">
-                Marketplace jasa tukang untuk perbaikan rumah ringan dengan jaminan harga pasti, bayar aman lewat rekening bersama, dan tukang terverifikasi.
-              </p>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-lavender-800/80 text-[11px] text-lavender-200 border border-lavender-700/60">
-                <Crown1 size={14} className="text-lavender-300" />
-                <span>Simulasi SaaS — Midtrans Sandbox</span>
-              </div>
-            </div>
-
-            {/* Col 2: Layanan */}
-            <div>
-              <h4 className="font-serif text-lg text-white mb-4">Layanan Populer</h4>
-              <ul className="space-y-2.5 text-xs text-lavender-200">
+              <h4 className="font-serif text-[17px] text-white mb-4 font-normal">
+                Layanan
+              </h4>
+              <ul className="space-y-2 text-[13px] text-lavender-200/90 font-sans">
+                <li>
+                  <Link href="/search?category=servis-ac" className="hover:text-white transition-colors">
+                    Servis & Cuci AC
+                  </Link>
+                </li>
                 <li>
                   <Link href="/search?category=plumbing" className="hover:text-white transition-colors">
                     Plumbing & Keran Bocor
@@ -550,34 +544,105 @@ export function CustomerShell({
                 </li>
                 <li>
                   <Link href="/search?category=pengecatan" className="hover:text-white transition-colors">
-                    Pengecatan Dinding Kamar
+                    Pengecatan Dinding
                   </Link>
                 </li>
                 <li>
                   <Link href="/search?category=perbaikan-umum" className="hover:text-white transition-colors">
-                    Perbaikan Engsel & Pintu
+                    Perbaikan Pintu & Kunci
                   </Link>
                 </li>
                 <li>
-                  <Link href="/search?category=servis-ac" className="hover:text-white transition-colors">
-                    Servis & Cuci AC Ringan
+                  <Link href="/search?category=atap" className="hover:text-white transition-colors">
+                    Atap & Waterproofing
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/search?category=listrik" className="hover:text-white transition-colors">
+                    Kelistrikan Rumah
                   </Link>
                 </li>
               </ul>
             </div>
 
-            {/* Col 3: Bantuan */}
+            {/* Col 2: Kategori (Category) */}
             <div>
-              <h4 className="font-serif text-lg text-white mb-4">Bantuan & Panduan</h4>
-              <ul className="space-y-2.5 text-xs text-lavender-200">
+              <h4 className="font-serif text-[17px] text-white mb-4 font-normal">
+                Kategori
+              </h4>
+              <ul className="space-y-2 text-[13px] text-lavender-200/90 font-sans">
+                <li>
+                  <Link href="/search" className="hover:text-white transition-colors">
+                    Perbaikan Interior
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/search" className="hover:text-white transition-colors">
+                    Instalasi Sanitari
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/search" className="hover:text-white transition-colors">
+                    Deteksi Pipa Bocor
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/search" className="hover:text-white transition-colors">
+                    Perawatan Berkala AC
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/search" className="hover:text-white transition-colors">
+                    Layanan Darurat 2 Jam
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 3: BuildMate (The Estate) */}
+            <div>
+              <h4 className="font-serif text-[17px] text-white mb-4 font-normal">
+                BuildMate
+              </h4>
+              <ul className="space-y-2 text-[13px] text-lavender-200/90 font-sans">
+                <li>
+                  <Link href="/#komitmen" className="hover:text-white transition-colors">
+                    Tentang Kami
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/#mitra" className="hover:text-white transition-colors">
+                    Standar Kurasi Mitra
+                  </Link>
+                </li>
                 <li>
                   <Link href="/#cara-kerja" className="hover:text-white transition-colors">
-                    Cara Kerja & Rekening Bersama
+                    Rekening Bersama
                   </Link>
                 </li>
                 <li>
                   <Link href="/plus" className="hover:text-white transition-colors">
                     BuildMate Plus & Garansi
+                  </Link>
+                </li>
+                <li>
+                  <span className="inline-flex items-center gap-1.5 text-lavender-300 text-xs">
+                    <Crown1 size={13} className="text-lavender-300 shrink-0" />
+                    <span>Midtrans Sandbox</span>
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 4: Bantuan (Help) */}
+            <div>
+              <h4 className="font-serif text-[17px] text-white mb-4 font-normal">
+                Bantuan
+              </h4>
+              <ul className="space-y-2 text-[13px] text-lavender-200/90 font-sans">
+                <li>
+                  <Link href="/#cara-kerja" className="hover:text-white transition-colors">
+                    Cara Kerja Pemesanan
                   </Link>
                 </li>
                 <li>
@@ -587,7 +652,7 @@ export function CustomerShell({
                     rel="noopener noreferrer"
                     className="hover:text-white transition-colors inline-flex items-center gap-1.5"
                   >
-                    <WhatsappIcon size={14} color="#AC97FB" />
+                    <WhatsappIcon size={13} color="#AC97FB" />
                     <span>WhatsApp Bantuan</span>
                   </a>
                 </li>
@@ -596,47 +661,119 @@ export function CustomerShell({
                     Ruang Kendali Admin
                   </Link>
                 </li>
+                <li>
+                  <Link href="/#faq" className="hover:text-white transition-colors">
+                    Tanya Jawab (FAQ)
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/#garansi" className="hover:text-white transition-colors">
+                    Kebijakan Garansi
+                  </Link>
+                </li>
               </ul>
             </div>
 
-            {/* Col 4: Kemitraan */}
+            {/* Col 5: Terhubung (Get The Dirt) */}
             <div>
-              <h4 className="font-serif text-lg text-white mb-4">Mitra Tukang</h4>
-              <p className="text-xs text-lavender-200 leading-relaxed mb-4">
-                Punya keahlian tukang bangunan? Bergabunglah sebagai Mitra BuildMate dan dapatkan order pekerjaan pasti di wilayahmu.
-              </p>
-              <Link
-                href="/mitra/register"
-                className="inline-block px-4 py-2 rounded-full bg-white text-lavender-900 hover:bg-lavender-50 text-xs font-semibold transition-colors"
-              >
-                Daftar Sebagai Mitra
-              </Link>
+              <h4 className="font-serif text-[17px] text-white mb-4 font-normal">
+                Terhubung
+              </h4>
+              {/* Social Media Icons Row */}
+              <div className="flex items-center gap-3.5 text-white/90 mb-4">
+                <a
+                  href="https://instagram.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="hover:text-white hover:scale-110 transition-all"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                  </svg>
+                </a>
+                <a
+                  href="https://facebook.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook"
+                  className="hover:text-white hover:scale-110 transition-all"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
+                </a>
+                <a
+                  href="https://x.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="X"
+                  className="hover:text-white hover:scale-110 transition-all"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                </a>
+                <a
+                  href="https://wa.me/6281200000000"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="WhatsApp"
+                  className="hover:text-white hover:scale-110 transition-all"
+                >
+                  <WhatsappIcon size={16} color="#FFFFFF" />
+                </a>
+              </div>
+              <ul className="space-y-2 text-[13px] text-lavender-200/90 font-sans">
+                <li>
+                  <Link href="/mitra/register" className="hover:text-white font-medium text-white transition-colors">
+                    Daftar Sebagai Mitra
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/#mitra" className="hover:text-white transition-colors">
+                    Verifikasi KTP & SKCK
+                  </Link>
+                </li>
+                <li>
+                  <span className="text-lavender-300/80 text-xs">
+                    Seluruh Wilayah Indonesia
+                  </span>
+                </li>
+              </ul>
             </div>
           </div>
 
-          {/* Centered Crest Seal in Flamingo Estate Style with BuildMate Icon SVG */}
-          <div className="pt-10 pb-8 flex flex-col items-center justify-center text-center border-t border-lavender-800/60 font-sans">
-            <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-sm mb-3.5 border border-white/20 flex items-center justify-center bg-white/5">
+          {/* Centered Crest Seal in Flamingo Estate Style (Floating without harsh lines) */}
+          <div className="pt-12 pb-12 flex flex-col items-center justify-center text-center font-sans">
+            <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-sm mb-3.5 border border-white/20 flex items-center justify-center bg-white/10 backdrop-blur-xs">
               <img
                 src="/icon.svg"
                 alt="BuildMate Icon"
                 className="w-full h-full object-cover"
               />
             </div>
-            <p className="font-sans tracking-[0.25em] text-xs text-white uppercase font-semibold">
+            <p className="font-sans tracking-[0.28em] text-[11px] text-white uppercase font-semibold">
               BUILDMATE
             </p>
-            <p className="text-[11px] text-lavender-300 tracking-wider mt-1 uppercase font-sans">
+            <p className="text-[10px] text-lavender-300 tracking-[0.16em] mt-1 uppercase font-sans">
               Standar Integritas & Ketenangan Hunian
             </p>
           </div>
 
-          {/* Bottom Row */}
-          <div className="pt-6 border-t border-lavender-800/80 flex items-center justify-between text-xs text-lavender-300">
-            <p>© 2026 BuildMate SaaS Solo Challenge. Seluruh hak cipta dilindungi.</p>
-            <div className="flex items-center gap-6">
-              <span>Bahasa Indonesia · Rupiah (IDR)</span>
-              <span>Pembayaran Midtrans Sandbox</span>
+          {/* Bottom Row: Copyright on Left, Legal on Right (Aligned with centered columns) */}
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-lavender-300/80 font-sans">
+            <p>© 2026 BuildMate SaaS Solo Challenge – Seluruh Hak Cipta Dilindungi</p>
+            <div className="flex items-center gap-3 text-lavender-300/80">
+              <Link href="/privacy" className="hover:text-white transition-colors">
+                Privasi
+              </Link>
+              <span>|</span>
+              <Link href="/terms" className="hover:text-white transition-colors">
+                Syarat & Ketentuan
+              </Link>
+              <span>|</span>
+              <span>Midtrans Sandbox</span>
             </div>
           </div>
         </div>
