@@ -8,6 +8,7 @@ import {
   ReceiptText,
   UserOctagon,
   Category2,
+  Briefcase,
   Card,
   WalletMoney,
   Profile2User,
@@ -228,7 +229,7 @@ function AdminShellInner({ children }: AdminShellProps) {
         {
           label: "Layanan",
           href: "/admin/services",
-          icon: Category2,
+          icon: Briefcase,
         },
       ],
     },
