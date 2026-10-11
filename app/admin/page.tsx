@@ -7,6 +7,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ActivityTicker } from "@/components/shared/ActivityTicker";
 import { ActivityHeatmap } from "@/components/shared/ActivityHeatmap";
+import { DashboardExportModal } from "@/components/admin/DashboardExportModal";
 import { getDashboardStats } from "@/lib/data/dashboard";
 import { getMockDashboardStats } from "@/lib/mock/data";
 import { DashboardStats } from "@/lib/data/types";
@@ -37,6 +38,7 @@ export default function AdminDashboardPage() {
   const [period, setPeriod] = useState<string>("7d");
   const [stats, setStats] = useState<DashboardStats | null>(() => getMockDashboardStats("7d"));
   const [topTab, setTopTab] = useState<"workers" | "categories">("workers");
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const isClient = useSyncExternalStore(
     () => () => {},
@@ -164,6 +166,7 @@ export default function AdminDashboardPage() {
               type="button"
               variant="secondary"
               size="sm"
+              onClick={() => setIsExportModalOpen(true)}
               leftIcon={<DocumentDownload size={15} />}
             >
               Ekspor Data
@@ -661,6 +664,14 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* DASHBOARD EXPORT MODAL */}
+      <DashboardExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        period={period}
+        stats={stats}
+      />
     </AdminShell>
   );
 }
