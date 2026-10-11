@@ -47,6 +47,9 @@ export default function CustomerAccountPage() {
   // Logout Confirmation Dialog
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
+  // Track broken image fallback
+  const [avatarImgFailed, setAvatarImgFailed] = useState(false);
+
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -56,6 +59,14 @@ export default function CustomerAccountPage() {
       }
       setUser(user);
 
+      const metaAvatar =
+        user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+      const metaName =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email?.split("@")[0] ||
+        "";
+
       supabase
         .from("profiles")
         .select("*")
@@ -63,13 +74,21 @@ export default function CustomerAccountPage() {
         .single()
         .then(({ data: prof }) => {
           if (prof) {
-            setProfile(prof);
-            setName(prof.full_name || "");
+            setProfile({
+              ...prof,
+              avatar_url: prof.avatar_url || metaAvatar,
+            });
+            setName(prof.full_name || metaName);
             setPhone(prof.phone || "");
             setAddress(prof.default_address || "");
           } else {
-            setName(user.user_metadata?.full_name || user.email?.split("@")[0] || "");
-            setPhone(user.user_metadata?.phone || "");
+            setProfile({
+              full_name: metaName,
+              avatar_url: metaAvatar,
+              phone: "",
+            });
+            setName(metaName);
+            setPhone("");
           }
         });
 
@@ -95,33 +114,36 @@ export default function CustomerAccountPage() {
       toast.error("Nama lengkap tidak boleh kosong.");
       return;
     }
-    if (!phone || phone.length < 11) {
-      toast.error("Nomor WhatsApp tidak valid.");
+    if (!phone || phone.length < 9) {
+      toast.error("Nomor WhatsApp tidak valid (minimal 9 digit).");
       return;
     }
 
     try {
       setSavingProfile(true);
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("profiles")
-        .update({
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           full_name: name.trim(),
           phone: phone.trim(),
           default_address: address.trim() || null,
-        })
-        .eq("id", user.id);
+        }),
+      });
 
-      if (error) throw new Error(error.message);
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(resData?.error || "Gagal menyimpan perubahan profil.");
+      }
 
       setProfile((prev: any) => ({
         ...prev,
         full_name: name.trim(),
-        phone: phone.trim(),
+        phone: phone.trim().replace(/^\+/, ""),
         default_address: address.trim(),
       }));
       setEditingProfile(false);
-      toast.success("Profil berhasil diperbarui!");
+      toast.success("Profil dan nomor WhatsApp berhasil disimpan!");
     } catch (err: any) {
       toast.error(err?.message || "Gagal menyimpan perubahan.");
     } finally {
@@ -183,10 +205,12 @@ export default function CustomerAccountPage() {
         {/* 1. Header Profil (Avatar + Nama + Email + Badge Plus) */}
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200/90 shadow-xs flex items-center gap-5">
           <div className="w-16 h-16 rounded-full bg-lavender-100 text-lavender-700 font-bold text-2xl flex items-center justify-center overflow-hidden border-2 border-lavender-200 shrink-0">
-            {profile?.avatar_url ? (
+            {profile?.avatar_url && !avatarImgFailed ? (
               <img
                 src={profile.avatar_url}
                 alt={profile.full_name || "User"}
+                referrerPolicy="no-referrer"
+                onError={() => setAvatarImgFailed(true)}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -249,7 +273,11 @@ export default function CustomerAccountPage() {
               <div>
                 <span className="text-neutral-400 block mb-0.5">Nomor WhatsApp</span>
                 <span className="font-semibold text-neutral-900 text-sm font-mono">
-                  {profile?.phone ? `+${profile.phone}` : "-"}
+                  {profile?.phone
+                    ? profile.phone.startsWith("+")
+                      ? profile.phone
+                      : `+${profile.phone}`
+                    : "-"}
                 </span>
               </div>
               <div>

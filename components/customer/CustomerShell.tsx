@@ -70,13 +70,31 @@ export function CustomerShell({
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUser(user);
+        const metaAvatar =
+          user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+        const metaName =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.email?.split("@")[0] ||
+          "";
+
         supabase
           .from("profiles")
           .select("full_name, avatar_url")
           .eq("id", user.id)
           .single()
           .then(({ data }) => {
-            if (data) setProfile(data);
+            if (data) {
+              setProfile({
+                full_name: data.full_name || metaName,
+                avatar_url: data.avatar_url || metaAvatar,
+              });
+            } else {
+              setProfile({
+                full_name: metaName,
+                avatar_url: metaAvatar,
+              });
+            }
           });
       }
     });
@@ -214,6 +232,7 @@ export function CustomerShell({
                         <img
                           src={profile.avatar_url}
                           alt={profile.full_name || "User"}
+                          referrerPolicy="no-referrer"
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -318,6 +337,7 @@ export function CustomerShell({
                         <img
                           src={profile.avatar_url}
                           alt="Profil"
+                          referrerPolicy="no-referrer"
                           className="w-full h-full object-cover"
                         />
                       ) : (

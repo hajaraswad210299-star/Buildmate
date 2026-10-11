@@ -40,11 +40,65 @@ export async function GET(request: Request) {
     const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase() || "hajaraswad210299@gmail.com";
     const isConfiguredAdmin = Boolean(user.email?.toLowerCase() === adminEmail);
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
+    let profile: any = null;
+
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const adminSupabase = createAdminClient();
+
+      const googleAvatar =
+        user.user_metadata?.avatar_url ||
+        user.user_metadata?.picture ||
+        null;
+      const googleName =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email?.split("@")[0] ||
+        "Pengguna Baru";
+
+      const { data: existingProfile } = await adminSupabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (!existingProfile) {
+        const { data: createdProfile } = await adminSupabase
+          .from("profiles")
+          .insert({
+            id: user.id,
+            full_name: googleName,
+            avatar_url: googleAvatar,
+            role: isConfiguredAdmin ? "admin" : (as === "worker" ? "worker" : "customer"),
+            onboarding_completed: false,
+          })
+          .select()
+          .single();
+
+        profile = createdProfile;
+        await adminSupabase.from("subscriptions").insert({ user_id: user.id }).select();
+      } else {
+        profile = existingProfile;
+        // Sync avatar if existing is empty
+        if (!existingProfile.avatar_url && googleAvatar) {
+          const { data: updatedProfile } = await adminSupabase
+            .from("profiles")
+            .update({ avatar_url: googleAvatar })
+            .eq("id", user.id)
+            .select()
+            .single();
+          if (updatedProfile) profile = updatedProfile;
+        }
+      }
+    } catch (profileSyncErr) {
+      console.error("Profile sync in callback error:", profileSyncErr);
+      const { data: fallbackProf } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      profile = fallbackProf;
+    }
 
     if (isConfiguredAdmin || profile?.role === "admin") {
       const target = safeNext.startsWith("/admin") ? safeNext : "/admin";
@@ -55,7 +109,7 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL("/mitra", url.origin));
     }
 
-    // Customer
+    // Customer: if phone is missing or onboarding not done, go to welcome page
     if (!profile?.onboarding_completed || !profile?.phone) {
       return NextResponse.redirect(
         new URL(`/welcome?next=${encodeURIComponent(safeNext)}`, url.origin)

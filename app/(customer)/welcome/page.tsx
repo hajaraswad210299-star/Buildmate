@@ -78,20 +78,19 @@ function WelcomeContent() {
         return;
       }
 
-      const { error } = await supabase.from("profiles").upsert(
-        {
-          id: user.id,
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           full_name: fullName.trim(),
           phone: phone.trim(),
           default_address: address.trim() || null,
-          onboarding_completed: true,
-          role: "customer",
-        },
-        { onConflict: "id" }
-      );
+        }),
+      });
 
-      if (error) {
-        console.error("Profile update error:", error.message);
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(resData?.error || "Gagal menyimpan nomor WhatsApp.");
       }
 
       toast.success("Profil berhasil dilengkapi!");
