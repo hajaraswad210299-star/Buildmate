@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { CustomerShell } from "@/components/customer/CustomerShell";
 import {
   Crown1,
@@ -75,20 +76,26 @@ export default function PlusPage() {
         return;
       }
 
-      // Simulate instant activation in Sandbox
-      const now = new Date();
-      now.setDate(now.getDate() + 30);
-      setIsSubscribed(true);
-      setExpiryDate(now.toISOString());
-      setRemainingDays(30);
-
-      confetti({
-        particleCount: 70,
-        spread: 80,
-        origin: { y: 0.6 },
-      });
-
-      toast.success("Selamat! Kamu kini member resmi BuildMate Plus.");
+      const snapToken = data.snap_token;
+      if (typeof window !== "undefined" && (window as any).snap && snapToken) {
+        (window as any).snap.pay(snapToken, {
+          onSuccess: () => {
+            toast.success("Pembayaran berhasil! Mengaktifkan membership...");
+            window.location.reload();
+          },
+          onPending: () => {
+            toast.info("Menunggu penyelesaian pembayaran di simulator.");
+          },
+          onError: () => {
+            toast.error("Pembayaran dibatalkan atau gagal.");
+          },
+          onClose: () => {
+            // Pengguna menutup snap
+          },
+        });
+      } else {
+        toast.info("Transaksi berhasil disiapkan di Sandbox.");
+      }
     } catch {
       toast.error("Terjadi kesalahan.");
     } finally {
@@ -327,6 +334,13 @@ export default function PlusPage() {
           })}
         </div>
       </div>
+
+      {/* Script Snap Midtrans Sandbox */}
+      <Script
+        src="https://app.sandbox.midtrans.com/snap/snap.js"
+        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+        strategy="afterInteractive"
+      />
     </CustomerShell>
   );
 }

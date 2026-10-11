@@ -1282,6 +1282,8 @@ Buat minimal: 1 admin, 2 pelanggan (email+password & Google), 2 mitra (approved 
 
 ## B12. Pembayaran Midtrans Snap & webhook (logika)
 
+> **ATURAN KERAS — pembayaran wajib lewat Midtrans Snap Sandbox sungguhan.** Dilarang membuat halaman pembayaran tiruan: QR code buatan sendiri, daftar e-wallet dengan "saldo" palsu, tombol "simulasikan scan", atau memakai logo/merek QRIS, GPN, bank, dan e-wallet di UI sendiri. Pemilihan metode bayar, QR, dan nomor VA **hanya** ditampilkan oleh popup Snap milik Midtrans. Status pembayaran **hanya** berubah lewat webhook Midtrans. Uji bayar dilakukan di simulator resmi Midtrans (B20 langkah 7).
+
 1. Server membuat transaksi Snap: `order_id` = `ORD-{order_code}` atau `SUB-{uuid}`, `gross_amount` = total, `customer_details`, `item_details`. Kembalikan `snap_token`.
 2. Browser memanggil `window.snap.pay(token, { onSuccess, onPending, onError, onClose })`; semua callback hanya mengarahkan ke `/payment/[orderId]` yang membaca status dari DB.
 3. Handler `POST /api/webhooks/midtrans`:
@@ -1629,6 +1631,8 @@ WhatsApp API otomatis, push notification, chat in-app, peta/GPS live & tracking 
 9. **Tes idempotensi**: dari detail transaksi di dashboard sandbox, kirim ulang notifikasi (jika tersedia) atau `curl` payload yang sama dua kali → data tidak boleh berubah dua kali.
 
 > Jika ada perbedaan menu/URL dengan dokumentasi terbaru Midtrans, ikuti dokumentasi resmi di https://docs.midtrans.com.
+
+**Panduan uji untuk demo (hanya saat `MIDTRANS_IS_PRODUCTION=false`):** di bawah tombol Bayar boleh tampil kotak kecil "Mode sandbox — tidak ada uang sungguhan" dengan tautan ke simulator Midtrans dan kartu uji. Kotak ini hanya petunjuk; tidak boleh mengubah status pembayaran.
 
 ---
 

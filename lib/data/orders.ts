@@ -512,10 +512,73 @@ export async function createCustomerOrder(data: {
     updated_at: nowIso,
   };
 
+  // Real Midtrans Snap Transaction (B12 & B20)
+  const { createMidtransSnapTransaction } = await import("../midtrans");
+  const { recordPayment } = await import("./transactions");
+
+  const midtransRes = await createMidtransSnapTransaction({
+    orderId: `ORD-${orderCode}`,
+    grossAmount: total,
+    customerDetails: {
+      first_name: data.customerName || "Pelanggan",
+      email: data.customerEmail || "pelanggan@buildmate.id",
+      phone: data.customerPhone || "081200000000",
+    },
+    itemDetails: [
+      {
+        id: pkg.id,
+        name: pkg.name.slice(0, 50),
+        price: pkg.price,
+        quantity: 1,
+      },
+      ...(serviceFee > 0
+        ? [{ id: "service_fee", name: "Biaya Layanan", price: serviceFee, quantity: 1 }]
+        : []),
+    ],
+  });
+
+  if (midtransRes.error || !midtransRes.token) {
+    return {
+      success: false,
+      error: midtransRes.error || "Gagal membuat transaksi Midtrans Snap.",
+    };
+  }
+
+  const snapToken = midtransRes.token;
+  newOrder.snap_token = snapToken;
   inMemoryOrders.unshift(newOrder);
 
-  // Simulated Midtrans Snap Token
-  const snapToken = `SNAP-DEMO-${Date.now()}-${randomSuffix}`;
+  // Record payment in payments ledger
+  recordPayment({
+    id: `pay-${Date.now()}`,
+    provider_order_id: `ORD-${orderCode}`,
+    kind: "order",
+    ref_id: newOrder.id,
+    order_code: orderCode,
+    customer_name: data.customerName || "Pelanggan",
+    customer_id: data.customerId || "cust-demo",
+    amount: total,
+    status: "pending",
+    payment_type: "snap",
+    snap_token: snapToken,
+    created_at: nowIso,
+  });
+
+  // Also record to Supabase payments table if configured
+  try {
+    const { createAdminClient } = await import("../supabase/admin");
+    const adminSupabase = createAdminClient();
+    await adminSupabase.from("payments").insert({
+      provider_order_id: `ORD-${orderCode}`,
+      kind: "order",
+      ref_id: newOrder.id,
+      customer_id: data.customerId,
+      amount: total,
+      status: "pending",
+      snap_token: snapToken,
+    });
+  } catch {}
+
   return { success: true, order: newOrder, snapToken };
 }
 

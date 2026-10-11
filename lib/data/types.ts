@@ -156,6 +156,7 @@ export interface Order {
   events?: OrderEvent[];
   complaint?: Complaint;
   transaction_id?: string;
+  snap_token?: string;
   dispatch_status?: "idle" | "searching" | "assigned" | "exhausted";
   customer_preferred_worker_name?: string;
   allow_reassign?: boolean;

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CustomerShell } from "@/components/customer/CustomerShell";
 import {
@@ -269,14 +270,34 @@ function OrderFormContent({ params }: PageProps) {
       // Clear draft
       sessionStorage.removeItem("bm_order_draft");
 
-      // Register order locally in browser for zero-delay instant display
+      // Register order locally in browser
       if (typeof window !== "undefined") {
         sessionStorage.setItem(`bm_order_${data.order.id}`, JSON.stringify(data.order));
       }
       registerClientOrder(data.order);
 
-      // Instantly open QRIS payment screen
-      router.push(`/payment/${data.order.id}`);
+      const snapToken = data.snap_token;
+
+      // Client: muat popup Midtrans Snap Sandbox
+      if (typeof window !== "undefined" && (window as any).snap && snapToken) {
+        (window as any).snap.pay(snapToken, {
+          onSuccess: () => {
+            router.push(`/payment/${data.order.id}?status=success`);
+          },
+          onPending: () => {
+            router.push(`/payment/${data.order.id}?status=pending`);
+          },
+          onError: () => {
+            router.push(`/payment/${data.order.id}?status=failed`);
+          },
+          onClose: () => {
+            router.push(`/payment/${data.order.id}`);
+          },
+        });
+      } else {
+        // Fallback langsung ke halaman status pembayaran
+        router.push(`/payment/${data.order.id}`);
+      }
     } catch (err: any) {
       toast.error(err?.message || "Terjadi kesalahan pembayaran.");
       setSubmitting(false);
@@ -704,10 +725,44 @@ function OrderFormContent({ params }: PageProps) {
                 )}
               </button>
             </div>
+
+            {/* KOTAK PANDUAN SANDBOX (B12, B20 & Petunjuk Pengujian) */}
+            {process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION !== "true" && (
+              <div className="mt-4 p-4 rounded-2xl bg-lavender-50/80 border border-lavender-200/90 text-xs text-lavender-950 space-y-2">
+                <div className="flex items-center gap-1.5 font-semibold text-lavender-800">
+                  <InfoCircle size={15} className="text-lavender-600 shrink-0" />
+                  <span>Mode sandbox — tidak ada uang sungguhan.</span>
+                </div>
+                <p className="text-[11px] text-neutral-600 leading-relaxed">
+                  Pilih metode bayar di popup resmi Midtrans Snap. Untuk pembayaran Virtual Account, QRIS, atau e-wallet, buka{" "}
+                  <a
+                    href="https://simulator.sandbox.midtrans.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-lavender-700 font-bold underline hover:text-lavender-900 inline-flex items-center gap-0.5"
+                  >
+                    Buka simulator pembayaran
+                  </a>
+                  . Untuk kartu kredit uji:{" "}
+                  <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-lavender-200 font-semibold text-neutral-800">
+                    4811 1111 1111 1114
+                  </span>
+                  , CVV{" "}
+                  <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-lavender-200 font-semibold text-neutral-800">
+                    123
+                  </span>
+                  , OTP{" "}
+                  <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-lavender-200 font-semibold text-neutral-800">
+                    112233
+                  </span>
+                  . Kotak ini hanya petunjuk pengujian.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* STEP 3: STATUS PEMBAYARAN MEMPROSES */}
+        {/* STEP 3: MEMBUKA MIDTRANS SNAP */}
         {step === 3 && (
           <div className="bg-white p-8 sm:p-12 rounded-3xl border border-neutral-200/90 text-center space-y-6 animate-in fade-in">
             <div className="w-16 h-16 rounded-full bg-lavender-50 border border-lavender-200 flex items-center justify-center mx-auto text-lavender-600">
@@ -735,10 +790,10 @@ function OrderFormContent({ params }: PageProps) {
 
             <div className="space-y-2">
               <h2 className="font-serif text-3xl text-neutral-900">
-                Membuka Pembayaran QRIS...
+                Membuka Pembayaran Midtrans Snap...
               </h2>
               <p className="text-xs text-neutral-500 max-w-sm mx-auto leading-relaxed">
-                Menghubungkan ke sistem Rekening Bersama QRIS BuildMate. Mengalihkan ke lembar pembayaran...
+                Popup pembayaran aman Midtrans Snap sedang dibuka. Jika popup tidak terbuka otomatis, klik tombol di bawah untuk memeriksa status pembayaran.
               </p>
             </div>
 
@@ -748,12 +803,19 @@ function OrderFormContent({ params }: PageProps) {
                   href={`/payment/${createdOrder.id}`}
                   className="inline-block px-6 py-3 rounded-full bg-lavender-600 hover:bg-lavender-700 text-white text-xs font-semibold shadow-xs transition-colors"
                 >
-                  Buka Halaman Pembayaran QRIS Sekarang
+                  Buka Halaman Status Pembayaran
                 </Link>
               </div>
             )}
           </div>
         )}
+
+        {/* Script Snap Midtrans Sandbox */}
+        <Script
+          src="https://app.sandbox.midtrans.com/snap/snap.js"
+          data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+          strategy="afterInteractive"
+        />
       </div>
     </CustomerShell>
   );
