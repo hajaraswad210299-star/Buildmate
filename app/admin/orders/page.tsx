@@ -8,6 +8,7 @@ import { WaButton } from "@/components/shared/WaButton";
 import { getOrders, OrderFilter } from "@/lib/data/orders";
 import { MOCK_ORDERS } from "@/lib/mock/data";
 import { Order } from "@/lib/data/types";
+import { OrderStatus } from "@/lib/orders/transitions";
 import { formatRupiah, formatDateId } from "@/lib/format";
 import { RelativeTime } from "@/components/shared/RelativeTime";
 import { WA_TEMPLATES } from "@/lib/wa-templates";
@@ -27,6 +28,7 @@ function AdminOrdersContent() {
   const [activeTab, setActiveTab] = useState<OrderFilter["tab"]>("all");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState<OrderStatus | "all">("all");
   const [customerType, setCustomerType] = useState<"all" | "free" | "plus">("all");
   const [orders, setOrders] = useState<Order[]>(() => MOCK_ORDERS);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -35,6 +37,7 @@ function AdminOrdersContent() {
   useEffect(() => {
     getOrders({
       tab: activeTab,
+      status: selectedStatus,
       search,
       category: selectedCategory,
       customerType,
@@ -42,7 +45,7 @@ function AdminOrdersContent() {
       setOrders(res);
       setSelectedIds([]);
     });
-  }, [activeTab, search, selectedCategory, customerType]);
+  }, [activeTab, selectedStatus, search, selectedCategory, customerType]);
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -67,14 +70,96 @@ function AdminOrdersContent() {
     }
   };
 
+  const exportOrdersToCsv = (ordersToExport: Order[], filenamePrefix: string) => {
+    if (ordersToExport.length === 0) {
+      toast.error("Tidak ada pesanan untuk diekspor.");
+      return;
+    }
+
+    try {
+      const now = new Date();
+      const dateStr = now.toISOString().split("T")[0];
+      const filename = `${filenamePrefix}-${dateStr}.csv`;
+
+      // UTF-8 BOM for Microsoft Excel compatibility
+      const csvLines: string[] = ["\uFEFF"];
+
+      // Header row
+      csvLines.push(
+        [
+          `"Kode Pesanan"`,
+          `"Pelanggan"`,
+          `"Email Pelanggan"`,
+          `"No. HP Pelanggan"`,
+          `"Tipe Pelanggan"`,
+          `"Mitra Tukang"`,
+          `"No. HP Tukang"`,
+          `"Kategori Layanan"`,
+          `"Paket Layanan"`,
+          `"Biaya Paket"`,
+          `"Biaya Layanan"`,
+          `"Total Pembayaran"`,
+          `"Alamat Pengerjaan"`,
+          `"Jadwal Tanggal"`,
+          `"Slot Waktu"`,
+          `"Status"`,
+          `"Tanggal Dibuat"`,
+        ].join(",")
+      );
+
+      // Data rows
+      ordersToExport.forEach((o) => {
+        const row = [
+          `"${o.order_code}"`,
+          `"${o.customer?.name || "-"}"`,
+          `"${o.customer?.email || "-"}"`,
+          `"${o.customer?.phone || "-"}"`,
+          `"${o.customer?.is_plus ? "Member Plus" : "Reguler"}"`,
+          `"${o.worker?.name || "-"}"`,
+          `"${o.worker?.phone || "-"}"`,
+          `"${o.package?.category_name || "-"}"`,
+          `"${o.package?.name || "-"}"`,
+          `"${o.package_price}"`,
+          `"${o.service_fee}"`,
+          `"${o.total}"`,
+          `"${(o.address || "").replace(/"/g, '""')}"`,
+          `"${o.scheduled_date}"`,
+          `"${o.time_slot}"`,
+          `"${o.status}"`,
+          `"${new Date(o.created_at).toLocaleString("id-ID")}"`,
+        ];
+        csvLines.push(row.join(","));
+      });
+
+      const csvContent = csvLines.join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success(`${ordersToExport.length} pesanan berhasil diekspor ke ${filename}`);
+    } catch (err: any) {
+      toast.error(err?.message || "Gagal mengekspor data pesanan.");
+    }
+  };
+
+  const handleExportAll = () => {
+    exportOrdersToCsv(orders, "buildmate-semua-pesanan");
+  };
+
   const handleExportSelected = () => {
-    toast.success(`Mengekspor ${selectedIds.length} pesanan ke format CSV.`);
+    const selectedOrders = orders.filter((o) => selectedIds.includes(o.id));
+    exportOrdersToCsv(selectedOrders, "buildmate-pesanan-terpilih");
   };
 
   const resetFilters = () => {
     setActiveTab("all");
     setSearch("");
     setSelectedCategory("all");
+    setSelectedStatus("all");
     setCustomerType("all");
   };
 
@@ -102,7 +187,7 @@ function AdminOrdersContent() {
             variant="secondary"
             size="sm"
             leftIcon={<DocumentDownload size={15} />}
-            onClick={() => toast.success("Mengekspor semua pesanan ke CSV...")}
+            onClick={handleExportAll}
             className="self-start sm:self-auto"
           >
             Ekspor CSV
@@ -157,6 +242,23 @@ function AdminOrdersContent() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap text-xs">
+            {/* Status Filter */}
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value as OrderStatus | "all")}
+              className="px-2.5 py-1.5 rounded-xl border border-neutral-200 bg-white text-neutral-700 focus:outline-none focus:ring-2 focus:ring-lavender-300 font-medium"
+            >
+              <option value="all">Semua Status</option>
+              <option value="pending_payment">Menunggu Pembayaran</option>
+              <option value="paid">Dibayar (Mencari Tukang)</option>
+              <option value="worker_confirmed">Tukang Terkonfirmasi</option>
+              <option value="on_the_way">Menuju Lokasi</option>
+              <option value="in_progress">Sedang Dikerjakan</option>
+              <option value="awaiting_confirmation">Menunggu Konfirmasi</option>
+              <option value="completed">Selesai</option>
+              <option value="cancelled">Dibatalkan</option>
+            </select>
+
             {/* Category Filter */}
             <select
               value={selectedCategory}
@@ -180,7 +282,7 @@ function AdminOrdersContent() {
               <option value="plus">Member Plus</option>
             </select>
 
-            {(search || selectedCategory !== "all" || customerType !== "all" || activeTab !== "all") && (
+            {(search || selectedCategory !== "all" || selectedStatus !== "all" || customerType !== "all" || activeTab !== "all") && (
               <button
                 type="button"
                 onClick={resetFilters}

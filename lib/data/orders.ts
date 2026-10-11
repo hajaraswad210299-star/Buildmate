@@ -6,6 +6,7 @@ const inMemoryOrders = [...MOCK_ORDERS];
 
 export interface OrderFilter {
   tab?: "all" | "action_needed" | "finding_worker" | "active" | "completed" | "cancelled" | "complaint" | "complaints";
+  status?: OrderStatus | "all";
   search?: string;
   category?: string;
   customerType?: "all" | "free" | "plus";
@@ -69,6 +70,10 @@ export async function getOrders(filter: OrderFilter = {}): Promise<Order[]> {
   if (filter.customerType && filter.customerType !== "all") {
     const isPlus = filter.customerType === "plus";
     list = list.filter((o) => o.customer.is_plus === isPlus);
+  }
+
+  if (filter.status && filter.status !== "all") {
+    list = list.filter((o) => o.status === filter.status);
   }
 
   return list;
