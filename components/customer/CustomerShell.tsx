@@ -186,19 +186,21 @@ export function CustomerShell({
 
             {/* Right Profile & Actions */}
             <div className="flex items-center gap-4">
-              <Link
-                href="/orders"
-                className={`relative px-3 py-2 rounded-xl text-[14px] font-medium hover:text-lavender-700 hover:bg-neutral-100 transition-colors ${
-                  isOrders ? "text-lavender-600 font-semibold bg-lavender-50" : "text-neutral-700"
-                }`}
-              >
-                <span>Pesanan</span>
-                {activeOrdersCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-lavender-600 text-white rounded-full text-[10px] font-bold flex items-center justify-center animate-pulse">
-                    {activeOrdersCount}
-                  </span>
-                )}
-              </Link>
+              {user && (
+                <Link
+                  href="/orders"
+                  className={`relative px-3 py-2 rounded-xl text-[14px] font-medium hover:text-lavender-700 hover:bg-neutral-100 transition-colors ${
+                    isOrders ? "text-lavender-600 font-semibold bg-lavender-50" : "text-neutral-700"
+                  }`}
+                >
+                  <span>Pesanan</span>
+                  {activeOrdersCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-lavender-600 text-white rounded-full text-[10px] font-bold flex items-center justify-center animate-pulse">
+                      {activeOrdersCount}
+                    </span>
+                  )}
+                </Link>
+              )}
 
               {user ? (
                 <div className="relative">
@@ -408,7 +410,7 @@ export function CustomerShell({
           aria-label="Navigasi Utama Pelanggan"
           className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-neutral-200/90 pb-[env(safe-area-inset-bottom)] shadow-sm"
         >
-          <div className="grid grid-cols-4 h-16 items-center px-2">
+          <div className={`grid ${user ? "grid-cols-4" : "grid-cols-3"} h-16 items-center px-2`}>
             {/* 1. Beranda */}
             <Link
               href="/"
@@ -459,35 +461,37 @@ export function CustomerShell({
               </span>
             </Link>
 
-            {/* 3. Pesanan */}
-            <Link
-              href="/orders"
-              className="flex flex-col items-center justify-center gap-1 text-center py-1 transition-all relative"
-            >
-              <div
-                className={`relative px-3 py-1 rounded-full transition-colors ${
-                  isOrders ? "bg-lavender-50 text-lavender-600" : "text-neutral-500"
-                }`}
+            {/* 3. Pesanan (hanya jika sudah login) */}
+            {user && (
+              <Link
+                href="/orders"
+                className="flex flex-col items-center justify-center gap-1 text-center py-1 transition-all relative"
               >
-                <ReceiptText
-                  size={22}
-                  variant={isOrders ? "Bold" : "Linear"}
-                  className="transition-transform duration-200"
-                />
-                {activeOrdersCount > 0 && (
-                  <span className="absolute top-0 right-1 min-w-[14px] h-[14px] bg-lavender-600 text-white rounded-full text-[9px] font-bold flex items-center justify-center">
-                    {activeOrdersCount}
-                  </span>
-                )}
-              </div>
-              <span
-                className={`text-[11px] leading-none transition-colors ${
-                  isOrders ? "font-semibold text-lavender-700" : "text-neutral-500"
-                }`}
-              >
-                Pesanan
-              </span>
-            </Link>
+                <div
+                  className={`relative px-3 py-1 rounded-full transition-colors ${
+                    isOrders ? "bg-lavender-50 text-lavender-600" : "text-neutral-500"
+                  }`}
+                >
+                  <ReceiptText
+                    size={22}
+                    variant={isOrders ? "Bold" : "Linear"}
+                    className="transition-transform duration-200"
+                  />
+                  {activeOrdersCount > 0 && (
+                    <span className="absolute top-0 right-1 min-w-[14px] h-[14px] bg-lavender-600 text-white rounded-full text-[9px] font-bold flex items-center justify-center">
+                      {activeOrdersCount}
+                    </span>
+                  )}
+                </div>
+                <span
+                  className={`text-[11px] leading-none transition-colors ${
+                    isOrders ? "font-semibold text-lavender-700" : "text-neutral-500"
+                  }`}
+                >
+                  Pesanan
+                </span>
+              </Link>
+            )}
 
             {/* 4. Akun */}
             <Link
@@ -610,15 +614,19 @@ export function CustomerShell({
             </div>
           </div>
 
-          {/* Centered Crest Seal in Flamingo Estate Style */}
-          <div className="pt-10 pb-8 flex flex-col items-center justify-center text-center border-t border-lavender-800/60">
-            <div className="w-13 h-13 rounded-full border border-white/20 bg-white/5 flex items-center justify-center mb-3">
-              <span className="font-serif text-lg text-lavender-200 font-bold">BM</span>
+          {/* Centered Crest Seal in Flamingo Estate Style with BuildMate Icon SVG */}
+          <div className="pt-10 pb-8 flex flex-col items-center justify-center text-center border-t border-lavender-800/60 font-sans">
+            <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-sm mb-3.5 border border-white/20 flex items-center justify-center bg-white/5">
+              <img
+                src="/icon.svg"
+                alt="BuildMate Icon"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <p className="font-serif tracking-[0.25em] text-xs text-white uppercase font-medium">
-              BUILDMATE · SURABAYA
+            <p className="font-sans tracking-[0.25em] text-xs text-white uppercase font-semibold">
+              BUILDMATE
             </p>
-            <p className="text-[10px] text-lavender-300 tracking-widest mt-1 uppercase">
+            <p className="text-[11px] text-lavender-300 tracking-wider mt-1 uppercase font-sans">
               Standar Integritas & Ketenangan Hunian
             </p>
           </div>

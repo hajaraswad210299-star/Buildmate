@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { CustomerShell } from "@/components/customer/CustomerShell";
 import { AirbnbSearchBar } from "@/components/customer/AirbnbSearchBar";
-import { AirbnbCategoryRibbon } from "@/components/customer/AirbnbCategoryRibbon";
 import { FlamingoProductCard } from "@/components/customer/FlamingoProductCard";
 import { EditorialDuoCards } from "@/components/customer/EditorialDuoCards";
 import { EditorialQuote } from "@/components/customer/EditorialQuote";
@@ -166,7 +165,6 @@ const EDITORIAL_JOURNAL_STORIES = [
 export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [selectedCategorySlug, setSelectedCategorySlug] = useState<string>("all");
 
   useEffect(() => {
     getCategories().then((cats) => setCategories(cats.filter((c) => c.is_active)));
@@ -195,27 +193,23 @@ export default function HomePage() {
                 <Crown1 size={14} className="text-lavender-300" variant="Bold" />
                 <span>Standar Artisan & Rekber Surabaya</span>
               </span>
-
-              <span className="hidden sm:inline-block text-xs text-neutral-300 font-serif italic tracking-wider">
-                Edisi Perbaikan Hunian 2026
-              </span>
             </div>
 
             {/* Center Editorial Headlines */}
             <div className="relative z-10 max-w-3xl my-auto py-6 sm:py-8 text-center sm:text-left">
-              <p className="text-xs uppercase tracking-[0.25em] text-lavender-300 mb-2 font-medium">
+              <p className="text-xs uppercase tracking-[0.25em] text-lavender-300 mb-2 font-medium font-sans">
                 KUALITAS TERJAMIN · BAYAR AMAN
               </p>
               <h1 className="font-serif text-3xl sm:text-5xl lg:text-[62px] text-white leading-[1.08] tracking-tight">
                 Tukang yang <span className="italic text-lavender-300 font-normal">tepat</span>, saat hunian membutuhkan.
               </h1>
-              <p className="text-xs sm:text-sm text-neutral-300 mt-3 sm:mt-4 leading-relaxed max-w-xl font-normal">
+              <p className="text-xs sm:text-sm text-neutral-300 mt-3 sm:mt-4 leading-relaxed max-w-xl font-normal font-sans">
                 Pilih tukang terverifikasi di Surabaya dengan tarif paket pasti. Pembayaran diamankan di rekening bersama platform dan baru dicairkan setelah kamu puas dengan foto hasil kerja.
               </p>
             </div>
 
             {/* Bottom 3 Trust Bullets */}
-            <div className="relative z-10 pt-4 border-t border-white/10 flex flex-wrap items-center justify-center sm:justify-start gap-4 sm:gap-8 text-xs text-neutral-200 font-medium">
+            <div className="relative z-10 pt-4 border-t border-white/10 flex flex-wrap items-center justify-center sm:justify-start gap-4 sm:gap-8 text-xs text-neutral-200 font-medium font-sans">
               <div className="flex items-center gap-2">
                 <ShieldTick size={16} variant="Bulk" className="text-lavender-300" />
                 <span>Rekber Midtrans Escrow</span>
@@ -238,16 +232,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. AIRBNB HORIZONTAL CATEGORY RIBBON */}
-      <section className="pt-10 sm:pt-14 pb-2 border-b border-cream-200/80">
-        <AirbnbCategoryRibbon
-          categories={categories}
-          selectedSlug={selectedCategorySlug}
-          onSelect={(slug) => setSelectedCategorySlug(slug)}
-        />
-      </section>
-
-      {/* 3. FLAMINGO ESTATE ROW 1: "PILIHAN TERKURASI" (4-COLUMN PRODUCT GRID) */}
+      {/* 2. FLAMINGO ESTATE ROW 1: "PILIHAN TERKURASI" (4-COLUMN PRODUCT GRID) */}
       <section className="w-full px-6 pt-16 sm:pt-20">
         <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
           <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-1.5">
@@ -327,7 +312,7 @@ export default function HomePage() {
       {/* 6. FLAMINGO ESTATE EDITORIAL MANIFESTO QUOTE (CENTERPIECE STATEMENTS & PRESS/TRUST HALLMARKS) */}
       {/* Inspired by the screenshot's centered quote block & press logos */}
       <EditorialQuote
-        attribution="KOMITMEN KUALITAS BUILDMATE · SURABAYA"
+        attribution="KOMITMEN KUALITAS BUILDMATE"
         quote="Rumah bukan sekadar bangunan fisik, melainkan tempat di mana rasa tenang bermula. Kami memastikan setiap pengerjaan ditangani oleh tangan ahli yang terampil, jujur, dan berdedikasi."
       />
 
