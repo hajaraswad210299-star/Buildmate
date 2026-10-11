@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Sms, Lock, Eye, EyeSlash, Chart, ShieldTick, UserOctagon } from "@/lib/icons";
 import { Button } from "@/components/shared/Button";
+import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@buildmate.id");
-  const [password, setPassword] = useState("Admin123!");
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState("hajaraswad210299@gmail.com");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [capsLockActive, setCapsLockActive] = useState(false);
@@ -24,7 +26,7 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
@@ -34,16 +36,61 @@ export default function AdminLoginPage() {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      // Validasi admin
-      if (email.includes("admin")) {
-        toast.success("Berhasil masuk ke dashboard admin!");
-        router.push("/admin");
-      } else {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
         setIsLoading(false);
-        setErrorMessage("Email atau password salah, atau akun ini bukan admin.");
+        if (error.message.toLowerCase().includes("email not confirmed")) {
+          setErrorMessage("Email belum diverifikasi.");
+        } else if (
+          error.message.toLowerCase().includes("invalid login credentials") ||
+          error.message.toLowerCase().includes("invalid_grant")
+        ) {
+          setErrorMessage("Email atau password salah.");
+        } else if (
+          error.message.toLowerCase().includes("rate limit") ||
+          error.message.toLowerCase().includes("too many requests")
+        ) {
+          setErrorMessage("Terlalu banyak percobaan. Coba lagi dalam beberapa saat.");
+        } else {
+          setErrorMessage(error.message);
+        }
+        return;
       }
-    }, 700);
+
+      if (!data.user) {
+        setIsLoading(false);
+        setErrorMessage("Gagal masuk. Silakan coba lagi.");
+        return;
+      }
+
+      // Pastikan role = 'admin' di profiles
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profileError || !profile || profile.role !== "admin") {
+        await supabase.auth.signOut();
+        setIsLoading(false);
+        router.push("/admin/denied");
+        return;
+      }
+
+      toast.success("Berhasil masuk ke dashboard admin!");
+      const next = searchParams.get("next") || "/admin";
+      router.push(next);
+      router.refresh();
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage(err.message || "Terjadi kesalahan saat masuk.");
+    }
   };
 
   return (
@@ -221,5 +268,13 @@ export default function AdminLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-neutral-50 flex items-center justify-center text-xs text-neutral-400">Memuat halaman masuk...</div>}>
+      <AdminLoginForm />
+    </Suspense>
   );
 }

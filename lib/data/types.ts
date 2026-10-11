@@ -159,6 +159,8 @@ export interface Order {
   customer_preferred_worker_name?: string;
   allow_reassign?: boolean;
   dispatch_offers?: DispatchOffer[];
+  assignment_method?: "auto" | "manual";
+  assigned_by?: string;
 }
 
 export interface DispatchOffer {
@@ -173,6 +175,8 @@ export interface DispatchOffer {
   sent_at: string;
   responded_at?: string;
   expires_at?: string;
+  is_manual?: boolean;
+  assigned_by?: string;
 }
 
 export interface Payment {

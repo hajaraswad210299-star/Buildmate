@@ -270,6 +270,21 @@ export async function manualAssignWorker(
   order.dispatch_status = "assigned";
   order.status = "worker_confirmed";
   order.worker_confirmed_at = new Date().toISOString();
+  order.assignment_method = "manual";
+  order.assigned_by = "Admin BuildMate";
+
+  const manualOffer = {
+    id: `off-manual-${Date.now()}`,
+    attempt_number: (order.dispatch_offers?.length || 0) + 1,
+    worker_id: worker.id,
+    worker_name: worker.name,
+    worker_area: worker.service_area,
+    status: "accepted" as const,
+    sent_at: new Date().toISOString(),
+    is_manual: true,
+    assigned_by: "Admin BuildMate",
+  };
+  order.dispatch_offers = [manualOffer, ...(order.dispatch_offers || [])];
 
   const event = {
     id: `ev-${Date.now()}`,

@@ -34,6 +34,7 @@ import {
 import { formatRupiah, formatDateId } from "@/lib/format";
 import { WA_TEMPLATES } from "@/lib/wa-templates";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   ArrowLeft2,
   Copy,
@@ -101,6 +102,22 @@ function OrderDetailContent({
   const [complaintAction, setComplaintAction] = useState<
     "warranty_rework" | "close_without_action" | "cancel_refund"
   >("warranty_rework");
+
+  // Sticky header scroll detection & Emergency Action
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [emergencyReason, setEmergencyReason] = useState("");
+  const [emergencyTargetStatus, setEmergencyTargetStatus] = useState<OrderStatus>("awaiting_confirmation");
+
+  useEffect(() => {
+    const mainEl = document.querySelector("main");
+    if (!mainEl) return;
+    const handleScroll = () => {
+      setIsScrolled(mainEl.scrollTop > 12);
+    };
+    mainEl.addEventListener("scroll", handleScroll, { passive: true });
+    return () => mainEl.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const loadData = useCallback(() => {
     getOrderById(orderId).then((res) => {
@@ -308,17 +325,26 @@ function OrderDetailContent({
     loadData();
   };
 
-  const isWorkerAccountManaged = !order.worker?.has_account;
+  const hasResultPhotos = Boolean(
+    order.photos && order.photos.some((p) => p.type === "result")
+  );
 
   return (
     <AdminShell>
       <div className="space-y-6">
-        {/* STICKY HEADER */}
-        <div className="bg-white rounded-2xl border border-neutral-200/90 p-4 shadow-xs sticky top-20 z-20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* STICKY HEADER — Full width, flush with topbar, no margins, sticky top-0 in main */}
+        <div
+          className={cn(
+            "-mx-6 -mt-6 px-6 xl:-mx-8 xl:-mt-8 xl:px-8 bg-white border-b border-neutral-200 sticky top-0 z-30 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200",
+            isScrolled
+              ? "h-14 py-2 shadow-xs mb-4"
+              : "min-h-[72px] py-4 shadow-none mb-6"
+          )}
+        >
           <div className="flex items-center gap-3">
             <Link
               href="/admin/orders"
-              className="p-2 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-500 transition-colors"
+              className="p-2 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-500 transition-colors shrink-0"
               title="Kembali ke daftar pesanan"
             >
               <ArrowLeft2 size={16} />
@@ -356,27 +382,53 @@ function OrderDetailContent({
                   </span>
                 )}
               </div>
-              <span className="text-xs text-neutral-400 block mt-0.5">
-                Dibuat pada {formatDateId(order.created_at, "d MMMM yyyy, HH:mm")}
-              </span>
+              {!isScrolled && (
+                <span className="text-xs text-neutral-400 block mt-0.5 animate-in fade-in">
+                  Dibuat pada {formatDateId(order.created_at, "d MMMM yyyy, HH:mm")}
+                </span>
+              )}
             </div>
           </div>
 
           {/* RIGHT ACTION BUTTONS */}
           <div className="flex items-center gap-2 flex-wrap">
             {primaryTransition && (
+              <span
+                title={
+                  primaryTransition === "awaiting_confirmation" && !hasResultPhotos
+                    ? "Unggah foto hasil dulu sebelum meminta konfirmasi pelanggan"
+                    : undefined
+                }
+              >
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  disabled={primaryTransition === "awaiting_confirmation" && !hasResultPhotos}
+                  onClick={() => handleConfirmAction(primaryTransition)}
+                >
+                  {primaryTransition === "on_the_way" && "Tandai Dalam Perjalanan"}
+                  {primaryTransition === "in_progress" && "Mulai Pekerjaan"}
+                  {primaryTransition === "awaiting_confirmation" && "Minta Konfirmasi Pelanggan"}
+                  {primaryTransition === "completed" && "Selesaikan Pesanan"}
+                  {primaryTransition === "worker_confirmed" && "Konfirmasi Tukang"}
+                </Button>
+              </span>
+            )}
+
+            {/* Emergency action for account-managed workers only */}
+            {order.worker?.has_account && primaryTransition && (
               <Button
                 type="button"
-                variant="primary"
+                variant="secondary"
                 size="sm"
-                onClick={() => handleConfirmAction(primaryTransition)}
+                onClick={() => {
+                  setEmergencyTargetStatus(primaryTransition);
+                  setShowEmergencyModal(true);
+                }}
+                className="text-amber-800 bg-amber-50 hover:bg-amber-100 border-amber-200"
               >
-                {primaryTransition === "on_the_way" && "Tandai Dalam Perjalanan"}
-                {primaryTransition === "in_progress" && "Mulai Pekerjaan"}
-                {primaryTransition === "awaiting_confirmation" && "Kirim Foto & Minta Konfirmasi"}
-                {primaryTransition === "completed" && "Selesaikan Pesanan"}
-                {primaryTransition === "worker_confirmed" && "Konfirmasi Tukang"}
-                {isWorkerAccountManaged && " (atas nama tukang)"}
+                Tindakan Darurat (atas nama tukang)
               </Button>
             )}
 
@@ -989,6 +1041,84 @@ function OrderDetailContent({
                 className="bg-warning-600 hover:bg-warning-700 focus-visible:ring-warning-500"
               >
                 Tutup Komplain
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EMERGENCY ACTION MODAL (FOR ACCOUNT-MANAGED WORKERS) */}
+      {showEmergencyModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+          onClick={() => setShowEmergencyModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl border border-neutral-200 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <div className="flex items-center gap-2 text-amber-700 mb-1">
+                <Warning2 size={18} />
+                <h3 className="text-base font-bold text-neutral-900">
+                  Tindakan Darurat (Atas Nama Tukang)
+                </h3>
+              </div>
+              <p className="text-xs text-neutral-500">
+                Tukang <strong>{order.worker?.name}</strong> memiliki akun mandiri di platform.
+                Aksi ini mencatat override status oleh admin ke jejak audit. Catatan alasan wajib diisi.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-neutral-700 block mb-1">
+                Target Status
+              </label>
+              <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 text-xs font-semibold text-neutral-800">
+                {emergencyTargetStatus ? ORDER_STATUS_INFO[emergencyTargetStatus].label : "Status Berikutnya"}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-neutral-700 block mb-1">
+                Catatan Alasan Darurat <span className="text-danger-600">*</span>
+              </label>
+              <textarea
+                rows={3}
+                value={emergencyReason}
+                onChange={(e) => setEmergencyReason(e.target.value)}
+                placeholder="Misal: Tukang mengalami kendala teknis perangkat, konfirmasi via koordinasi telepon bahwa pekerjaan selesai..."
+                className="w-full text-xs p-2.5 rounded-xl border border-neutral-200 resize-none focus:outline-none focus:ring-2 focus:ring-lavender-300"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-100">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowEmergencyModal(false)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={!emergencyReason.trim() || !emergencyTargetStatus}
+                onClick={async () => {
+                  await handleExecuteTransition(
+                    emergencyTargetStatus,
+                    `[Tindakan Darurat Admin] atas nama tukang ${order.worker?.name}: ${emergencyReason}`
+                  );
+                  setShowEmergencyModal(false);
+                  setEmergencyReason("");
+                }}
+                className="bg-amber-600 hover:bg-amber-700 focus-visible:ring-amber-500 text-white"
+              >
+                Lanjutkan Tindakan Darurat
               </Button>
             </div>
           </div>

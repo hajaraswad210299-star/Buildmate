@@ -6,6 +6,8 @@ import { Lock, Eye, EyeSlash, TickCircle } from "@/lib/icons";
 import { Button } from "@/components/shared/Button";
 import { toast } from "sonner";
 
+import { createClient } from "@/lib/supabase/client";
+
 export default function AdminResetPasswordPage() {
   const router = useRouter();
   const [newPassword, setNewPassword] = useState("");
@@ -18,21 +20,47 @@ export default function AdminResetPasswordPage() {
   const hasUppercase = /[A-Z]/.test(newPassword);
   const hasLowercase = /[a-z]/.test(newPassword);
   const hasNumber = /[0-9]/.test(newPassword);
+  const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword);
 
-  const passedCount = [hasMinLength, hasUppercase, hasLowercase, hasNumber].filter(Boolean).length;
-  const isMatch = newPassword && newPassword === confirmPassword;
-  const isValid = passedCount === 4 && isMatch;
+  const passedCount = [
+    hasMinLength,
+    hasUppercase,
+    hasLowercase,
+    hasNumber,
+    hasSpecialChar,
+  ].filter(Boolean).length;
+  const isMatch = Boolean(newPassword && newPassword === confirmPassword);
+  const isValid = passedCount === 5 && isMatch;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      toast.success("Kata sandi berhasil diperbarui!");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      try {
+        await supabase.auth.signOut({ scope: "others" });
+      } catch {
+        // Ignore if unsupported
+      }
+
+      toast.success("Kata sandi berhasil diperbarui. Sesi di perangkat lain telah dikeluarkan.");
       router.push("/admin");
-    }, 700);
+    } catch (err: any) {
+      toast.error(err.message || "Gagal memperbarui kata sandi.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -74,14 +102,16 @@ export default function AdminResetPasswordPage() {
               </button>
             </div>
 
-            {/* 4-segment strength bar */}
-            <div className="grid grid-cols-4 gap-1.5 mt-2">
-              {[1, 2, 3, 4].map((seg) => (
+            {/* 5-segment strength bar */}
+            <div className="grid grid-cols-5 gap-1.5 mt-2">
+              {[1, 2, 3, 4, 5].map((seg) => (
                 <div
                   key={seg}
                   className={`h-1.5 rounded-full transition-colors ${
                     passedCount >= seg
                       ? passedCount <= 2
+                        ? "bg-danger-500"
+                        : passedCount <= 4
                         ? "bg-warning-500"
                         : "bg-success-600"
                       : "bg-neutral-200"
@@ -130,6 +160,16 @@ export default function AdminResetPasswordPage() {
                 />
                 <span className={hasNumber ? "text-neutral-800 font-medium" : ""}>
                   Mengandung angka (0-9)
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    hasSpecialChar ? "bg-success-600" : "bg-neutral-300"
+                  }`}
+                />
+                <span className={hasSpecialChar ? "text-neutral-800 font-medium" : ""}>
+                  Mengandung karakter khusus (!@#$%^&*...)
                 </span>
               </div>
             </div>

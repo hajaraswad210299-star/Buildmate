@@ -5,6 +5,9 @@ import Link from "next/link";
 import { Sms, SmsTracking, ArrowLeft2 } from "@/lib/icons";
 import { Button } from "@/components/shared/Button";
 
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+
 export default function AdminForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isSent, setIsSent] = useState(false);
@@ -21,16 +24,31 @@ export default function AdminForgotPasswordPage() {
     };
   }, [isSent, countdown]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!email) return;
 
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const supabase = createClient();
+      const siteUrl = window.location.origin;
+      const redirectTo = `${siteUrl}/auth/callback?next=/admin/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo,
+      });
+
+      if (error) {
+        toast.error(error.message);
+      } else {
+        setIsSent(true);
+        setCountdown(60);
+        toast.success("Tautan pemulihan kata sandi telah dikirim ke email kamu.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal mengirim link pemulihan kata sandi.");
+    } finally {
       setIsLoading(false);
-      setIsSent(true);
-      setCountdown(60);
-    }, 600);
+    }
   };
 
   return (
@@ -99,12 +117,9 @@ export default function AdminForgotPasswordPage() {
 
             <button
               type="button"
-              disabled={countdown > 0}
-              onClick={() => {
-                setIsSent(false);
-                setCountdown(60);
-              }}
-              className="w-full py-2.5 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+              disabled={countdown > 0 || isLoading}
+              onClick={() => handleSubmit()}
+              className="w-full py-2.5 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 transition-colors"
             >
               {countdown > 0
                 ? `Kirim ulang dalam (${countdown}s)`

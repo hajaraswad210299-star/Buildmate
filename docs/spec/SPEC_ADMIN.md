@@ -1,7 +1,7 @@
 # BuildMate — SPEC ADMIN
 
 > **File 1 dari 3:** `SPEC_ADMIN.md` · `SPEC_CUSTOMER.md` · `SPEC_MITRA.md`
-> Versi 1.1 · Bahasa UI: Indonesia · Mata uang: Rupiah (IDR) · Nama kode: English/snake_case
+> Versi 1.4 · Bahasa UI: Indonesia · Mata uang: Rupiah (IDR) · Nama kode: English/snake_case
 > **Bagian A** = khusus sisi admin. **Bagian B** = fondasi bersama, **identik di ketiga file**.
 
 ---
@@ -18,6 +18,8 @@
 8. Perbarui `docs/BUILD_STATUS.md` setiap tugas selesai.
 9. **Kerja otonom — tanpa meminta konfirmasi.** Pengguna memberi izin penuh atas proyek ini. Jalankan perintah terminal, instal/hapus paket, buat/ubah/hapus/refactor file, jalankan migrasi, commit, dan push **tanpa bertanya**. Berhenti hanya jika secara fisik butuh pengguna (login akun GitHub/Vercel/Supabase/Midtrans/Google di browser, atau kredensial yang belum tersedia). Untuk tindakan berisiko, pasang pengaman sendiri (commit dulu, `npx supabase db dump` sebelum migrasi destruktif) lalu lanjutkan, dan catat di `docs/DECISIONS.md`. Di akhir setiap tugas, laporkan ringkas apa yang dikerjakan.
 10. **Verifikasi visual sendiri.** Setelah mengubah UI, buka halaman di browser bawaan Antigravity (1440px dan 1024px), ambil screenshot, dan bandingkan dengan spesifikasi. Tugas UI belum selesai jika ada ikon yang tidak tampil, layout terpotong, atau elemen yang seharusnya fixed ikut ter-scroll.
+
+11. **Terapkan praktik terbaik secara proaktif.** Pengguna bukan orang teknis. Saat mengerjakan sebuah fitur, terapkan langsung perbaikan kecil yang jelas lebih baik **pada fitur yang sedang dikerjakan** (keamanan, aksesibilitas, validasi, pesan error yang jelas, state kosong/memuat, konsistensi dengan design system), tanpa menunggu diminta. Hal di luar fitur yang sedang dikerjakan **tidak** diubah; tulis sebagai saran. Di laporan akhir setiap tugas, sertakan bagian **"Perbaikan tambahan yang diterapkan"** (apa & kenapa, bahasa awam) dan **"Saran berikutnya"**.
 
 ---
 
@@ -81,7 +83,12 @@ Ambil **gaya** (kepadatan, struktur kartu, sidebar bergrup, grafik batang tipis,
 | Kartu | putih, border 1px `neutral-200`, radius 14px, shadow-xs, padding 20px |
 | < 1024px | sidebar menjadi drawer overlay; topbar menampilkan tombol `HambergerMenu` |
 
-**Kartu profil admin:** avatar 36px (foto/inisial), nama 14/600, email 12 `neutral-500` (dipotong dengan elipsis), ikon `ArrowUp2`. Klik → popover yang membuka **ke atas**: Ubah password (dialog), Keluar (konfirmasi). Saat sidebar collapse: hanya avatar + tooltip nama.
+**Kartu profil admin:** avatar 36px (foto/inisial), nama 14/600, email 12 `neutral-500` (dipotong dengan elipsis), ikon `ArrowUp2`. Klik → popover yang membuka **ke atas**: **Pengaturan akun** (→ A09 tab Profil saya), **Keluar** (konfirmasi). Saat sidebar collapse: hanya avatar (utuh, tidak terpotong) + tooltip nama.
+
+**Header sidebar & tombol collapse:**
+- Expanded: logo BuildMate di kiri, tombol collapse di kanan dengan ikon mengarah **ke kiri** ("Ciutkan sidebar").
+- Collapsed: **logo disembunyikan sepenuhnya**; hanya tombol collapse di tengah kolom 76px dengan ikon mengarah **ke kanan** ("Perluas sidebar"). Logo dan tombol tidak boleh bertumpuk.
+- Tombol punya tooltip dan `aria-expanded`; ikon berputar 180° (200ms) saat berganti state.
 
 **Ikon wajib tampil:** setiap item menu, kolom cari, tombol notifikasi, tombol Ekspor, label ticker, kartu metrik, header kartu, tombol aksi, dan empty state memakai ikon Iconsax (B7.6). **Halaman tidak dianggap selesai jika ada ikon yang tidak tampil.**
 
@@ -133,6 +140,8 @@ Cari pesanan (kode / nama pelanggan), tukang (nama), dan navigasi halaman. Hasil
 Admin **hanya** masuk dengan email + password. Tidak ada daftar mandiri dan tidak ada Google. Akun admin dibuat manual (B11.7).
 
 **Tata letak semua halaman auth admin:** desktop split-screen — kiri panel brand (gradasi `lavender-50` → `lavender-100`, logo, judul Instrument Serif "Ruang kendali *BuildMate*", 3 poin dengan ikon Bulk: `Chart` Pantau semua pesanan, `ShieldTick` Kelola dana dengan aman, `UserOctagon` Verifikasi mitra); kanan kartu form lebar 400px di tengah. Di bawah 1024px hanya kartu form.
+
+> **Autentikasi admin selalu nyata** (Supabase Auth), tidak pernah mock — termasuk saat `USE_MOCK_DATA=true`. Akun admin default: lihat B11.7.
 
 ### A00a — Masuk admin `/admin/login`
 - Judul (Instrument Serif 32px): "Masuk ke dashboard". Subjudul: "Khusus tim operasional BuildMate."
@@ -242,7 +251,7 @@ Setiap screen wajib: skeleton saat memuat, empty state dengan ajakan tindakan, e
 **Acceptance:** tab + filter + cari bisa dikombinasikan; URL mencerminkan filter; klik baris membuka A03.
 
 ### A03 — Detail pesanan `/admin/orders/[id]`
-**Header (sticky di bawah topbar):** `ArrowLeft2` kembali, kode pesanan (Geist Mono 20/600 + salin), badge status besar, label Plus bila ada, waktu dibuat. Kanan: **tombol aksi utama** = transisi valid berikutnya (mis. "Tandai dalam perjalanan"), dropdown `More` berisi transisi valid lain + "Batalkan pesanan" (merah, hanya jika diizinkan). Untuk pesanan dengan **tukang berakun**, transisi progres dikerjakan tukang sendiri; admin hanya melihatnya di menu `More` → **Tindakan darurat** ("… atas nama tukang", catatan wajib). Untuk tukang dikelola admin, tombol transisi tampil normal.
+**Header halaman (sticky):** bar **penuh selebar area konten** yang menempel tepat di bawah topbar (`position: sticky; top: 0` di dalam `<main>` yang scroll, tanpa celah), latar putih solid + border bawah `neutral-200`, `z-index` di atas konten. **Bukan kartu mengambang**: tanpa margin samping, tanpa radius, tanpa bayangan besar; konten tidak boleh terlihat di atas atau di samping header saat di-scroll, dan kolom kanan tidak boleh tertimpa. Isi: `ArrowLeft2` kembali, kode pesanan (Geist Mono 20/600 + salin), badge status besar, label Plus bila ada, waktu dibuat. Kanan: **tombol aksi utama** = transisi valid berikutnya (mis. "Tandai dalam perjalanan"), dropdown `More` berisi transisi valid lain + "Batalkan pesanan" (merah, hanya jika diizinkan). Untuk pesanan dengan **tukang berakun**, transisi progres dikerjakan tukang sendiri; admin hanya melihatnya di menu `More` → **Tindakan darurat** ("… atas nama tukang", catatan wajib). Untuk tukang dikelola admin, tombol transisi tampil normal.
 
 **Kolom kiri (8/12):**
 1. **Stepper progres horizontal** 7 langkah (Dibayar → … → Selesai): langkah selesai berisi `TickCircle` lavender, langkah aktif berdenyut, waktu di bawah setiap langkah.
@@ -261,16 +270,21 @@ Setiap screen wajib: skeleton saat memuat, empty state dengan ajakan tindakan, e
      - **Tugaskan manual** (saat `Habis` atau kapan pun sebelum ada yang menerima): dialog pilih tukang yang memiliki paket itu (berakun atau dikelola admin), urut berdasarkan kecocokan area & beban kerja; langsung `worker_confirmed`.
      - **Cari ulang** (saat `Habis`): reset kandidat dan mulai dispatch lagi.
      - **Lepas tukang & cari ulang** (saat `worker_confirmed`, mis. tukang berhalangan): alasan wajib; jika "Boleh dialihkan: Tidak", checkbox wajib "Pelanggan sudah menyetujui".
-4. **Tukang terpilih** (setelah ada yang menerima): avatar, nama, area, jenis akun, tombol **Chat WA**.
+4. **Tukang terpilih** (setelah ada yang menerima atau ditugaskan): avatar, nama, area, jenis akun (Berakun / Dikelola admin), cara penugasan (Dispatch otomatis / Manual), tombol **Chat WA**. Tanpa tombol "Ganti".
 5. **Aksi khusus:**
    - **Selesai otomatis** — info saat `awaiting_confirmation`: "Selesai otomatis dalam 1j 12m jika pelanggan tidak merespons" (hitung mundur). Admin bisa **Selesaikan sekarang** hanya setelah batas waktu terlewati (cadangan bila penjadwal gagal), catatan wajib.
    - **Batalkan + refund** — hanya sampai `worker_confirmed`; alasan wajib.
 6. **Catatan internal:** textarea autosave (debounce 800ms) dengan indikator "Tersimpan".
 
-**Aturan UI:** hanya transisi yang diizinkan `TRANSITIONS` untuk aktor admin yang tampil; aksi berisiko memakai dialog konfirmasi; error server (mis. "Foto hasil belum ada") tampil sebagai toast + highlight bagian terkait.
+**Aturan UI:**
+- Tombol aksi utama mengikuti guard server: jika syaratnya belum terpenuhi, tombol **disabled** dengan tooltip penjelasan (mis. `in_progress` tanpa foto hasil → "Unggah foto hasil dulu"; tombol berubah aktif otomatis setelah foto terunggah).
+- Label "(atas nama tukang)" hanya untuk tukang **berakun** (di menu Tindakan darurat). Tukang **dikelola admin** memakai label biasa, mis. "Minta konfirmasi pelanggan".
+- Penugasan manual tercatat di Riwayat tawaran sebagai baris "Ditugaskan manual oleh {admin}" (dan di audit), sehingga status `Ditugaskan` tidak pernah tampil bersama "0 percobaan" tanpa keterangan.
+- Tidak ada tombol "Ganti" di kartu tukang; gunakan **Lepas tukang & cari ulang** dari Panel Dispatch (dengan aturan persetujuan pelanggan).
+- Hanya transisi yang diizinkan `TRANSITIONS` untuk aktor admin yang tampil; aksi berisiko memakai dialog konfirmasi; error server (mis. "Foto hasil belum ada") tampil sebagai toast + highlight bagian terkait.
 
 **Micro-interaction:**
-- Header menjadi ringkas (padding mengecil, shadow muncul) saat digulir.
+- Header menjadi ringkas saat digulir (tinggi 72 → 56px, teks "Dibuat pada…" disembunyikan, shadow-xs muncul); kolom kanan yang sticky memakai offset setinggi header.
 - Setelah transisi sukses: badge crossfade + pulse, garis stepper memanjang ke langkah berikutnya (400ms), event baru meluncur masuk di atas timeline, tombol aksi utama berganti dengan slide.
 - Uploader: area drop menyala lavender + ikon naik-turun saat drag-over; progress per file; thumbnail fade-in; hapus dengan toast "Urungkan" 5 detik.
 - Panel dispatch: tawaran baru meluncur masuk di riwayat; hitung mundur tawaran berjalan per detik dengan bar menyusut; saat ditolak/kedaluwarsa baris memudar ke abu dan tawaran berikutnya muncul (realtime); saat diterima, panel berubah ke kartu "Tukang terpilih" dengan transisi tinggi.
@@ -312,10 +326,16 @@ Tab **Kategori · Paket**.
 - Kartu ringkas (count-up): pembayaran sukses, gagal/kedaluwarsa, refund (periode terpilih).
 - Tab: **Semua · Pesanan (ORD-) · Plus (SUB-)**; filter status & tanggal.
 - Tabel: order id (Geist Mono), jenis, pelanggan, nominal, status (`pending`, `success`, `failed`, `refunded`), metode (dari payload), waktu webhook diterima, kode pesanan terkait (tautan).
-- Klik baris → drawer: ringkasan + **payload webhook** (JSON viewer dengan lipat/buka dan tombol salin), riwayat notifikasi yang diterima untuk order id tersebut (menunjukkan notifikasi ganda diabaikan).
+- Klik baris → **drawer Rincian transaksi** yang menampilkan **data yang mudah dibaca**, bukan JSON:
+  1. **Header:** order id (Geist Mono + salin), badge status pembayaran (Berhasil / Menunggu / Gagal / Kedaluwarsa / Dibatalkan / Ditolak / Refund).
+  2. **Ringkasan:** Nominal (`Rp150.000`), Metode pembayaran (label manusiawi: GoPay, QRIS, ShopeePay, Transfer Bank – VA BCA, Kartu Kredit, dst.), Jenis (Pesanan / Langganan Plus), Pelanggan, Pesanan terkait (tautan ke A03) atau periode Plus.
+  3. **Detail transaksi** (daftar label–nilai): ID transaksi Midtrans (salin), Waktu transaksi ("10 Okt 2026, 15.15 WIB"), Waktu webhook diterima, Status Midtrans (`settlement` → "Berhasil", `capture` → "Berhasil (kartu)", `pending` → "Menunggu pembayaran", `expire` → "Kedaluwarsa", `cancel` → "Dibatalkan", `deny` → "Ditolak", `refund` → "Refund"), Pemeriksaan fraud (`accept` → "Aman"), Verifikasi signature ("Valid" ✓ / "Tidak valid").
+  4. **Riwayat notifikasi:** timeline setiap notifikasi yang diterima untuk order id ini (waktu, status, "Diproses" / "Diabaikan — duplikat").
+  5. **Data teknis (untuk developer):** accordion **tertutup secara default** berisi payload JSON + tombol salin; `signature_key` disamarkan (`abc1…ture`).
+
 
 **Micro-interaction:** baris baru dari webhook muncul di atas dengan highlight lavender 1.5s (Realtime `payments`); JSON viewer membuka node dengan animasi tinggi; salin → "Tersalin".
-**Acceptance:** setiap notifikasi Midtrans yang diproses terlihat di sini; payload tidak memuat server key.
+**Acceptance:** setiap notifikasi Midtrans yang diproses terlihat di sini; drawer bisa dipahami tanpa membaca JSON; JSON hanya muncul jika accordion dibuka; payload tidak memuat server key.
 
 ### A07 — Pencairan Dana `/admin/payouts`
 - Kartu (count-up): **Total menunggu**, **Sudah dicairkan (periode)**, **Jumlah tukang menunggu**.
@@ -329,8 +349,22 @@ Tab **Kategori · Paket**.
 ### A08 — Pelanggan & Member `/admin/customers` (opsional)
 Tabel: avatar, nama, email, nomor WA, jumlah pesanan, total belanja, status Gratis/Plus, masa aktif Plus, terdaftar sejak. Drawer detail: riwayat pesanan & pembayaran Plus. Tanpa aksi ubah data pelanggan.
 
-### A09 — Pengaturan `/admin/settings` (opsional, read-only)
-Menampilkan nilai konfigurasi: biaya layanan, harga & durasi Plus, batas waktu tawaran (`offer_timeout_seconds`), maksimal percobaan dispatch, batas selesai otomatis, nomor WA admin, mode Midtrans (Sandbox), status penjadwal (waktu tick terakhir). Diambil dari env/`app_settings`; tidak dapat diubah dari UI di MVP.
+### A09 — Pengaturan `/admin/settings`
+Dua tab: **Profil saya** (default) · **Konfigurasi sistem**.
+
+**Tab Profil saya** (admin yang sedang login):
+- **Foto profil:** pratinjau bulat 80px, tombol **Ganti foto** (unggah JPEG/PNG/WebP ≤ 2MB → crop bulat dengan zoom → simpan ke bucket `avatars` di path `{user_id}/avatar.webp`) dan **Hapus foto** (kembali ke inisial). Memperbarui `profiles.avatar_url`.
+- **Nama lengkap:** field + tombol Simpan (aktif hanya jika berubah) → `profiles.full_name`.
+- **Email:** menampilkan email saat ini. **Ubah email** → dialog email baru → `supabase.auth.updateUser({ email })` → state "Menunggu verifikasi: link konfirmasi dikirim ke {email baru}" (dengan Secure email change aktif, email lama juga menerima konfirmasi). Email baru berlaku setelah dikonfirmasi; tombol **Kirim ulang** (60 detik) dan **Batalkan perubahan**.
+- **Password:** **Ubah password** → dialog berisi **Password saat ini**, **Password baru**, **Konfirmasi** dengan indikator kekuatan & checklist (sama seperti A00c). Password saat ini diverifikasi dulu dengan `signInWithPassword` (salah → "Password saat ini salah"; ini juga menyegarkan login sehingga syarat *Secure password change* Supabase terpenuhi); lalu `updateUser({ password })` → `signOut({ scope: 'others' })` → toast "Password diubah. Perangkat lain telah dikeluarkan." Di bawah field Password saat ini ada tautan **Lupa password saat ini?** yang mengirim email reset ke email admin (pesan konfirmasi + hitung mundur 60 detik). Semua field password punya tombol tampil/sembunyi; tombol Simpan aktif hanya jika password saat ini terisi, password baru memenuhi semua aturan, berbeda dari password saat ini, dan konfirmasi cocok. Footer dialog: **Batal** (menutup dialog, membuang isian, tidak mengubah apa pun; juga lewat Esc / klik di luar dialog) dan **Simpan password**.
+- Semua dialog di tab ini (ubah email, ubah password, hapus foto) punya tombol **Batal**.
+- **Semua fungsi akun nyata** lewat Supabase Auth/Storage — tidak pernah memakai mock, termasuk saat `USE_MOCK_DATA=true`.
+- Perubahan nama & foto langsung terlihat di kartu profil sidebar dan avatar topbar.
+
+**Tab Konfigurasi sistem** (read-only): biaya layanan, harga & durasi Plus, batas waktu tawaran (`offer_timeout_seconds`), maksimal percobaan dispatch, batas selesai otomatis, nomor WA admin, mode Midtrans (Sandbox), status penjadwal (waktu tick terakhir). Diambil dari env/`app_settings`; tidak dapat diubah dari UI di MVP.
+
+**Micro-interaction:** foto baru fade-in di pratinjau, kartu sidebar & topbar ikut berganti; tombol Simpan berubah centang + toast "Profil diperbarui"; state "Menunggu verifikasi" memakai badge warning dengan ikon `SmsTracking`.
+**Acceptance:** admin hanya bisa mengubah profilnya sendiri; email baru tidak aktif sebelum dikonfirmasi; avatar tersimpan dan tampil setelah refresh.
 
 ---
 
@@ -352,6 +386,8 @@ Menampilkan nilai konfigurasi: biaya layanan, harga & durasi Plus, batas waktu t
 | `WaButton` | Membuka `wa.me` dengan template terisi |
 | `DispatchPanel` | Status pencarian, riwayat tawaran realtime, tugaskan manual / cari ulang / lepas tukang |
 | `AdminProfileCard` | Kartu profil menempel di bawah sidebar + popover ke atas |
+| `TransactionDrawer` | Rincian transaksi terbaca manusia + accordion data teknis |
+| `AvatarUploader` | Unggah, crop bulat, hapus foto profil |
 | `EntityDrawer` | Drawer form standar dengan footer sticky |
 | `ConfirmDialog` | Dialog konfirmasi dengan field alasan opsional/wajib |
 | `JsonViewer` | Viewer payload yang bisa dilipat + salin |
@@ -376,6 +412,9 @@ Setiap tugas ditutup dengan alur B22 setelah push pertama.
 
 - [ ] Shell admin penuh layar; sidebar & topbar tidak ikut scroll; menu sidebar bisa di-scroll sendiri; kartu profil selalu terlihat & bisa diklik (uji di tinggi layar 700px).
 - [ ] Semua ikon tampil (menu, cari, notifikasi, tombol, kartu, ticker, empty state).
+- [ ] Sidebar collapse: logo tersembunyi, ikon tombol mengarah ke kanan, tidak ada elemen bertumpuk.
+- [ ] Header detail pesanan menempel rapi di bawah topbar saat di-scroll, tanpa konten yang mengintip atau tertimpa.
+- [ ] Pengaturan: ubah foto, nama, email (dengan verifikasi), dan password berfungsi.
 - [ ] Panel dispatch: riwayat tawaran realtime; tugaskan manual, cari ulang, lepas tukang berfungsi.
 - [ ] Hanya role admin yang dapat membuka `/admin/*` dan memanggil `/api/admin/*` (uji dengan akun pelanggan & tukang).
 - [ ] Lupa & reset password admin berfungsi end-to-end.
@@ -1214,14 +1253,20 @@ revoke execute on function public.claim_worker_role(uuid) from public, anon, aut
 - Role **tidak pernah** bisa menjadi `admin` lewat pendaftaran.
 - Akun pelanggan lama yang mencoba masuk lewat Google di area mitra ditolak dengan pesan "Email ini terdaftar sebagai akun pelanggan. Gunakan email lain untuk mendaftar sebagai mitra."
 
-### B11.7 Membuat akun admin
-1. Supabase → **Authentication → Users → Add user → Create new user**: isi email & password admin, centang **Auto Confirm User**.
-2. **SQL Editor:**
-   ```sql
-   update public.profiles set role = 'admin'
-   where id = (select id from auth.users where email = 'admin@contoh.com');
-   ```
-3. Masuk di `/admin/login`. Simpan kredensial di password manager; jangan pernah di-commit.
+### B11.7 Akun admin default
+Email admin default: **`hajaraswad210299@gmail.com`** (disimpan di env `ADMIN_EMAIL`, bukan di-hardcode di komponen).
+
+Buat lewat skrip idempoten `scripts/create-admin.ts` (dijalankan dengan `npx tsx scripts/create-admin.ts`, memakai service role key dari `.env.local`):
+1. Cari user dengan `ADMIN_EMAIL`. Jika belum ada → `supabase.auth.admin.createUser({ email: ADMIN_EMAIL, email_confirm: true, password: <acak 24 karakter, tidak dicetak dan tidak disimpan> })`.
+2. Pastikan `profiles.role = 'admin'` untuk user tersebut (update jika perlu).
+3. Kirim email atur password: `supabase.auth.resetPasswordForEmail(ADMIN_EMAIL, { redirectTo: SITE_URL + '/auth/callback?next=/admin/reset-password' })`. Pemilik email membuka link → mengatur password di A00c → masuk di A00a.
+4. Skrip aman dijalankan ulang (tidak membuat user ganda, tidak mengubah password yang sudah diatur kecuali diminta flag `--send-reset`).
+
+Catatan:
+- Tidak ada password admin di repo, seed, atau log.
+- **Pengiriman email:** SMTP bawaan Supabase hanya mengirim ke alamat anggota tim/organisasi proyek Supabase dan dibatasi jumlahnya. Jika `ADMIN_EMAIL` bukan email akun pemilik proyek Supabase, atau email tidak masuk, pasang SMTP sendiri (mis. Resend) di **Authentication → Emails → SMTP Settings**.
+- Redirect URLs Supabase wajib memuat `http://localhost:3000/**` dan domain Vercel produksi (mis. `https://buildmate-ten.vercel.app/**`), agar link reset berfungsi di keduanya.
+- Cara manual (cadangan): Supabase → Authentication → Users → Add user (Auto Confirm) → SQL `update public.profiles set role='admin' where id=(select id from auth.users where email='hajaraswad210299@gmail.com');`.
 
 ### B11.8 Matriks redirect setelah masuk / callback
 | Role | Kondisi | Tujuan |
@@ -1372,6 +1417,7 @@ AUTO_COMPLETE_MINUTES=1440            # demo: 2
 OFFER_TIMEOUT_SECONDS=900             # demo: 60 — batas waktu tiap tawaran
 DISPATCH_MAX_ATTEMPTS=5
 ADMIN_WA_NUMBER=628xxxxxxxxxx
+ADMIN_EMAIL=hajaraswad210299@gmail.com   # akun admin default (B11.7)
 USE_MOCK_DATA=true                    # fase UI-first; false setelah backend tersambung
 ```
 
@@ -1594,7 +1640,7 @@ WhatsApp API otomatis, push notification, chat in-app, peta/GPS live & tracking 
    ```bash
    npx supabase gen types typescript --linked > lib/supabase/types.ts
    ```
-7. **Storage**: **Storage → New bucket** → `order-photos` (**Private**) dan `worker-photos` (**Public**). Upload dilakukan dari server setelah cek role.
+7. **Storage**: **Storage → New bucket** → `order-photos` (**Private**), `worker-photos` (**Public**), dan `avatars` (**Public**, path `{user_id}/avatar.webp`; policy: pengguna hanya boleh menulis ke folder `{user_id}` miliknya). Upload dilakukan dari server setelah cek role.
 8. **Auth**: ikuti **B11.3** (Email + Confirm email, aturan password, Google, Email Templates bahasa Indonesia, SMTP). **Authentication → URL Configuration**: Site URL = `http://localhost:3000` (diganti domain produksi setelah deploy); Redirect URLs: `http://localhost:3000/**`. Buat akun admin (**B11.7**).
 9. **pg_cron:** Database → Extensions → aktifkan `pg_cron`, lalu jadwalkan `buildmate-tick` lewat migrasi (B25.4). Isi tabel `app_settings` dengan nilai awal.
 10. **Realtime** (untuk C08 & antrean admin): **Database → Replication/Publications** → aktifkan untuk tabel `orders`, `order_events`, `payments`, `payouts`, `workers`, dan `job_offers`.

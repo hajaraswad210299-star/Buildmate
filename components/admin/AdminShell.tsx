@@ -38,6 +38,15 @@ function AdminShellInner({ children }: AdminShellProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfilePopover, setShowProfilePopover] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [adminUser, setAdminUser] = useState<{
+    name: string;
+    email: string;
+    avatarUrl?: string | null;
+  }>({
+    name: "Super Admin",
+    email: "hajaraswad210299@gmail.com",
+    avatarUrl: null,
+  });
 
   // Restore collapsed state from localStorage
   useEffect(() => {
@@ -46,6 +55,45 @@ function AdminShellInner({ children }: AdminShellProps) {
       const isCol = saved === "true";
       requestAnimationFrame(() => setCollapsed(isCol));
     }
+  }, []);
+
+  // Keyboard shortcut ⌘B / Ctrl+B
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setCollapsed((prev) => {
+          const next = !prev;
+          localStorage.setItem("buildmate_admin_collapsed", String(next));
+          return next;
+        });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Fetch admin profile
+  useEffect(() => {
+    import("@/lib/supabase/client").then(({ createClient }) => {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          supabase
+            .from("profiles")
+            .select("full_name, avatar_url")
+            .eq("id", user.id)
+            .single()
+            .then(({ data: profile }) => {
+              setAdminUser({
+                name: profile?.full_name || user.user_metadata?.full_name || "Super Admin",
+                email: user.email || "hajaraswad210299@gmail.com",
+                avatarUrl: profile?.avatar_url || null,
+              });
+            });
+        }
+      });
+    });
   }, []);
 
   const toggleCollapsed = () => {
@@ -140,10 +188,18 @@ function AdminShellInner({ children }: AdminShellProps) {
     },
   ];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowLogoutConfirm(false);
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      // ignore
+    }
     toast.success("Kamu sudah keluar dari dashboard.");
     router.push("/admin/login");
+    router.refresh();
   };
 
   // Compute breadcrumb trail
@@ -173,28 +229,40 @@ function AdminShellInner({ children }: AdminShellProps) {
       {/* 1. DESKTOP FIXED SIDEBAR */}
       <aside className="hidden lg:flex flex-col h-dvh min-h-0 border-r border-neutral-200 bg-neutral-25">
         {/* Layer 1: Header logo — tinggi 64px, tetap */}
-        <div className="h-16 shrink-0 px-5 flex items-center justify-between border-b border-neutral-200">
-          <Link href="/admin" className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-lavender-700 to-lavender-500 flex items-center justify-center text-white font-bold text-sm shadow-xs shrink-0">
-              BM
-            </div>
-            {!collapsed && (
+        <div
+          className={cn(
+            "h-16 shrink-0 border-b border-neutral-200 flex items-center transition-all",
+            collapsed ? "justify-center px-2" : "justify-between px-5"
+          )}
+        >
+          {!collapsed && (
+            <Link href="/admin" className="flex items-center gap-2.5 overflow-hidden">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-lavender-700 to-lavender-500 flex items-center justify-center text-white font-bold text-sm shadow-xs shrink-0">
+                BM
+              </div>
               <div className="flex flex-col leading-none">
                 <span className="font-bold text-sm tracking-tight text-neutral-900 flex items-center gap-1">
                   BuildMate<span className="text-[10px] text-lavender-600 font-semibold">™</span>
                 </span>
                 <span className="text-[10px] text-neutral-400 mt-0.5">Admin Workspace</span>
               </div>
-            )}
-          </Link>
+            </Link>
+          )}
 
           <button
             type="button"
             onClick={toggleCollapsed}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
-            title={collapsed ? "Perluas menu" : "Ciutkan menu"}
+            aria-expanded={!collapsed}
+            className="p-2 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors flex items-center justify-center"
+            title={collapsed ? "Perluas menu (⌘B)" : "Ciutkan menu (⌘B)"}
           >
-            <SidebarLeft size={18} />
+            <SidebarLeft
+              size={18}
+              className={cn(
+                "transition-transform duration-200",
+                collapsed && "rotate-180"
+              )}
+            />
           </button>
         </div>
 
@@ -284,14 +352,14 @@ function AdminShellInner({ children }: AdminShellProps) {
         <div className="shrink-0 border-t border-neutral-200 p-3 bg-neutral-25 relative">
           {/* Popover upward */}
           {showProfilePopover && (
-            <div className="absolute bottom-full mb-2 left-3 right-3 bg-white rounded-2xl border border-neutral-200 shadow-lg p-2 z-50 space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
+            <div className="absolute bottom-full mb-2 left-3 right-3 bg-white rounded-2xl border border-neutral-200 shadow-lg p-2 z-50 space-y-1 animate-in fade-in slide-from-bottom-2 duration-150">
               <Link
-                href="/admin/reset-password"
+                href="/admin/settings?tab=profile"
                 onClick={() => setShowProfilePopover(false)}
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
               >
                 <Setting2 size={16} className="text-neutral-400" />
-                <span>Ubah Password</span>
+                <span>Pengaturan Akun</span>
               </Link>
               <button
                 type="button"
@@ -314,19 +382,28 @@ function AdminShellInner({ children }: AdminShellProps) {
               "w-full flex items-center justify-between p-2 rounded-xl hover:bg-neutral-100/80 transition-colors text-left",
               collapsed && "justify-center p-1.5"
             )}
-            title={collapsed ? "Super Admin (admin@buildmate.id)" : undefined}
+            title={collapsed ? `${adminUser.name} (${adminUser.email})` : undefined}
           >
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-9 h-9 rounded-full bg-lavender-100 text-lavender-800 flex items-center justify-center font-bold text-xs shrink-0 ring-1 ring-lavender-200">
-                SA
-              </div>
+              {adminUser.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={adminUser.avatarUrl}
+                  alt={adminUser.name}
+                  className="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-lavender-200"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-lavender-100 text-lavender-800 flex items-center justify-center font-bold text-xs shrink-0 ring-1 ring-lavender-200">
+                  {adminUser.name.slice(0, 2).toUpperCase()}
+                </div>
+              )}
               {!collapsed && (
                 <div className="flex flex-col overflow-hidden leading-tight">
                   <span className="text-sm font-semibold text-neutral-800 truncate">
-                    Super Admin
+                    {adminUser.name}
                   </span>
                   <span className="text-xs text-neutral-500 truncate">
-                    admin@buildmate.id
+                    {adminUser.email}
                   </span>
                 </div>
               )}
@@ -428,9 +505,24 @@ function AdminShellInner({ children }: AdminShellProps) {
 
             {/* Admin Avatar in Topbar */}
             <div className="flex items-center gap-2 pl-2 border-l border-neutral-200">
-              <div className="w-8 h-8 rounded-full bg-lavender-100 text-lavender-800 flex items-center justify-center font-bold text-xs ring-1 ring-lavender-200">
-                SA
-              </div>
+              <Link
+                href="/admin/settings?tab=profile"
+                className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center font-bold text-xs ring-1 ring-lavender-200 hover:ring-lavender-400 transition-all"
+                title={`${adminUser.name} - Pengaturan Akun`}
+              >
+                {adminUser.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={adminUser.avatarUrl}
+                    alt={adminUser.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-lavender-100 text-lavender-800 flex items-center justify-center">
+                    {adminUser.name.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+              </Link>
             </div>
           </div>
         </header>

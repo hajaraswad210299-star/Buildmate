@@ -17,6 +17,8 @@
 7. **Bagian B identik di 3 file.** Jika fondasi bersama berubah, perbarui ketiga file dan catat di `docs/DECISIONS.md`.
 8. Perbarui `docs/BUILD_STATUS.md` setiap tugas selesai.
 
+9. **Terapkan praktik terbaik secara proaktif.** Pengguna bukan orang teknis. Saat mengerjakan sebuah fitur, terapkan langsung perbaikan kecil yang jelas lebih baik **pada fitur yang sedang dikerjakan** (keamanan, aksesibilitas, validasi, pesan error yang jelas, state kosong/memuat, konsistensi dengan design system), tanpa menunggu diminta. Hal di luar fitur yang sedang dikerjakan **tidak** diubah; tulis sebagai saran. Di laporan akhir setiap tugas, sertakan bagian **"Perbaikan tambahan yang diterapkan"** (apa & kenapa, bahasa awam) dan **"Saran berikutnya"**.
+
 ---
 
 # BAGIAN A — SISI MITRA (TUKANG)
@@ -1051,14 +1053,20 @@ revoke execute on function public.claim_worker_role(uuid) from public, anon, aut
 - Role **tidak pernah** bisa menjadi `admin` lewat pendaftaran.
 - Akun pelanggan lama yang mencoba masuk lewat Google di area mitra ditolak dengan pesan "Email ini terdaftar sebagai akun pelanggan. Gunakan email lain untuk mendaftar sebagai mitra."
 
-### B11.7 Membuat akun admin
-1. Supabase → **Authentication → Users → Add user → Create new user**: isi email & password admin, centang **Auto Confirm User**.
-2. **SQL Editor:**
-   ```sql
-   update public.profiles set role = 'admin'
-   where id = (select id from auth.users where email = 'admin@contoh.com');
-   ```
-3. Masuk di `/admin/login`. Simpan kredensial di password manager; jangan pernah di-commit.
+### B11.7 Akun admin default
+Email admin default: **`hajaraswad210299@gmail.com`** (disimpan di env `ADMIN_EMAIL`, bukan di-hardcode di komponen).
+
+Buat lewat skrip idempoten `scripts/create-admin.ts` (dijalankan dengan `npx tsx scripts/create-admin.ts`, memakai service role key dari `.env.local`):
+1. Cari user dengan `ADMIN_EMAIL`. Jika belum ada → `supabase.auth.admin.createUser({ email: ADMIN_EMAIL, email_confirm: true, password: <acak 24 karakter, tidak dicetak dan tidak disimpan> })`.
+2. Pastikan `profiles.role = 'admin'` untuk user tersebut (update jika perlu).
+3. Kirim email atur password: `supabase.auth.resetPasswordForEmail(ADMIN_EMAIL, { redirectTo: SITE_URL + '/auth/callback?next=/admin/reset-password' })`. Pemilik email membuka link → mengatur password di A00c → masuk di A00a.
+4. Skrip aman dijalankan ulang (tidak membuat user ganda, tidak mengubah password yang sudah diatur kecuali diminta flag `--send-reset`).
+
+Catatan:
+- Tidak ada password admin di repo, seed, atau log.
+- **Pengiriman email:** SMTP bawaan Supabase hanya mengirim ke alamat anggota tim/organisasi proyek Supabase dan dibatasi jumlahnya. Jika `ADMIN_EMAIL` bukan email akun pemilik proyek Supabase, atau email tidak masuk, pasang SMTP sendiri (mis. Resend) di **Authentication → Emails → SMTP Settings**.
+- Redirect URLs Supabase wajib memuat `http://localhost:3000/**` dan domain Vercel produksi (mis. `https://buildmate-ten.vercel.app/**`), agar link reset berfungsi di keduanya.
+- Cara manual (cadangan): Supabase → Authentication → Users → Add user (Auto Confirm) → SQL `update public.profiles set role='admin' where id=(select id from auth.users where email='hajaraswad210299@gmail.com');`.
 
 ### B11.8 Matriks redirect setelah masuk / callback
 | Role | Kondisi | Tujuan |
@@ -1209,6 +1217,7 @@ AUTO_COMPLETE_MINUTES=1440            # demo: 2
 OFFER_TIMEOUT_SECONDS=900             # demo: 60 — batas waktu tiap tawaran
 DISPATCH_MAX_ATTEMPTS=5
 ADMIN_WA_NUMBER=628xxxxxxxxxx
+ADMIN_EMAIL=hajaraswad210299@gmail.com   # akun admin default (B11.7)
 USE_MOCK_DATA=true                    # fase UI-first; false setelah backend tersambung
 ```
 
@@ -1431,7 +1440,7 @@ WhatsApp API otomatis, push notification, chat in-app, peta/GPS live & tracking 
    ```bash
    npx supabase gen types typescript --linked > lib/supabase/types.ts
    ```
-7. **Storage**: **Storage → New bucket** → `order-photos` (**Private**) dan `worker-photos` (**Public**). Upload dilakukan dari server setelah cek role.
+7. **Storage**: **Storage → New bucket** → `order-photos` (**Private**), `worker-photos` (**Public**), dan `avatars` (**Public**, path `{user_id}/avatar.webp`; policy: pengguna hanya boleh menulis ke folder `{user_id}` miliknya). Upload dilakukan dari server setelah cek role.
 8. **Auth**: ikuti **B11.3** (Email + Confirm email, aturan password, Google, Email Templates bahasa Indonesia, SMTP). **Authentication → URL Configuration**: Site URL = `http://localhost:3000` (diganti domain produksi setelah deploy); Redirect URLs: `http://localhost:3000/**`. Buat akun admin (**B11.7**).
 9. **pg_cron:** Database → Extensions → aktifkan `pg_cron`, lalu jadwalkan `buildmate-tick` lewat migrasi (B25.4). Isi tabel `app_settings` dengan nilai awal.
 10. **Realtime** (untuk C08 & antrean admin): **Database → Replication/Publications** → aktifkan untuk tabel `orders`, `order_events`, `payments`, `payouts`, `workers`, dan `job_offers`.

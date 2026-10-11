@@ -13,6 +13,7 @@ import {
   Warning2,
 } from "@/lib/icons";
 import { Button } from "@/components/shared/Button";
+import { formatDateId } from "@/lib/format";
 
 interface DispatchPanelProps {
   order: Order;
@@ -158,71 +159,133 @@ export function DispatchPanel({
               Riwayat Tawaran
             </span>
             <span className="text-[11px] text-neutral-400">
-              {order.dispatch_offers?.length || 0} Percobaan
+              {order.dispatch_offers && order.dispatch_offers.length > 0
+                ? `${order.dispatch_offers.length} Catatan`
+                : order.worker
+                ? "1 Penugasan"
+                : "0 Percobaan"}
             </span>
           </div>
 
           <div className="space-y-2">
             {order.dispatch_offers && order.dispatch_offers.length > 0 ? (
-              order.dispatch_offers.map((offer) => (
-                <div
-                  key={offer.id}
-                  className={`p-2.5 rounded-xl border text-xs transition-colors ${
-                    offer.status === "accepted"
-                      ? "bg-success-50/50 border-success-200"
-                      : offer.status === "pending"
-                      ? "bg-amber-50/40 border-amber-200"
-                      : "bg-neutral-50/60 border-neutral-200 opacity-80"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-neutral-200 text-neutral-700 font-bold text-[10px] flex items-center justify-center shrink-0">
-                        #{offer.attempt_number}
-                      </span>
-                      <div>
-                        <div className="font-semibold text-neutral-900 text-xs">
-                          {offer.worker_name}
+              order.dispatch_offers.map((offer) => {
+                if (offer.is_manual) {
+                  return (
+                    <div
+                      key={offer.id}
+                      className="p-2.5 rounded-xl border border-lavender-200 bg-lavender-50/50 text-xs transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-lavender-200 text-lavender-800 font-bold text-[10px] flex items-center justify-center shrink-0">
+                            ★
+                          </span>
+                          <div>
+                            <div className="font-semibold text-neutral-900 text-xs">
+                              {offer.worker_name}
+                            </div>
+                            <div className="text-[11px] text-lavender-700 font-medium">
+                              Ditugaskan manual oleh {offer.assigned_by || "Admin"} ·{" "}
+                              {offer.sent_at
+                                ? formatDateId(offer.sent_at, "d MMM, HH:mm")
+                                : "Baru saja"}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-[10px] text-neutral-400">
-                          {offer.worker_area || "Area Sesuai"}
-                        </div>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success-700 bg-success-100/70 px-2 py-0.5 rounded-full">
+                          <TickCircle size={12} />
+                          Ditugaskan
+                        </span>
                       </div>
                     </div>
+                  );
+                }
 
-                    {/* Offer Status */}
-                    {offer.status === "pending" && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full">
-                        <Clock size={12} className="animate-spin" />
-                        Menunggu (14m)
-                      </span>
-                    )}
-                    {offer.status === "accepted" && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success-700 bg-success-100/70 px-2 py-0.5 rounded-full">
-                        <TickCircle size={12} />
-                        Diterima
-                      </span>
-                    )}
-                    {offer.status === "declined" && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger-700 bg-danger-100/70 px-2 py-0.5 rounded-full">
-                        <CloseCircle size={12} />
-                        Ditolak
-                      </span>
-                    )}
-                    {offer.status === "expired" && (
-                      <span className="text-[11px] font-medium text-neutral-500 bg-neutral-200/60 px-2 py-0.5 rounded-full">
-                        Kedaluwarsa
-                      </span>
+                return (
+                  <div
+                    key={offer.id}
+                    className={`p-2.5 rounded-xl border text-xs transition-colors ${
+                      offer.status === "accepted"
+                        ? "bg-success-50/50 border-success-200"
+                        : offer.status === "pending"
+                        ? "bg-amber-50/40 border-amber-200"
+                        : "bg-neutral-50/60 border-neutral-200 opacity-80"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-neutral-200 text-neutral-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                          #{offer.attempt_number}
+                        </span>
+                        <div>
+                          <div className="font-semibold text-neutral-900 text-xs">
+                            {offer.worker_name}
+                          </div>
+                          <div className="text-[10px] text-neutral-400">
+                            {offer.worker_area || "Area Sesuai"}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Offer Status */}
+                      {offer.status === "pending" && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full">
+                          <Clock size={12} className="animate-spin" />
+                          Menunggu (14m)
+                        </span>
+                      )}
+                      {offer.status === "accepted" && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success-700 bg-success-100/70 px-2 py-0.5 rounded-full">
+                          <TickCircle size={12} />
+                          Diterima
+                        </span>
+                      )}
+                      {offer.status === "declined" && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger-700 bg-danger-100/70 px-2 py-0.5 rounded-full">
+                          <CloseCircle size={12} />
+                          Ditolak
+                        </span>
+                      )}
+                      {offer.status === "expired" && (
+                        <span className="text-[11px] font-medium text-neutral-500 bg-neutral-200/60 px-2 py-0.5 rounded-full">
+                          Kedaluwarsa
+                        </span>
+                      )}
+                    </div>
+
+                    {offer.decline_reason && (
+                      <div className="mt-1.5 text-[11px] text-danger-600 bg-white/70 p-1.5 rounded-lg border border-danger-100">
+                        Alasan: &ldquo;{offer.decline_reason}&rdquo;
+                      </div>
                     )}
                   </div>
-
-                  {offer.decline_reason && (
-                    <div className="mt-1.5 text-[11px] text-danger-600 bg-white/70 p-1.5 rounded-lg border border-danger-100">
-                      Alasan: &ldquo;{offer.decline_reason}&rdquo;
+                );
+              })
+            ) : order.worker ? (
+              <div className="p-2.5 rounded-xl border border-lavender-200 bg-lavender-50/50 text-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-lavender-200 text-lavender-800 font-bold text-[10px] flex items-center justify-center shrink-0">
+                      ★
+                    </span>
+                    <div>
+                      <div className="font-semibold text-neutral-900 text-xs">
+                        {order.worker.name}
+                      </div>
+                      <div className="text-[11px] text-lavender-700 font-medium">
+                        {order.assignment_method === "manual"
+                          ? `Ditugaskan manual oleh ${order.assigned_by || "Admin BuildMate"} · ${formatDateId(order.worker_confirmed_at || order.created_at, "d MMM, HH:mm")}`
+                          : `Ditugaskan via dispatch otomatis · ${formatDateId(order.worker_confirmed_at || order.created_at, "d MMM, HH:mm")}`}
+                      </div>
                     </div>
-                  )}
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success-700 bg-success-100/70 px-2 py-0.5 rounded-full">
+                    <TickCircle size={12} />
+                    Ditugaskan
+                  </span>
                 </div>
-              ))
+              </div>
             ) : (
               <div className="py-3 text-center text-xs text-neutral-400 italic bg-neutral-50 rounded-xl border border-neutral-150">
                 Belum ada tawaran dikirim.
@@ -277,15 +340,7 @@ export function DispatchPanel({
           <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
             Mitra / Tukang Terpilih
           </h3>
-          {order.worker && (
-            <button
-              type="button"
-              onClick={() => setShowManualModal(true)}
-              className="text-xs font-semibold text-lavender-600 hover:text-lavender-800"
-            >
-              Ganti
-            </button>
-          )}
+          {/* Tombol 'Ganti' dihapus sesuai B5 & instruksi spec: diganti oleh 'Lepas Tukang & Cari Ulang' di Panel Dispatch */}
         </div>
 
         {order.worker ? (
@@ -302,7 +357,7 @@ export function DispatchPanel({
                   className="w-10 h-10 rounded-full object-cover border border-neutral-200 shrink-0"
                 />
                 <div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-semibold text-neutral-900 text-xs">
                       {order.worker.name}
                     </span>
@@ -312,34 +367,51 @@ export function DispatchPanel({
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] text-neutral-400 block">
+                  <span className="text-[11px] text-neutral-400 block mt-0.5">
                     Area: {order.worker.service_area}
                   </span>
-                  <span className="text-[10px] text-neutral-500 font-medium">
-                    {order.worker.has_account ? "Mitra Berakun (Otomatis)" : "Dikelola Admin"}
-                  </span>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                        order.worker.has_account
+                          ? "bg-lavender-100 text-lavender-800 border border-lavender-200"
+                          : "bg-neutral-100 text-neutral-700 border border-neutral-200"
+                      }`}
+                    >
+                      {order.worker.has_account ? "Berakun" : "Dikelola admin"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <WaButton
-                phone={order.worker.phone}
-                messageText={WA_TEMPLATES.adminToWorkerOffer({
-                  workerName: order.worker.name,
-                  orderCode: order.order_code,
-                  packageName: order.package.name,
-                  serviceArea: order.worker.service_area,
-                  date: order.scheduled_date,
-                  timeSlot: order.time_slot,
-                })}
-                size="sm"
-              />
+              {/* Chat WhatsApp Button with custom template */}
+              <a
+                href={`https://wa.me/${order.worker.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                  `Halo ${order.worker.name}, terkait pesanan ${order.order_code} di BuildMate...`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors shrink-0"
+              >
+                <span>Chat WhatsApp</span>
+              </a>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-100 flex items-center justify-between text-xs">
-              <span className="text-neutral-500">Respon Tawaran:</span>
-              <span className="font-semibold text-success-700 bg-success-50 px-2 py-0.5 rounded-full text-[11px]">
-                {order.worker_response === "accepted" ? "Diterima" : "Terkonfirmasi"}
-              </span>
+            <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-100 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-500">Metode Penugasan:</span>
+                <span className="font-semibold text-neutral-800">
+                  {order.assignment_method === "manual"
+                    ? `Manual oleh ${order.assigned_by || "Admin"}`
+                    : "Dispatch otomatis"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-neutral-200/50">
+                <span className="text-neutral-500">Respon Tawaran:</span>
+                <span className="font-semibold text-success-700 bg-success-50 px-2 py-0.5 rounded-full text-[11px]">
+                  {order.worker_response === "accepted" ? "Diterima" : "Terkonfirmasi"}
+                </span>
+              </div>
             </div>
           </div>
         ) : (
