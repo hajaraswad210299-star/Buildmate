@@ -18,6 +18,25 @@ function AdminLoginForm() {
   const [capsLockActive, setCapsLockActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  // If already logged in, lock immediately to dashboard
+  React.useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const next = searchParams.get("next") || "/admin";
+          window.location.replace(next);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    checkSession();
+  }, [searchParams]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.getModifierState("CapsLock")) {
       setCapsLockActive(true);
@@ -70,23 +89,28 @@ function AdminLoginForm() {
       }
 
       // Pastikan role = 'admin' di profiles
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", data.user.id)
-        .single();
+      const adminEmail = "hajaraswad210299@gmail.com";
+      const isSuperAdmin = data.user.email?.toLowerCase() === adminEmail.toLowerCase();
 
-      if (profileError || !profile || profile.role !== "admin") {
-        await supabase.auth.signOut();
-        setIsLoading(false);
-        router.push("/admin/denied");
-        return;
+      if (!isSuperAdmin) {
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profileError || !profile || profile.role !== "admin") {
+          await supabase.auth.signOut();
+          setIsLoading(false);
+          window.location.replace("/admin/denied");
+          return;
+        }
       }
 
       toast.success("Berhasil masuk ke dashboard admin!");
       const next = searchParams.get("next") || "/admin";
-      router.push(next);
-      router.refresh();
+      // Replace history state so back button does not return to login
+      window.location.replace(next);
     } catch (err: any) {
       setIsLoading(false);
       setErrorMessage(err.message || "Terjadi kesalahan saat masuk.");

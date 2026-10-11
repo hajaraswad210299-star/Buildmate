@@ -31,8 +31,21 @@ export function formatPercent(value: number, withSign: boolean = true): string {
  * Format tanggal Indonesia lengkap: "Sen, 12 Okt 2026" atau "12 Oktober 2026"
  */
 export function formatDateId(date: string | Date, pattern: string = "d MMM yyyy"): string {
-  const d = typeof date === "string" ? parseISO(date) : date;
-  return format(d, pattern, { locale: id });
+  if (!date) return "-";
+  try {
+    const d = typeof date === "string" ? parseISO(date) : date;
+    if (isNaN(d.getTime())) return "-";
+    // Replace unescaped literal WIB with 'WIB' if present
+    const safePattern = pattern.replace(/\bWIB\b/g, "'WIB'");
+    return format(d, safePattern, { locale: id });
+  } catch {
+    try {
+      const d = typeof date === "string" ? parseISO(date) : date;
+      return format(d, "d MMM yyyy", { locale: id });
+    } catch {
+      return "-";
+    }
+  }
 }
 
 /**

@@ -42,11 +42,54 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (pathname.startsWith("/admin")) {
+    // 1. If trying to visit /admin/login while already logged in as admin, lock them to /admin
+    if (pathname === "/admin/login") {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase() || "hajaraswad210299@gmail.com";
+        const isConfiguredAdmin = Boolean(user.email?.toLowerCase() === adminEmail);
+
+        if (isConfiguredAdmin) {
+          const dashboardUrl = request.nextUrl.clone();
+          dashboardUrl.pathname = "/admin";
+          dashboardUrl.search = "";
+          const redirectRes = NextResponse.redirect(dashboardUrl);
+          redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+          return redirectRes;
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.role === "admin") {
+          const dashboardUrl = request.nextUrl.clone();
+          dashboardUrl.pathname = "/admin";
+          dashboardUrl.search = "";
+          const redirectRes = NextResponse.redirect(dashboardUrl);
+          redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+          return redirectRes;
+        }
+      }
+
+      // If not logged in, allow /admin/login with no-store
+      response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+      response.headers.set("Pragma", "no-cache");
+      response.headers.set("Expires", "0");
+      return response;
+    }
+
     const isOpen = OPEN_ADMIN_PATHS.some(
       (path) => pathname === path || pathname.startsWith(`${path}/`)
     );
 
     if (isOpen) {
+      response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
       return response;
     }
 
@@ -60,12 +103,16 @@ export async function middleware(request: NextRequest) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/admin/login";
       loginUrl.searchParams.set("next", pathname);
-      return NextResponse.redirect(loginUrl);
+      const redirectRes = NextResponse.redirect(loginUrl);
+      redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+      redirectRes.headers.set("Pragma", "no-cache");
+      redirectRes.headers.set("Expires", "0");
+      return redirectRes;
     }
 
     // Check if user is configured ADMIN_EMAIL
-    const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
-    const isConfiguredAdmin = Boolean(adminEmail && user.email?.toLowerCase() === adminEmail);
+    const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase() || "hajaraswad210299@gmail.com";
+    const isConfiguredAdmin = Boolean(user.email?.toLowerCase() === adminEmail);
 
     if (!isConfiguredAdmin) {
       // Check profiles.role
@@ -78,9 +125,16 @@ export async function middleware(request: NextRequest) {
       if (!profile || profile.role !== "admin") {
         const deniedUrl = request.nextUrl.clone();
         deniedUrl.pathname = "/admin/denied";
-        return NextResponse.redirect(deniedUrl);
+        const redirectRes = NextResponse.redirect(deniedUrl);
+        redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+        return redirectRes;
       }
     }
+
+    // Add strict anti-caching headers to all admin pages to prevent back-forward cache leakage
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
   }
 
   return response;

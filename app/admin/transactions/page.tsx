@@ -301,7 +301,7 @@ function TransactionDetailDrawer({
               </span>
             </div>
             <p className="text-xs text-neutral-400 mt-1">
-              {formatDateId(payment.processed_at || payment.created_at, "EEEE, d MMMM yyyy · HH:mm:ss WIB")}
+              {formatDateId(payment.processed_at || payment.created_at, "EEEE, d MMMM yyyy · HH:mm:ss 'WIB'")}
             </p>
           </div>
 

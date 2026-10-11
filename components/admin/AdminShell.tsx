@@ -73,6 +73,39 @@ function AdminShellInner({ children }: AdminShellProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Handle bfcache: if user pressed back/forward and page was restored from cache, force reload
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        window.location.reload();
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+
+  // Monitor auth state: if signed out, lock out immediately
+  useEffect(() => {
+    let active = true;
+    import("@/lib/supabase/client").then(({ createClient }) => {
+      const supabase = createClient();
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!active) return;
+        if (event === "SIGNED_OUT" || !session) {
+          window.location.replace("/admin/login");
+        }
+      });
+      return () => {
+        subscription.unsubscribe();
+      };
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   // Fetch admin profile
   useEffect(() => {
     import("@/lib/supabase/client").then(({ createClient }) => {
@@ -191,16 +224,15 @@ function AdminShellInner({ children }: AdminShellProps) {
   const handleLogout = async () => {
     setShowLogoutConfirm(false);
     try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      await supabase.auth.signOut();
-    } catch {
-      // ignore
-    }
-    toast.success("Kamu sudah keluar dari dashboard.");
-    router.push("/admin/login");
-    router.refresh();
-  };
+       const { createClient } = await import("@/lib/supabase/client");
+       const supabase = createClient();
+       await supabase.auth.signOut();
+     } catch {
+       // ignore
+     }
+     toast.success("Kamu sudah keluar dari dashboard.");
+     window.location.replace("/admin/login");
+   };
 
   // Compute breadcrumb trail
   const getBreadcrumbTitle = () => {
