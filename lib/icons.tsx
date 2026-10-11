@@ -143,6 +143,12 @@ export const Heart = createIcon("Heart", Iconsax.Heart);
 export const MessageQuestion = createIcon("MessageQuestion", Iconsax.MessageQuestion);
 export const Call = createIcon("Call", Iconsax.Call);
 
+// Aliases for convenience
+export const Calendar = Calendar1;
+export const ArrowRight2 = ArrowRight;
+export const Sparkles = Crown1;
+export const Award = Verify;
+
 /**
  * WhatsApp SVG Icon (since standard Iconsax lacks WhatsApp branding)
  */

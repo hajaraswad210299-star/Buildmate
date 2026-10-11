@@ -610,8 +610,21 @@ export function CustomerShell({
             </div>
           </div>
 
+          {/* Centered Crest Seal in Flamingo Estate Style */}
+          <div className="pt-10 pb-8 flex flex-col items-center justify-center text-center border-t border-lavender-800/60">
+            <div className="w-13 h-13 rounded-full border border-white/20 bg-white/5 flex items-center justify-center mb-3">
+              <span className="font-serif text-lg text-lavender-200 font-bold">BM</span>
+            </div>
+            <p className="font-serif tracking-[0.25em] text-xs text-white uppercase font-medium">
+              BUILDMATE · SURABAYA
+            </p>
+            <p className="text-[10px] text-lavender-300 tracking-widest mt-1 uppercase">
+              Standar Integritas & Ketenangan Hunian
+            </p>
+          </div>
+
           {/* Bottom Row */}
-          <div className="pt-8 border-t border-lavender-800/80 flex items-center justify-between text-xs text-lavender-300">
+          <div className="pt-6 border-t border-lavender-800/80 flex items-center justify-between text-xs text-lavender-300">
             <p>© 2026 BuildMate SaaS Solo Challenge. Seluruh hak cipta dilindungi.</p>
             <div className="flex items-center gap-6">
               <span>Bahasa Indonesia · Rupiah (IDR)</span>
