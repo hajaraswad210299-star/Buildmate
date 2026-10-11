@@ -176,8 +176,8 @@ export default function HomePage() {
   return (
     <CustomerShell>
       {/* 1. HERO STAGE: FLAMINGO ESTATE WARM PHOTOGRAPHY + AIRBNB FLOATING CAPSULE SEARCH */}
-      <section className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-        <div className="max-w-[1240px] mx-auto">
+      <section className="w-full px-6 pt-4 sm:pt-6">
+        <div className="w-full">
           {/* Hero Photography Container */}
           <div className="relative rounded-[28px] sm:rounded-[36px] overflow-hidden bg-[#1E1B26] min-h-[480px] sm:min-h-[540px] flex flex-col justify-between p-6 sm:p-12 lg:p-16 text-white shadow-sm border border-neutral-800/40">
             {/* Background Still Life Workshop Image with Natural Organic Lighting */}
@@ -248,7 +248,7 @@ export default function HomePage() {
       </section>
 
       {/* 3. FLAMINGO ESTATE ROW 1: "PILIHAN TERKURASI" (4-COLUMN PRODUCT GRID) */}
-      <section className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20">
+      <section className="w-full px-6 pt-16 sm:pt-20">
         <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
           <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-1.5">
             PILIHAN TERKURASI · SURABAYA
@@ -298,7 +298,7 @@ export default function HomePage() {
       />
 
       {/* 5. FLAMINGO ESTATE ROW 2: "KOLEKSI PERBAIKAN POPULER" (4-COLUMN GRID) */}
-      <section className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <section className="w-full px-6 py-8 sm:py-12">
         <div className="flex items-end justify-between mb-8 sm:mb-10">
           <div>
             <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-1">
@@ -361,7 +361,7 @@ export default function HomePage() {
       />
 
       {/* 8. MITRA PILIHAN SURABAYA (AIRBNB HOST CARD & FLAMINGO REFINED STYLING) */}
-      <section className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+      <section className="w-full px-6 py-10 sm:py-16">
         <div className="flex items-end justify-between mb-8 sm:mb-10">
           <div>
             <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-1">
@@ -401,7 +401,7 @@ export default function HomePage() {
 
       {/* 9. THE AMBIENT FEATURE BANNER: "THE BUILDMATE SHIELD" */}
       {/* Inspired by the screenshot's full-width landscape "The Flamingo Fund" banner */}
-      <section className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-14">
+      <section className="w-full px-6 py-8 sm:py-14">
         <div className="relative rounded-[32px] sm:rounded-[40px] overflow-hidden bg-neutral-900 min-h-[380px] sm:min-h-[460px] flex flex-col justify-center items-center text-center p-8 sm:p-14 text-white shadow-md">
           {/* Natural Lush Light Terrace Landscape */}
           <img
@@ -439,7 +439,7 @@ export default function HomePage() {
       </section>
 
       {/* 10. CARA KERJA (01 02 03 MAGAZINE STYLE) */}
-      <section id="cara-kerja" className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      <section id="cara-kerja" className="w-full px-6 py-12 sm:py-16">
         <div className="bg-[#FAF8F5] rounded-[32px] p-8 sm:p-14 border border-[#EBE7DF]">
           <div className="text-center max-w-lg mx-auto mb-12">
             <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-1">
@@ -498,7 +498,7 @@ export default function HomePage() {
 
       {/* 11. FLAMINGO ESTATE STORIES / EDITORIAL JOURNAL */}
       {/* Inspired by the screenshot's 4-card recipe/story row at the bottom ("Recipes & Stories") */}
-      <section className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+      <section className="w-full px-6 py-10 sm:py-16">
         <div className="text-center max-w-xl mx-auto mb-10">
           <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-1">
             CATATAN RUMAH & PERAWATAN
@@ -535,7 +535,7 @@ export default function HomePage() {
       </section>
 
       {/* 12. PITA CTA MITRA (DEEP FOREST / OBSIDIAN RIBBON) */}
-      <section className="max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+      <section className="w-full px-6 pb-16">
         <div className="rounded-[28px] bg-[#1E241E] text-white p-8 sm:p-10 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left border border-neutral-800">
           <div className="space-y-1">
             <p className="text-[11px] font-semibold tracking-widest text-emerald-300 uppercase">

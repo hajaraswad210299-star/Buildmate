@@ -62,7 +62,7 @@ export function AirbnbCategoryRibbon({
   };
 
   return (
-    <div className={`relative max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 ${className}`}>
+    <div className={`relative w-full px-6 ${className}`}>
       <div className="flex items-center gap-2">
         {/* Left Scroll Button */}
         <button

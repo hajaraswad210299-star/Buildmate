@@ -107,7 +107,7 @@ export function CustomerShell({
     <div className="min-h-screen bg-cream-50 text-neutral-900 flex flex-col font-sans selection:bg-lavender-200 selection:text-lavender-900">
       {/* 1. Thin Announcement Bar (Flamingo Estate pattern A2 & A3) */}
       {showAnnouncement && !profile?.is_plus && (
-        <div className="bg-lavender-800 text-white text-[13px] py-2 px-4 flex items-center justify-between text-center relative z-40 transition-colors">
+        <div className="bg-lavender-800 text-white text-[13px] py-2 px-6 flex items-center justify-between text-center relative z-40 transition-colors">
           <div className="flex-1 text-center font-medium">
             <Link
               href="/plus"
@@ -138,7 +138,7 @@ export function CustomerShell({
             : "bg-white border-b border-neutral-200/80"
         }`}
       >
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-6">
           {/* Desktop Nav (≥1024px) */}
           <div className="hidden lg:flex items-center justify-between h-[72px]">
             {/* Left Menu Links */}
@@ -519,7 +519,7 @@ export function CustomerShell({
 
       {/* 4. Desktop Footer (lavender-900, Instrument Serif titles, A2 & A3) */}
       <footer className="hidden lg:block bg-lavender-900 text-lavender-100 pt-16 pb-12 mt-20 border-t border-lavender-800">
-        <div className="max-w-[1200px] mx-auto px-8">
+        <div className="w-full px-6">
           <div className="grid grid-cols-4 gap-12 mb-16">
             {/* Col 1: Brand */}
             <div>

@@ -16,7 +16,7 @@ export function EditorialQuote({
 }: EditorialQuoteProps) {
   return (
     <section className={`py-16 sm:py-24 bg-cream-100/60 border-y border-cream-200/60 ${className}`}>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+      <div className="max-w-4xl mx-auto px-6 text-center space-y-8">
         <p className="text-[11px] font-semibold text-neutral-500 tracking-[0.25em] uppercase">
           {attribution}
         </p>
