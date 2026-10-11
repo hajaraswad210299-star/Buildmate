@@ -45,6 +45,13 @@ import {
   Warning2,
   AddCircle,
 } from "@/lib/icons";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
+
+const COMPLAINT_ACTION_OPTIONS = [
+  { value: "warranty_rework", label: "Kirim tukang lagi (Garansi Plus)" },
+  { value: "close_without_action", label: "Selesai tanpa tindakan lanjutan" },
+  { value: "cancel_refund", label: "Batalkan & refund pesanan" },
+];
 
 function OrderDetailContent({
   params,
@@ -914,18 +921,17 @@ function OrderDetailContent({
               <label className="text-xs font-medium text-neutral-700 block mb-1">
                 Pilih Tukang Pengganti
               </label>
-              <select
+              <FilterDropdown
                 value={selectedReplacementWorkerId}
-                onChange={(e) => setSelectedReplacementWorkerId(e.target.value)}
-                className="w-full text-xs p-2.5 rounded-xl border border-neutral-200 bg-white focus:outline-none focus:ring-2 focus:ring-lavender-300"
-              >
-                <option value="">-- Pilih Tukang --</option>
-                {activeWorkers.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.full_name} ({w.service_area})
-                  </option>
-                ))}
-              </select>
+                options={activeWorkers.map((w) => ({
+                  value: w.id,
+                  label: `${w.full_name} (${w.service_area})`,
+                }))}
+                onChange={(val) => setSelectedReplacementWorkerId(val)}
+                placeholder="-- Pilih Tukang --"
+                fullWidth
+                size="md"
+              />
             </div>
 
             <div>
@@ -995,19 +1001,17 @@ function OrderDetailContent({
               <label className="text-xs font-medium text-neutral-700 block mb-1">
                 Tindakan Penyelesaian
               </label>
-              <select
+              <FilterDropdown
                 value={complaintAction}
-                onChange={(e) =>
+                options={COMPLAINT_ACTION_OPTIONS}
+                onChange={(val) =>
                   setComplaintAction(
-                    e.target.value as "warranty_rework" | "close_without_action" | "cancel_refund"
+                    val as "warranty_rework" | "close_without_action" | "cancel_refund"
                   )
                 }
-                className="w-full text-xs p-2.5 rounded-xl border border-neutral-200 bg-white"
-              >
-                <option value="warranty_rework">Kirim tukang lagi (Garansi Plus)</option>
-                <option value="close_without_action">Selesai tanpa tindakan lanjutan</option>
-                <option value="cancel_refund">Batalkan & refund pesanan</option>
-              </select>
+                fullWidth
+                size="md"
+              />
             </div>
 
             <div>

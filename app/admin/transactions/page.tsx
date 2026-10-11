@@ -18,6 +18,15 @@ import {
   ArrowDown2,
   ShieldTick,
 } from "@/lib/icons";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
+
+const PAYMENT_STATUS_OPTIONS = [
+  { value: "all", label: "Semua Status" },
+  { value: "success", label: "Berhasil (Success)" },
+  { value: "pending", label: "Menunggu (Pending)" },
+  { value: "failed", label: "Gagal (Failed)" },
+  { value: "refunded", label: "Dikembalikan (Refunded)" },
+];
 
 export default function AdminTransactionsPage() {
   const [activeTab, setActiveTab] = useState<PaymentFilter["tab"]>("all");
@@ -105,17 +114,12 @@ export default function AdminTransactionsPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-1 max-w-sm justify-end text-xs">
-            <select
+            <FilterDropdown
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-2.5 py-1.5 rounded-xl border border-neutral-200 bg-white"
-            >
-              <option value="all">Semua Status</option>
-              <option value="success">Success</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-              <option value="refunded">Refunded</option>
-            </select>
+              options={PAYMENT_STATUS_OPTIONS}
+              onChange={(val) => setStatusFilter(val)}
+              menuWidth="min-w-[190px]"
+            />
 
             <div className="relative flex-1">
               <SearchNormal1

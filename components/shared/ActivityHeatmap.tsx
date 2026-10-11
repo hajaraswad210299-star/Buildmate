@@ -14,6 +14,21 @@ import {
   Refresh,
 } from "@/lib/icons";
 import { Button } from "@/components/shared/Button";
+import { FilterDropdown } from "./FilterDropdown";
+
+const VIEW_MODE_OPTIONS = [
+  { value: "monthly", label: "Bulanan (12 Bulan)" },
+  { value: "quarterly", label: "Kuartal (Q1 - Q4)" },
+  { value: "weekly", label: "Mingguan (16 Minggu)" },
+];
+
+const CATEGORY_FILTER_OPTIONS = [
+  { value: "all", label: "Semua Kategori" },
+  { value: "plumbing", label: "Plumbing & Pipa" },
+  { value: "pengecatan", label: "Pengecatan Dinding" },
+  { value: "perbaikan-umum", label: "Perbaikan Umum" },
+  { value: "servis-ac", label: "Servis AC Ringan" },
+];
 
 interface MonthData {
   monthName: string;
@@ -283,17 +298,13 @@ export function ActivityHeatmap({
                     <label className="text-[11px] font-semibold text-neutral-500 block mb-1.5 uppercase tracking-wider">
                       Kategori Layanan
                     </label>
-                    <select
+                    <FilterDropdown
                       value={categoryFilter}
-                      onChange={(e) => setCategoryFilter(e.target.value)}
-                      className="w-full p-2 rounded-xl border border-neutral-200 text-xs bg-white text-neutral-700"
-                    >
-                      <option value="all">Semua Kategori</option>
-                      <option value="plumbing">Plumbing & Pipa</option>
-                      <option value="pengecatan">Pengecatan Dinding</option>
-                      <option value="perbaikan-umum">Perbaikan Umum</option>
-                      <option value="servis-ac">Servis AC Ringan</option>
-                    </select>
+                      options={CATEGORY_FILTER_OPTIONS}
+                      onChange={(val) => setCategoryFilter(val)}
+                      fullWidth
+                      menuWidth="w-full"
+                    />
                   </div>
                 </div>
 
@@ -320,15 +331,12 @@ export function ActivityHeatmap({
           </div>
 
           {/* 2. DROPDOWN PILIHAN TAMPILAN: BULANAN / KUARTAL / MINGGUAN */}
-          <select
+          <FilterDropdown
             value={selectedView}
-            onChange={(e) => setSelectedView(e.target.value as any)}
-            className="px-3 py-1.5 rounded-lg border border-neutral-200/90 text-xs font-medium text-neutral-700 bg-white hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-lavender-300 shadow-2xs transition-colors cursor-pointer"
-          >
-            <option value="monthly">Bulanan (12 Bulan)</option>
-            <option value="quarterly">Kuartal (Q1 - Q4)</option>
-            <option value="weekly">Mingguan (16 Minggu)</option>
-          </select>
+            options={VIEW_MODE_OPTIONS}
+            onChange={(val) => setSelectedView(val as "monthly" | "quarterly" | "weekly")}
+            menuWidth="min-w-[190px]"
+          />
 
           {/* 3. TOMBOL BANDINGKAN */}
           <button

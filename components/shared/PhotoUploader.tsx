@@ -4,6 +4,22 @@ import React, { useState, useRef } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { GalleryAdd, CloseCircle, TickCircle } from "@/lib/icons";
+import { FilterDropdown } from "./FilterDropdown";
+
+const PHOTO_SOURCE_OPTIONS = [
+  {
+    value: "Dari tukang via WA, diunggah admin",
+    label: "Dari tukang via WhatsApp, diunggah admin",
+  },
+  {
+    value: "Diunggah tukang",
+    label: "Diunggah langsung oleh tukang",
+  },
+  {
+    value: "Diunggah saat inspeksi fisik",
+    label: "Diunggah saat inspeksi fisik admin",
+  },
+];
 
 interface PhotoUploaderProps {
   onUploadSuccess: (photo: {
@@ -143,17 +159,13 @@ export function PhotoUploader({
         <label className="text-[11px] font-medium text-neutral-500 block mb-1">
           Sumber Foto
         </label>
-        <select
+        <FilterDropdown
           value={sourceNote}
-          onChange={(e) => setSourceNote(e.target.value)}
-          className="w-full text-xs px-3 py-2 rounded-lg border border-neutral-200 bg-white focus:outline-none focus:ring-2 focus:ring-lavender-300"
-        >
-          <option value="Dari tukang via WA, diunggah admin">
-            Dari tukang via WhatsApp, diunggah admin
-          </option>
-          <option value="Diunggah tukang">Diunggah langsung oleh tukang</option>
-          <option value="Diunggah saat inspeksi fisik">Diunggah saat inspeksi fisik admin</option>
-        </select>
+          options={PHOTO_SOURCE_OPTIONS}
+          onChange={(val) => setSourceNote(val)}
+          fullWidth
+          size="md"
+        />
       </div>
 
       {/* Action Button */}

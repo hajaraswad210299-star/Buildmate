@@ -15,6 +15,10 @@ interface FilterDropdownProps<T extends string = string> {
   onChange: (value: T) => void;
   className?: string;
   menuWidth?: string;
+  fullWidth?: boolean;
+  size?: "sm" | "md";
+  placeholder?: string;
+  disabled?: boolean;
 }
 
 export function FilterDropdown<T extends string = string>({
@@ -22,7 +26,11 @@ export function FilterDropdown<T extends string = string>({
   options,
   onChange,
   className,
-  menuWidth = "min-w-[180px]",
+  menuWidth,
+  fullWidth = false,
+  size = "sm",
+  placeholder = "Pilih opsi...",
+  disabled = false,
 }: FilterDropdownProps<T>) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -39,24 +47,40 @@ export function FilterDropdown<T extends string = string>({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  const currentOption = options.find((o) => o.value === value) || options[0];
-  const isFiltered = value !== "all";
+  const currentOption = options.find((o) => o.value === value);
+  const displayLabel = currentOption ? currentOption.label : placeholder;
+  const isFiltered = !fullWidth && value !== "all" && value !== "";
+
+  const sizeClasses =
+    size === "md"
+      ? "py-2.5 px-3 text-xs rounded-xl"
+      : "py-1.5 px-3 text-xs rounded-xl";
 
   return (
-    <div ref={containerRef} className="relative inline-block text-left">
+    <div
+      ref={containerRef}
+      className={cn("relative text-left", fullWidth ? "w-full block" : "inline-block")}
+    >
       <button
         type="button"
+        disabled={disabled}
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all shadow-2xs select-none",
-          isFiltered
-            ? "border-lavender-300 bg-lavender-50/70 text-lavender-900 font-semibold ring-1 ring-lavender-200"
-            : "border-neutral-200/90 bg-white text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300",
+          "border font-medium transition-all shadow-2xs select-none",
+          sizeClasses,
+          fullWidth
+            ? "w-full flex items-center justify-between bg-white text-neutral-800 hover:border-neutral-300"
+            : "inline-flex items-center gap-1.5",
+          !fullWidth &&
+            (isFiltered
+              ? "border-lavender-300 bg-lavender-50/70 text-lavender-900 font-semibold ring-1 ring-lavender-200"
+              : "border-neutral-200/90 bg-white text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300"),
           open && "ring-2 ring-lavender-300 border-lavender-400 bg-white",
+          disabled && "opacity-50 cursor-not-allowed bg-neutral-100",
           className
         )}
       >
-        <span>{currentOption?.label || value}</span>
+        <span className="truncate">{displayLabel}</span>
         <ArrowDown2
           size={12}
           className={cn(
@@ -70,8 +94,8 @@ export function FilterDropdown<T extends string = string>({
       {open && (
         <div
           className={cn(
-            "absolute left-0 top-full mt-1.5 max-h-64 overflow-y-auto bg-white rounded-xl shadow-xl border border-neutral-200/90 p-1 z-40 animate-in fade-in zoom-in-95 duration-100",
-            menuWidth
+            "absolute left-0 top-full mt-1.5 max-h-64 overflow-y-auto bg-white rounded-xl shadow-xl border border-neutral-200/90 p-1 z-50 animate-in fade-in zoom-in-95 duration-100",
+            fullWidth ? "w-full" : menuWidth || "min-w-[180px]"
           )}
         >
           {options.map((opt) => {
@@ -85,13 +109,13 @@ export function FilterDropdown<T extends string = string>({
                   setOpen(false);
                 }}
                 className={cn(
-                  "w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors",
+                  "w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center justify-between transition-colors",
                   isSelected
                     ? "bg-lavender-100 text-lavender-950 font-semibold"
                     : "text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900"
                 )}
               >
-                <span>{opt.label}</span>
+                <span className="truncate">{opt.label}</span>
                 {isSelected && <TickCircle size={14} className="text-lavender-600 shrink-0 ml-2" />}
               </button>
             );

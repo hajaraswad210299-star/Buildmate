@@ -13,6 +13,7 @@ import {
   Warning2,
 } from "@/lib/icons";
 import { Button } from "@/components/shared/Button";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
 import { formatDateId } from "@/lib/format";
 
 interface DispatchPanelProps {
@@ -469,18 +470,17 @@ export function DispatchPanel({
                 <label className="text-xs font-semibold text-neutral-700 block mb-1">
                   Pilih Tukang
                 </label>
-                <select
+                <FilterDropdown
                   value={selectedWorkerId}
-                  onChange={(e) => setSelectedWorkerId(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-neutral-200 bg-white focus:outline-none focus:ring-2 focus:ring-lavender-300"
-                >
-                  <option value="">-- Pilih Tukang Aktif --</option>
-                  {activeWorkers.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.full_name} • {w.service_area} ({w.user_id ? "Berakun" : "Dikelola Admin"})
-                    </option>
-                  ))}
-                </select>
+                  options={activeWorkers.map((w) => ({
+                    value: w.id,
+                    label: `${w.full_name} • ${w.service_area} (${w.user_id ? "Berakun" : "Dikelola Admin"})`,
+                  }))}
+                  onChange={(val) => setSelectedWorkerId(val)}
+                  placeholder="-- Pilih Tukang Aktif --"
+                  fullWidth
+                  size="md"
+                />
               </div>
 
               <div>

@@ -22,6 +22,7 @@ import {
   Setting4,
   CloseCircle,
 } from "@/lib/icons";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
 
 export default function AdminServicesPage() {
   const [activeTab, setActiveTab] = useState<"categories" | "packages">("categories");
@@ -468,19 +469,16 @@ export default function AdminServicesPage() {
                   <label className="font-medium text-neutral-700 block mb-1">
                     Kategori
                   </label>
-                  <select
-                    value={editingPackage.category_id}
-                    onChange={(e) =>
-                      setEditingPackage({ ...editingPackage, category_id: e.target.value })
+                  <FilterDropdown
+                    value={editingPackage.category_id || categories[0]?.id || ""}
+                    options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                    onChange={(val) =>
+                      setEditingPackage({ ...editingPackage, category_id: val })
                     }
-                    className="w-full p-2.5 rounded-xl border border-neutral-200 bg-white"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    fullWidth
+                    size="md"
+                    placeholder="Pilih Kategori"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

@@ -24,6 +24,15 @@ import {
   CloseCircle,
   ArrowRight,
 } from "@/lib/icons";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
+
+const SERVICE_AREA_OPTIONS = [
+  { value: "Jakarta Selatan", label: "Jakarta Selatan" },
+  { value: "Jakarta Timur", label: "Jakarta Timur" },
+  { value: "Jakarta Barat", label: "Jakarta Barat" },
+  { value: "Jakarta Pusat", label: "Jakarta Pusat" },
+  { value: "Jakarta Utara", label: "Jakarta Utara" },
+];
 
 export default function AdminWorkersPage() {
   const [activeTab, setActiveTab] = useState<WorkerFilter["tab"]>("active");
@@ -539,19 +548,15 @@ export default function AdminWorkersPage() {
                     <label className="font-medium text-neutral-700 block mb-1">
                       Area Layanan
                     </label>
-                    <select
+                    <FilterDropdown
                       value={editingWorker.service_area || "Jakarta Selatan"}
-                      onChange={(e) =>
-                        setEditingWorker({ ...editingWorker, service_area: e.target.value })
+                      options={SERVICE_AREA_OPTIONS}
+                      onChange={(val) =>
+                        setEditingWorker({ ...editingWorker, service_area: val })
                       }
-                      className="w-full p-2.5 rounded-xl border border-neutral-200 bg-white"
-                    >
-                      <option value="Jakarta Selatan">Jakarta Selatan</option>
-                      <option value="Jakarta Timur">Jakarta Timur</option>
-                      <option value="Jakarta Barat">Jakarta Barat</option>
-                      <option value="Jakarta Pusat">Jakarta Pusat</option>
-                      <option value="Jakarta Utara">Jakarta Utara</option>
-                    </select>
+                      fullWidth
+                      size="md"
+                    />
                   </div>
 
                   <div>
