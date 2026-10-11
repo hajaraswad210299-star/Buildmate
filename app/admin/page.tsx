@@ -296,8 +296,8 @@ export default function AdminDashboardPage() {
                     Antrean Tindakan
                   </h3>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-danger-50 text-danger-700">
-                  {urgentActions.reduce((acc, curr) => acc + curr.count, 0)} Perlu Respon
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-danger-50 text-danger-700 border border-danger-200/60">
+                  {urgentActions.reduce((acc, curr) => acc + curr.count, 0)} Perlu Tindakan
                 </span>
               </div>
 
@@ -308,17 +308,24 @@ export default function AdminDashboardPage() {
                   </div>
                   <span className="font-semibold text-neutral-800 text-sm">Semua Beres!</span>
                   <span className="text-neutral-500 mt-1 max-w-xs">
-                    Tidak ada antrean darurat yang perlu ditindaklanjuti.
+                    Tidak ada antrean darurat yang perlu ditindaklanjuti saat ini.
                   </span>
                 </div>
               ) : (
                 <div className="space-y-2.5">
                   {urgentActions.map((action) => {
                     const typeStyles = {
-                      danger: "border-danger-200 bg-danger-50/50 hover:bg-danger-50 text-danger-900",
-                      warning: "border-warning-200 bg-warning-50/50 hover:bg-warning-50 text-warning-900",
-                      lavender: "border-lavender-200 bg-lavender-50/50 hover:bg-lavender-50 text-lavender-900",
-                      neutral: "border-neutral-200 bg-neutral-50/70 hover:bg-neutral-100 text-neutral-900",
+                      danger: "border-danger-200 bg-danger-50/40 hover:bg-danger-50/70 text-danger-950",
+                      warning: "border-warning-200 bg-warning-50/40 hover:bg-warning-50/70 text-warning-950",
+                      lavender: "border-lavender-200 bg-lavender-50/40 hover:bg-lavender-50/70 text-lavender-950",
+                      neutral: "border-neutral-200 bg-neutral-50/60 hover:bg-neutral-100 text-neutral-950",
+                    }[action.type];
+
+                    const badgeStyles = {
+                      danger: "bg-danger-600 text-white",
+                      warning: "bg-warning-500 text-white",
+                      lavender: "bg-lavender-600 text-white",
+                      neutral: "bg-neutral-600 text-white",
                     }[action.type];
 
                     const renderActionIcon = () => {
@@ -344,16 +351,16 @@ export default function AdminDashboardPage() {
                         href={action.linkHref}
                         className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-150 group ${typeStyles}`}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-7 h-7 rounded-lg bg-white shadow-xs flex items-center justify-center shrink-0 border border-neutral-100">
+                        <div className="flex items-center gap-2.5 min-w-0 pr-1">
+                          <div className="w-7 h-7 rounded-lg bg-white shadow-xs flex items-center justify-center shrink-0 border border-neutral-150">
                             {renderActionIcon()}
                           </div>
-                          <span className="text-xs font-medium leading-tight truncate">
+                          <span className="text-xs font-semibold leading-snug line-clamp-2">
                             {action.title}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-2">
-                          <span className="min-w-5 h-5 px-1.5 rounded-full bg-white shadow-2xs flex items-center justify-center font-bold text-[11px] tabular-nums text-neutral-800 border border-neutral-150">
+                          <span className={`min-w-5 h-5 px-1.5 rounded-full flex items-center justify-center font-bold text-[11px] tabular-nums shadow-xs ${badgeStyles}`}>
                             {action.count}
                           </span>
                           <ArrowRight size={14} className="text-neutral-400 group-hover:text-neutral-700 transition-transform group-hover:translate-x-0.5" />
@@ -368,9 +375,9 @@ export default function AdminDashboardPage() {
             <div className="pt-3 border-t border-neutral-100 mt-4 text-center">
               <Link
                 href="/admin/orders?tab=action_needed"
-                className="text-xs font-semibold text-lavender-600 hover:text-lavender-700"
+                className="text-xs font-semibold text-lavender-600 hover:text-lavender-700 transition-colors"
               >
-                Buka Semua Filter Tindakan →
+                Lihat Semua Pesanan Perlu Tindakan →
               </Link>
             </div>
           </div>

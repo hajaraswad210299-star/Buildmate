@@ -1067,7 +1067,7 @@ export function getMockDashboardStats(period: string = "7d"): DashboardStats {
     urgentActions: [
       {
         id: "ua-1",
-        title: "Dispatch habis — tidak ada tukang yang menerima",
+        title: "Tawaran habis (butuh penugasan manual)",
         count: 1,
         type: "danger",
         linkHref: "/admin/orders?tab=action_needed",
@@ -1075,7 +1075,7 @@ export function getMockDashboardStats(period: string = "7d"): DashboardStats {
       },
       {
         id: "ua-2",
-        title: "Masih mencari tukang lebih dari 30 menit",
+        title: "Mencari tukang lebih dari 30 menit",
         count: 1,
         type: "warning",
         linkHref: "/admin/orders?tab=finding_worker",
@@ -1083,7 +1083,7 @@ export function getMockDashboardStats(period: string = "7d"): DashboardStats {
       },
       {
         id: "ua-3",
-        title: "Komplain terbuka",
+        title: "Komplain pesanan belum ditangani",
         count: 1,
         type: "warning",
         linkHref: "/admin/orders?tab=complaint",
@@ -1091,7 +1091,7 @@ export function getMockDashboardStats(period: string = "7d"): DashboardStats {
       },
       {
         id: "ua-4",
-        title: "Pendaftaran mitra menunggu",
+        title: "Verifikasi pendaftaran mitra baru",
         count: 1,
         type: "lavender",
         linkHref: "/admin/workers?tab=applications",
@@ -1099,7 +1099,7 @@ export function getMockDashboardStats(period: string = "7d"): DashboardStats {
       },
       {
         id: "ua-5",
-        title: "Pencairan menunggu",
+        title: "Pengajuan pencairan dana mitra",
         count: 1,
         type: "neutral",
         linkHref: "/admin/payouts?tab=pending",
