@@ -62,7 +62,10 @@ function OrderDetailContent({
   const orderId = resolvedParams.id;
 
   const [order, setOrder] = useState<Order | null>(
-    () => MOCK_ORDERS.find((o) => o.id === orderId) || null
+    () => MOCK_ORDERS.find((o) => o.id === orderId || o.order_code === orderId) || null
+  );
+  const [isLoading, setIsLoading] = useState<boolean>(
+    () => !MOCK_ORDERS.some((o) => o.id === orderId || o.order_code === orderId)
   );
   const [activeWorkers, setActiveWorkers] = useState<Worker[]>(
     () => MOCK_WORKERS.filter((w) => w.application_status === "approved")
@@ -127,12 +130,20 @@ function OrderDetailContent({
   }, []);
 
   const loadData = useCallback(() => {
-    getOrderById(orderId).then((res) => {
-      if (res) {
+    getOrderById(orderId)
+      .then((res) => {
         setOrder(res);
-        setInternalNotes(res.admin_notes || "");
-      }
-    });
+        if (res) {
+          setInternalNotes(res.admin_notes || "");
+        }
+      })
+      .catch((err) => {
+        console.error("Gagal memuat detail pesanan:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+
     getWorkers({ tab: "active" }).then((workers) => {
       setActiveWorkers(workers);
     });
@@ -212,11 +223,44 @@ function OrderDetailContent({
     }
   };
 
+  if (isLoading) {
+    return (
+      <AdminShell>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-8 h-8 border-3 border-lavender-200 border-t-lavender-600 rounded-full animate-spin mb-4" />
+          <p className="text-xs font-medium text-neutral-600">Memuat data detail pesanan...</p>
+        </div>
+      </AdminShell>
+    );
+  }
+
   if (!order) {
     return (
       <AdminShell>
-        <div className="py-20 text-center text-xs text-neutral-400">
-          Memuat data detail pesanan...
+        <div className="max-w-md mx-auto py-20 px-4 text-center">
+          <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-neutral-100 flex items-center justify-center text-neutral-400">
+            <Warning2 className="w-6 h-6" />
+          </div>
+          <h2 className="text-base font-bold text-neutral-900 mb-1">
+            Pesanan Tidak Ditemukan
+          </h2>
+          <p className="text-xs text-neutral-500 mb-6">
+            Data pesanan dengan kode/ID <span className="font-mono font-medium text-neutral-700">{orderId}</span> tidak ditemukan dalam sistem.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Link
+              href="/admin/orders"
+              className="px-3.5 py-2 text-xs font-semibold rounded-xl bg-lavender-600 hover:bg-lavender-700 text-white shadow-xs transition-colors"
+            >
+              Ke Daftar Pesanan
+            </Link>
+            <Link
+              href="/admin/payouts"
+              className="px-3.5 py-2 text-xs font-semibold rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 transition-colors"
+            >
+              Ke Pencairan Dana
+            </Link>
+          </div>
         </div>
       </AdminShell>
     );
