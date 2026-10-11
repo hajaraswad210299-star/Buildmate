@@ -122,8 +122,23 @@ async function main() {
 
       if (resetError) {
         console.warn(`\n⚠️ Peringatan pengiriman email reset: ${resetError.message}`);
-        console.warn("Catatan: SMTP bawaan Supabase hanya mengirim ke anggota tim/organisasi.");
-        console.warn("Jika email tidak masuk ke inbox, silakan pasang SMTP kustom (misal Resend) di Supabase Auth Settings.");
+        console.log("Mencoba membuat link reset langsung via Supabase Admin API...");
+        const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+          type: "recovery",
+          email: adminEmail,
+          options: {
+            redirectTo: resetRedirectUrl,
+          },
+        });
+
+        if (linkError) {
+          console.error("Gagal membuat link langsung:", linkError.message);
+        } else if (linkData?.properties?.action_link) {
+          console.log("\n==========================================");
+          console.log("🔗 LINK ATUR PASSWORD LANGSUNG:");
+          console.log(linkData.properties.action_link);
+          console.log("==========================================");
+        }
       } else {
         console.log(`✅ Email atur password berhasil dikirim ke ${adminEmail}!`);
         console.log(`Redirect URL: ${resetRedirectUrl}`);

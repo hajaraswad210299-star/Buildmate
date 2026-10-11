@@ -25,11 +25,26 @@ export async function requireRole(allowedRoles: UserRole | UserRole[]) {
     .single();
 
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-  if (!profile || !roles.includes(profile.role as UserRole)) {
-    redirect("/admin/denied");
+  const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
+  const isConfiguredAdmin = Boolean(adminEmail && user.email?.toLowerCase() === adminEmail);
+
+  if (profile && roles.includes(profile.role as UserRole)) {
+    return { user, profile };
   }
 
-  return { user, profile };
+  if (isConfiguredAdmin && roles.includes("admin")) {
+    return {
+      user,
+      profile: profile || {
+        id: user.id,
+        full_name: user.user_metadata?.full_name || "Super Admin",
+        role: "admin",
+        onboarding_completed: true,
+      },
+    };
+  }
+
+  redirect("/admin/denied");
 }
 
 /**

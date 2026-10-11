@@ -20,11 +20,22 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/admin/login?error=link_expired", url.origin));
   }
 
+  // If user is resetting password, allow them directly
+  if (safeNext === "/admin/reset-password") {
+    return NextResponse.redirect(new URL(safeNext, url.origin));
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (user) {
+    // If this is the configured admin email, allow access
+    const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
+    if (adminEmail && user.email?.toLowerCase() === adminEmail) {
+      return NextResponse.redirect(new URL(safeNext, url.origin));
+    }
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")

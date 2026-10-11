@@ -63,17 +63,23 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Check profiles.role
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+    // Check if user is configured ADMIN_EMAIL
+    const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
+    const isConfiguredAdmin = Boolean(adminEmail && user.email?.toLowerCase() === adminEmail);
 
-    if (!profile || profile.role !== "admin") {
-      const deniedUrl = request.nextUrl.clone();
-      deniedUrl.pathname = "/admin/denied";
-      return NextResponse.redirect(deniedUrl);
+    if (!isConfiguredAdmin) {
+      // Check profiles.role
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile || profile.role !== "admin") {
+        const deniedUrl = request.nextUrl.clone();
+        deniedUrl.pathname = "/admin/denied";
+        return NextResponse.redirect(deniedUrl);
+      }
     }
   }
 
