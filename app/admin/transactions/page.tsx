@@ -52,10 +52,10 @@ export default function AdminTransactionsPage() {
         {/* HEADER */}
         <div>
           <h2 className="text-xl font-bold text-neutral-900 tracking-tight">
-            Log Transaksi & Webhook Midtrans
+            Transaksi & Pembayaran
           </h2>
           <p className="text-xs text-neutral-500 mt-0.5">
-            Daftar transaksi pembayaran Snap Sandbox, status settlement, dan payload webhook
+            Daftar transaksi pembayaran, status penerimaan dana, dan riwayat verifikasi gateway
           </p>
         </div>
 
@@ -139,13 +139,13 @@ export default function AdminTransactionsPage() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="bg-neutral-50/70 border-b border-neutral-100 text-neutral-500 font-medium">
-                  <th className="py-3 px-4 font-medium">Provider Order ID</th>
+                  <th className="py-3 px-4 font-medium">ID Transaksi</th>
                   <th className="py-3 px-3 font-medium">Jenis</th>
                   <th className="py-3 px-3 font-medium">Pelanggan</th>
                   <th className="py-3 px-3 font-medium">Metode</th>
                   <th className="py-3 px-3 font-medium text-right">Nominal</th>
                   <th className="py-3 px-3 font-medium text-center">Status</th>
-                  <th className="py-3 px-3 font-medium text-right">Webhook Diproses</th>
+                  <th className="py-3 px-3 font-medium text-right">Waktu Selesai</th>
                   <th className="py-3 px-4 text-center font-medium">Aksi</th>
                 </tr>
               </thead>
@@ -157,74 +157,70 @@ export default function AdminTransactionsPage() {
                     </td>
                   </tr>
                 ) : (
-                  payments.map((p) => (
-                    <tr
-                      key={p.id}
-                      onClick={() => setSelectedPayment(p)}
-                      className="hover:bg-neutral-50/70 transition-colors cursor-pointer"
-                    >
-                      <td className="py-3.5 px-4 font-mono font-semibold text-neutral-900">
-                        {p.provider_order_id}
-                      </td>
+                  payments.map((p) => {
+                    const statusInfo = getHumanMidtransStatus(p.status);
+                    const methodInfo = getHumanPaymentMethod(p);
+                    return (
+                      <tr
+                        key={p.id}
+                        onClick={() => setSelectedPayment(p)}
+                        className="hover:bg-neutral-50/70 transition-colors cursor-pointer"
+                      >
+                        <td className="py-3.5 px-4 font-mono font-semibold text-neutral-900">
+                          {p.provider_order_id}
+                        </td>
 
-                      <td className="py-3.5 px-3">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            p.kind === "order"
-                              ? "bg-info-50 text-info-700"
-                              : "bg-lavender-100 text-lavender-700"
-                          }`}
-                        >
-                          {p.kind}
-                        </span>
-                      </td>
+                        <td className="py-3.5 px-3">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              p.kind === "order"
+                                ? "bg-info-50 text-info-700"
+                                : "bg-lavender-100 text-lavender-700"
+                            }`}
+                          >
+                            {p.kind === "order" ? "Pesanan" : "Plus Member"}
+                          </span>
+                        </td>
 
-                      <td className="py-3.5 px-3 font-medium text-neutral-800">
-                        {p.customer_name}
-                      </td>
+                        <td className="py-3.5 px-3 font-medium text-neutral-800">
+                          {p.customer_name}
+                        </td>
 
-                      <td className="py-3.5 px-3 uppercase font-medium text-neutral-600">
-                        {p.payment_type}
-                      </td>
+                        <td className="py-3.5 px-3 font-medium text-neutral-700">
+                          {methodInfo.name}
+                        </td>
 
-                      <td className="py-3.5 px-3 font-bold text-neutral-900 tabular-nums text-right">
-                        {formatRupiah(p.amount)}
-                      </td>
+                        <td className="py-3.5 px-3 font-bold text-neutral-900 tabular-nums text-right">
+                          {formatRupiah(p.amount)}
+                        </td>
 
-                      <td className="py-3.5 px-3 text-center">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase ${
-                            p.status === "success"
-                              ? "bg-success-50 text-success-700"
-                              : p.status === "failed"
-                              ? "bg-danger-50 text-danger-700"
-                              : p.status === "refunded"
-                              ? "bg-lavender-50 text-lavender-700"
-                              : "bg-neutral-100 text-neutral-600"
-                          }`}
-                        >
-                          {p.status}
-                        </span>
-                      </td>
+                        <td className="py-3.5 px-3 text-center">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusInfo.bg} ${statusInfo.text}`}
+                          >
+                            {statusInfo.label}
+                          </span>
+                        </td>
 
-                      <td className="py-3.5 px-3 text-neutral-400 text-right whitespace-nowrap">
-                        {p.processed_at ? <RelativeTime date={p.processed_at} /> : "-"}
-                      </td>
+                        <td className="py-3.5 px-3 text-neutral-400 text-right whitespace-nowrap">
+                          {p.processed_at ? <RelativeTime date={p.processed_at} /> : "-"}
+                        </td>
 
-                      <td className="py-3.5 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedPayment(p);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-semibold"
-                        >
-                          Payload
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPayment(p);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-semibold transition-colors"
+                          >
+                            Rincian
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -374,16 +370,16 @@ function TransactionDetailDrawer({
           {/* 2. DAFTAR DETAIL STATUS (2 KOLOM) */}
           <div className="space-y-2">
             <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-              Status Verifikasi & Gateway
+              Verifikasi & Keamanan Pembayaran
             </h4>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               {/* Fraud Status */}
               <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200 space-y-1">
-                <span className="text-neutral-400 font-medium block">Fraud Status:</span>
+                <span className="text-neutral-400 font-medium block">Pemeriksaan Keamanan:</span>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                       fraudStatus === "accept"
                         ? "bg-success-100 text-success-800"
                         : fraudStatus === "challenge"
@@ -392,102 +388,108 @@ function TransactionDetailDrawer({
                     }`}
                   >
                     <ShieldTick size={12} variant="Bold" />
-                    <span>{fraudStatus.toUpperCase()}</span>
+                    <span>{fraudStatus === "accept" ? "Aman" : fraudStatus === "challenge" ? "Perlu Tinjauan" : "Beresiko"}</span>
                   </span>
                 </div>
                 <span className="text-[10px] text-neutral-400 block">
-                  {fraudStatus === "accept" ? "Lolos fraud detection" : "Memerlukan peninjauan"}
+                  {fraudStatus === "accept" ? "Lolos deteksi fraud otomatis" : "Memerlukan konfirmasi manual"}
                 </span>
               </div>
 
               {/* Signature Verified */}
               <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200 space-y-1">
-                <span className="text-neutral-400 font-medium block">Signature Key:</span>
+                <span className="text-neutral-400 font-medium block">Tanda Tangan Digital:</span>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-success-100 text-success-800">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-success-100 text-success-800">
                     <TickCircle size={12} variant="Bold" />
-                    <span>Terverifikasi</span>
+                    <span>Valid ✓</span>
                   </span>
                 </div>
                 <span className="text-[10px] text-neutral-400 block">
-                  SHA512 checksum valid
+                  Checksum transaksi sah & asli
                 </span>
               </div>
 
-              {/* Status Midtrans */}
+              {/* Status Gateway */}
               <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200 space-y-1">
-                <span className="text-neutral-400 font-medium block">Midtrans Status:</span>
-                <span className="font-semibold text-neutral-800 block text-xs">
-                  {raw.transaction_status || payment.status}
-                </span>
+                <span className="text-neutral-400 font-medium block">Status Gateway:</span>
+                <div className="mt-0.5">
+                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusInfo.bg} ${statusInfo.text}`}>
+                    {statusInfo.label}
+                  </span>
+                </div>
                 <span className="text-[10px] text-neutral-400 block">
-                  Status mentah gateway
+                  {statusInfo.desc || "Status gateway penyedia"}
                 </span>
               </div>
 
-              {/* Response Code */}
+              {/* Status Sistem */}
               <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200 space-y-1">
-                <span className="text-neutral-400 font-medium block">HTTP Response:</span>
-                <span className="font-mono font-semibold text-success-700 block text-xs">
-                  {raw.status_code || "200"} OK
-                </span>
+                <span className="text-neutral-400 font-medium block">Penerimaan Data:</span>
+                <div className="mt-0.5">
+                  <span className="inline-block font-semibold text-neutral-800 text-[11px]">
+                    Diterima & Terhubung
+                  </span>
+                </div>
                 <span className="text-[10px] text-neutral-400 block">
-                  Callback diterima sistem
+                  Sinkronisasi sistem sukses
                 </span>
               </div>
             </div>
           </div>
 
-          {/* 3. RIWAYAT NOTIFIKASI (TIMELINE RINGKAS) */}
+          {/* 3. RIWAYAT NOTIFIKASI (HUMAN-FRIENDLY TIMELINE) */}
           <div className="space-y-2.5">
             <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-              Riwayat Notifikasi Callback
+              Riwayat Status & Notifikasi
             </h4>
 
             <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[2px] before:bg-neutral-200">
-              {/* Event 1: Webhook received */}
+              {/* Event 1: Pembayaran diterima & diproses */}
               <div className="relative">
                 <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-success-600 ring-4 ring-white" />
                 <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200 text-xs space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-neutral-900">
-                      Webhook Notification ({statusInfo.label})
+                      Pembayaran Dikonfirmasi
                     </span>
-                    <span className="text-[10px] font-mono text-success-700 bg-success-50 px-1.5 py-0.5 rounded font-bold">
-                      200 OK
+                    <span className="text-[10px] font-semibold text-success-700 bg-success-50 border border-success-200 px-2 py-0.5 rounded-full">
+                      Diproses
                     </span>
                   </div>
-                  <p className="text-[11px] text-neutral-500">
-                    Notifikasi settlement diterima dari Midtrans Snap API dan status pesanan diperbarui.
+                  <p className="text-[11px] text-neutral-600">
+                    Konfirmasi pembayaran berhasil diterima dari bank/e-wallet dan pesanan langsung diproses.
                   </p>
                   <span className="text-[10px] text-neutral-400 block">
-                    {formatDateId(payment.processed_at || payment.created_at, "d MMM yyyy, HH:mm:ss")}
+                    {formatDateId(payment.processed_at || payment.created_at, "d MMMM yyyy, HH:mm:ss 'WIB'")}
                   </span>
                 </div>
               </div>
 
-              {/* Event 2: Snap Token Created */}
+              {/* Event 2: Tagihan checkout dibuat */}
               <div className="relative">
                 <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-neutral-400 ring-4 ring-white" />
                 <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200 text-xs space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-neutral-800">
-                      Snap Token Dibuat
+                      Instruksi Tagihan Dibuat
                     </span>
-                    <span className="text-[10px] text-neutral-400">Checkout</span>
+                    <span className="text-[10px] font-medium text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-full">
+                      Menunggu Pembayaran
+                    </span>
                   </div>
-                  <p className="text-[11px] text-neutral-500 font-mono truncate">
-                    Token: {payment.snap_token || "SNAP-TOKEN-SANDBOX"}
+                  <p className="text-[11px] text-neutral-600">
+                    Pelanggan memilih metode pembayaran saat checkout dan rincian transaksi siap dibayar.
                   </p>
                   <span className="text-[10px] text-neutral-400 block">
-                    {formatDateId(payment.created_at, "d MMM yyyy, HH:mm:ss")}
+                    {formatDateId(payment.created_at, "d MMMM yyyy, HH:mm:ss 'WIB'")}
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 4. ACCORDION: DATA TEKNIS (PENGEMBANG) — TERTUTUP DEFAULT */}
+          {/* 4. ACCORDION: DATA TEKNIS (UNTUK DEVELOPER) — TERTUTUP DEFAULT */}
           <div className="pt-2 border-t border-neutral-200">
             <button
               type="button"
@@ -495,9 +497,9 @@ function TransactionDetailDrawer({
               className="w-full flex items-center justify-between py-2 text-xs font-semibold text-neutral-600 hover:text-neutral-900 transition-colors"
             >
               <div className="flex items-center gap-1.5">
-                <span>Data teknis (pengembang)</span>
+                <span>Data teknis (untuk developer)</span>
                 <span className="text-[10px] text-neutral-400 font-normal">
-                  — JSON audit Midtrans
+                  — Log mentah sistem
                 </span>
               </div>
               <ArrowDown2
@@ -509,14 +511,14 @@ function TransactionDetailDrawer({
             {isTechOpen && (
               <div className="mt-2 space-y-2 animate-in fade-in">
                 <div className="flex items-center justify-between text-[11px] text-neutral-500">
-                  <span>Sensitive field (signature_key) tersensor otomatis</span>
+                  <span>Kunci keamanan sensitif disamarkan otomatis demi keamanan</span>
                   <button
                     type="button"
-                    onClick={() => handleCopy(JSON.stringify(sanitizedJson, null, 2), setCopiedJson, "JSON teknis disalin")}
+                    onClick={() => handleCopy(JSON.stringify(sanitizedJson, null, 2), setCopiedJson, "Data teknis disalin")}
                     className="inline-flex items-center gap-1 font-semibold text-lavender-600 hover:text-lavender-800"
                   >
                     {copiedJson ? <TickCircle size={13} /> : <Copy size={13} />}
-                    <span>{copiedJson ? "Tersalin" : "Salin JSON"}</span>
+                    <span>{copiedJson ? "Tersalin" : "Salin Data"}</span>
                   </button>
                 </div>
 
@@ -586,24 +588,25 @@ function getHumanPaymentMethod(p: Payment): { name: string; vaOrCode?: string } 
   return { name: p.payment_type.toUpperCase() };
 }
 
-function getHumanMidtransStatus(status: string): { label: string; bg: string; text: string } {
+function getHumanMidtransStatus(status: string): { label: string; bg: string; text: string; desc: string } {
   switch ((status || "").toLowerCase()) {
     case "settlement":
-    case "capture":
     case "success":
-      return { label: "Berhasil", bg: "bg-success-50 border-success-200", text: "text-success-700" };
+      return { label: "Berhasil", bg: "bg-success-50 border-success-200", text: "text-success-700", desc: "Dana telah diterima sistem" };
+    case "capture":
+      return { label: "Berhasil (Kartu)", bg: "bg-success-50 border-success-200", text: "text-success-700", desc: "Pembayaran kartu terverifikasi" };
     case "pending":
-      return { label: "Menunggu Pembayaran", bg: "bg-amber-50 border-amber-200", text: "text-amber-700" };
+      return { label: "Menunggu Pembayaran", bg: "bg-amber-50 border-amber-200", text: "text-amber-700", desc: "Menunggu pembayaran pelanggan" };
     case "expire":
-      return { label: "Kedaluwarsa", bg: "bg-neutral-100 border-neutral-200", text: "text-neutral-600" };
+      return { label: "Kedaluwarsa", bg: "bg-neutral-100 border-neutral-200", text: "text-neutral-600", desc: "Batas waktu pembayaran habis" };
     case "cancel":
-      return { label: "Dibatalkan", bg: "bg-danger-50 border-danger-200", text: "text-danger-700" };
+      return { label: "Dibatalkan", bg: "bg-danger-50 border-danger-200", text: "text-danger-700", desc: "Transaksi dibatalkan" };
     case "deny":
-      return { label: "Ditolak", bg: "bg-danger-50 border-danger-200", text: "text-danger-700" };
+      return { label: "Ditolak", bg: "bg-danger-50 border-danger-200", text: "text-danger-700", desc: "Transaksi ditolak penyedia" };
     case "refund":
     case "refunded":
-      return { label: "Dikembalikan (Refund)", bg: "bg-lavender-50 border-lavender-200", text: "text-lavender-700" };
+      return { label: "Dikembalikan (Refund)", bg: "bg-lavender-50 border-lavender-200", text: "text-lavender-700", desc: "Dana dikembalikan ke pelanggan" };
     default:
-      return { label: status || "Diproses", bg: "bg-neutral-100 border-neutral-200", text: "text-neutral-700" };
+      return { label: status || "Diproses", bg: "bg-neutral-100 border-neutral-200", text: "text-neutral-700", desc: "Status transaksi aktif" };
   }
 }
