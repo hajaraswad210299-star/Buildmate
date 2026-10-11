@@ -69,6 +69,45 @@ export default function AdminDashboardPage() {
     };
   }, [isClient]);
 
+  const [adminName, setAdminName] = useState<string>("Admin");
+
+  useEffect(() => {
+    const fetchAdminProfile = () => {
+      import("@/lib/supabase/client").then(({ createClient }) => {
+        const supabase = createClient();
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user) {
+            supabase
+              .from("profiles")
+              .select("full_name")
+              .eq("id", user.id)
+              .single()
+              .then(({ data: profile }) => {
+                if (profile?.full_name) {
+                  setAdminName(profile.full_name);
+                } else if (user.user_metadata?.full_name) {
+                  setAdminName(user.user_metadata.full_name);
+                }
+              });
+          }
+        });
+      });
+    };
+
+    fetchAdminProfile();
+
+    const handleProfileUpdated = (e: any) => {
+      if (e?.detail?.fullName) {
+        setAdminName(e.detail.fullName);
+      } else {
+        fetchAdminProfile();
+      }
+    };
+
+    window.addEventListener("admin_profile_updated", handleProfileUpdated);
+    return () => window.removeEventListener("admin_profile_updated", handleProfileUpdated);
+  }, []);
+
   useEffect(() => {
     getDashboardStats(period).then((data) => setStats(data));
   }, [period]);
@@ -92,7 +131,7 @@ export default function AdminDashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl sm:text-3xl font-normal font-serif text-neutral-900 tracking-tight">
-              {greeting}, <span className="italic text-lavender-700">Admin</span>
+              {greeting}, <span className="italic text-lavender-700">{adminName}</span>
             </h2>
             <p className="text-xs text-neutral-500 mt-1">{currentDateString}</p>
           </div>

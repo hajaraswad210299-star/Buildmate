@@ -155,8 +155,11 @@ function AdminSettingsContent() {
 
       // 2. Upload to Supabase Storage bucket 'avatars'
       const supabase = createClient();
-      const currentId = userId || "admin";
-      const filePath = `avatars/${currentId}.webp`;
+      const currentId = userId || (await supabase.auth.getUser()).data.user?.id;
+      if (!currentId) throw new Error("Sesi pengguna tidak ditemukan");
+
+      // Per storage RLS policy: (storage.foldername(name))[1] = auth.uid()::text
+      const filePath = `${currentId}/avatar.webp`;
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
@@ -166,26 +169,47 @@ function AdminSettingsContent() {
         });
 
       if (uploadError) {
-        // Fallback: If bucket does not exist or mock, show local preview
-        const localUrl = URL.createObjectURL(blob);
-        setAvatarUrl(localUrl);
-        toast.success("Foto profil berhasil diperbarui.");
-      } else {
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("avatars").getPublicUrl(filePath);
-
-        const versionedUrl = `${publicUrl}?v=${Date.now()}`;
-        setAvatarUrl(versionedUrl);
-
-        if (userId) {
-          await supabase
-            .from("profiles")
-            .update({ avatar_url: versionedUrl })
-            .eq("id", userId);
-        }
-        toast.success("Foto profil berhasil diunggah dan disimpan.");
+        throw new Error(uploadError.message);
       }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
+      const versionedUrl = `${publicUrl}?v=${Date.now()}`;
+      setAvatarUrl(versionedUrl);
+
+      const { data: updatedProf, error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          avatar_url: versionedUrl,
+        })
+        .eq("id", currentId)
+        .select();
+
+      if (profileError || !updatedProf || updatedProf.length === 0) {
+        await supabase.from("profiles").upsert(
+          {
+            id: currentId,
+            avatar_url: versionedUrl,
+            full_name: fullName.trim() || "Super Admin",
+            role: "admin",
+            onboarding_completed: true,
+          },
+          { onConflict: "id" }
+        );
+      }
+
+      await supabase.auth.updateUser({
+        data: { avatar_url: versionedUrl },
+      });
+
+      window.dispatchEvent(
+        new CustomEvent("admin_profile_updated", {
+          detail: { avatarUrl: versionedUrl, fullName: fullName.trim() },
+        })
+      );
+      toast.success("Foto profil berhasil diunggah dan disimpan.");
     } catch (err: any) {
       toast.error(err.message || "Gagal mengunggah foto profil.");
     } finally {
@@ -199,18 +223,28 @@ function AdminSettingsContent() {
     setIsDeletingAvatar(true);
     try {
       const supabase = createClient();
-      const currentId = userId || "admin";
-      try {
-        await supabase.storage.from("avatars").remove([`avatars/${currentId}.webp`]);
-      } catch {
-        // ignore
-      }
+      const currentId = userId || (await supabase.auth.getUser()).data.user?.id;
+      if (currentId) {
+        try {
+          await supabase.storage.from("avatars").remove([`${currentId}/avatar.webp`]);
+        } catch {
+          // ignore
+        }
 
-      if (userId) {
         await supabase
           .from("profiles")
           .update({ avatar_url: null })
-          .eq("id", userId);
+          .eq("id", currentId);
+
+        await supabase.auth.updateUser({
+          data: { avatar_url: null },
+        });
+
+        window.dispatchEvent(
+          new CustomEvent("admin_profile_updated", {
+            detail: { avatarUrl: null },
+          })
+        );
       }
       setAvatarUrl(null);
       toast.success("Foto profil berhasil dihapus.");
@@ -233,16 +267,40 @@ function AdminSettingsContent() {
     setIsSavingName(true);
     try {
       const supabase = createClient();
-      if (userId) {
-        await supabase
+      const currentId = userId || (await supabase.auth.getUser()).data.user?.id;
+      if (currentId) {
+        const { data: updatedProf, error: profileError } = await supabase
           .from("profiles")
-          .update({ full_name: fullName.trim() })
-          .eq("id", userId);
+          .update({
+            full_name: fullName.trim(),
+          })
+          .eq("id", currentId)
+          .select();
+
+        if (profileError || !updatedProf || updatedProf.length === 0) {
+          await supabase.from("profiles").upsert(
+            {
+              id: currentId,
+              full_name: fullName.trim(),
+              avatar_url: avatarUrl || null,
+              role: "admin",
+              onboarding_completed: true,
+            },
+            { onConflict: "id" }
+          );
+        }
       }
+
       await supabase.auth.updateUser({
         data: { full_name: fullName.trim() },
       });
-      toast.success("Nama lengkap berhasil diperbarui.");
+
+      window.dispatchEvent(
+        new CustomEvent("admin_profile_updated", {
+          detail: { fullName: fullName.trim() },
+        })
+      );
+      toast.success("Nama lengkap berhasil disimpan.");
     } catch (err: any) {
       toast.error(err.message || "Gagal memperbarui nama.");
     } finally {

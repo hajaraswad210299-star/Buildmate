@@ -108,25 +108,44 @@ function AdminShellInner({ children }: AdminShellProps) {
 
   // Fetch admin profile
   useEffect(() => {
-    import("@/lib/supabase/client").then(({ createClient }) => {
-      const supabase = createClient();
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user) {
-          supabase
-            .from("profiles")
-            .select("full_name, avatar_url")
-            .eq("id", user.id)
-            .single()
-            .then(({ data: profile }) => {
-              setAdminUser({
-                name: profile?.full_name || user.user_metadata?.full_name || "Super Admin",
-                email: user.email || "hajaraswad210299@gmail.com",
-                avatarUrl: profile?.avatar_url || null,
+    const fetchProfile = () => {
+      import("@/lib/supabase/client").then(({ createClient }) => {
+        const supabase = createClient();
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user) {
+            supabase
+              .from("profiles")
+              .select("full_name, avatar_url")
+              .eq("id", user.id)
+              .single()
+              .then(({ data: profile }) => {
+                setAdminUser({
+                  name: profile?.full_name || user.user_metadata?.full_name || "Super Admin",
+                  email: user.email || "hajaraswad210299@gmail.com",
+                  avatarUrl: profile?.avatar_url || null,
+                });
               });
-            });
-        }
+          }
+        });
       });
-    });
+    };
+
+    fetchProfile();
+
+    const handleProfileUpdated = (e: any) => {
+      if (e?.detail) {
+        setAdminUser((prev) => ({
+          ...prev,
+          name: e.detail.fullName ?? prev.name,
+          avatarUrl: e.detail.avatarUrl !== undefined ? e.detail.avatarUrl : prev.avatarUrl,
+        }));
+      } else {
+        fetchProfile();
+      }
+    };
+
+    window.addEventListener("admin_profile_updated", handleProfileUpdated);
+    return () => window.removeEventListener("admin_profile_updated", handleProfileUpdated);
   }, []);
 
   const toggleCollapsed = () => {

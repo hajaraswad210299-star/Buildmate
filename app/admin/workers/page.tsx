@@ -77,27 +77,35 @@ export default function AdminWorkersPage() {
       toast.error("Nama lengkap wajib diisi");
       return;
     }
-    await saveWorker(editingWorker as Parameters<typeof saveWorker>[0]);
-    toast.success("Data tukang berhasil disimpan");
-    setIsDrawerOpen(false);
-    loadData();
+    try {
+      await saveWorker(editingWorker as Parameters<typeof saveWorker>[0]);
+      toast.success("Data tukang berhasil disimpan ke database");
+      setIsDrawerOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menyimpan data tukang ke database");
+    }
   };
 
   const handleToggleActive = async (workerId: string) => {
-    const res = await toggleWorkerActive(workerId);
-    if (res.success) {
-      toast.success(
-        res.is_active
-          ? "Tukang diaktifkan kembali"
-          : "Tukang dinonaktifkan sementara",
-        {
-          action: {
-            label: "Urungkan",
-            onClick: () => toggleWorkerActive(workerId).then(loadData),
-          },
-        }
-      );
-      loadData();
+    try {
+      const res = await toggleWorkerActive(workerId);
+      if (res.success) {
+        toast.success(
+          res.is_active
+            ? "Tukang diaktifkan kembali"
+            : "Tukang dinonaktifkan sementara",
+          {
+            action: {
+              label: "Urungkan",
+              onClick: () => toggleWorkerActive(workerId).then(loadData),
+            },
+          }
+        );
+        loadData();
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal mengubah status tukang");
     }
   };
 
@@ -108,21 +116,25 @@ export default function AdminWorkersPage() {
       return;
     }
 
-    await reviewWorkerApplication(
-      reviewingWorker.id,
-      approved,
-      reviewReason,
-      reviewIsVerified
-    );
+    try {
+      await reviewWorkerApplication(
+        reviewingWorker.id,
+        approved,
+        reviewReason,
+        reviewIsVerified
+      );
 
-    toast.success(
-      approved
-        ? `Pendaftaran ${reviewingWorker.full_name} disetujui!`
-        : `Pendaftaran ${reviewingWorker.full_name} ditolak.`
-    );
-    setReviewingWorker(null);
-    setReviewReason("");
-    loadData();
+      toast.success(
+        approved
+          ? `Pendaftaran ${reviewingWorker.full_name} disetujui!`
+          : `Pendaftaran ${reviewingWorker.full_name} ditolak.`
+      );
+      setReviewingWorker(null);
+      setReviewReason("");
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Gagal memproses review pendaftaran");
+    }
   };
 
   return (

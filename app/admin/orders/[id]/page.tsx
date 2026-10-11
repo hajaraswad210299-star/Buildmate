@@ -158,7 +158,7 @@ function OrderDetailContent({
         service_area: worker.service_area,
         is_verified: true,
         has_account: !!worker.user_id,
-        avatar_url: worker.photo_path,
+        avatar_url: worker.photo_path || undefined,
       },
       note
     );
