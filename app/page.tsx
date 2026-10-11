@@ -161,13 +161,45 @@ const EDITORIAL_JOURNAL_STORIES = [
   },
 ];
 
+// 4 Curated Dynamic Background Images for Hero Banner
+const HERO_IMAGES = [
+  {
+    url: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1800&auto=format&fit=crop&q=85",
+    alt: "Arsitektur Hunian & Interior Modern",
+    label: "Arsitektur Hunian",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1800&auto=format&fit=crop&q=85",
+    alt: "Interior Ruang Tamu & Tata Cahaya Alami",
+    label: "Interior & Perawatan",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1800&auto=format&fit=crop&q=85",
+    alt: "Finishing & Desain Hunian Minimalis",
+    label: "Finishing & Presisi",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=1800&auto=format&fit=crop&q=85",
+    alt: "Perawatan Hunian & Tata Ruang Keluarga",
+    label: "Kenyamanan Keluarga",
+  },
+];
+
 export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
 
   useEffect(() => {
     getCategories().then((cats) => setCategories(cats.filter((c) => c.is_active)));
     getWorkers({ tab: "active" }).then((wks) => setWorkers(wks.slice(0, 4)));
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentHeroIndex((prev) => (prev + 1) % HERO_IMAGES.length);
+    }, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   return (
@@ -177,25 +209,52 @@ export default function HomePage() {
         <div className="w-full">
           {/* Hero Photography Container */}
           <div className="relative rounded-[32px] sm:rounded-[40px] overflow-hidden bg-[#242220] min-h-[560px] sm:min-h-[640px] lg:min-h-[680px] flex flex-col justify-between p-8 sm:p-14 lg:p-20 text-white shadow-md border border-neutral-800/40">
-            {/* Background Studio Light Architecture Image - Bright, Warm & Crisp */}
-            <img
-              src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1800&auto=format&fit=crop&q=85"
-              alt="BuildMate Artisan Architecture & Still Life"
-              className="absolute inset-0 w-full h-full object-cover object-center sm:object-right opacity-95 transition-transform duration-1000"
-            />
+            {/* Dynamic Background Image Carousel (4 Curated Images with Smooth Crossfade) */}
+            {HERO_IMAGES.map((img, idx) => (
+              <div
+                key={img.url}
+                className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                  idx === currentHeroIndex ? "opacity-95" : "opacity-0 pointer-events-none"
+                }`}
+              >
+                <img
+                  src={img.url}
+                  alt={img.alt}
+                  className="w-full h-full object-cover object-center sm:object-right"
+                />
+              </div>
+            ))}
+
             {/* Directional Horizontal Gradient: Darkened left side for high-contrast crisp text legibility, fading smoothly to 100% transparent on the right */}
-            <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/95 via-neutral-950/75 to-transparent sm:from-neutral-950/92 sm:via-neutral-950/55 sm:to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/95 via-neutral-950/75 to-transparent sm:from-neutral-950/92 sm:via-neutral-950/55 sm:to-transparent pointer-events-none" />
             {/* Radial shadow behind the headline zone for extra text clarity */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_left,_rgba(10,10,10,0.65)_0%,_transparent_75%)] pointer-events-none" />
             {/* Faint ground vignette for bottom trust badges */}
             <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/70 via-transparent to-transparent pointer-events-none" />
 
-            {/* Top Minimal Editorial Badge */}
+            {/* Top Minimal Editorial Badge & Carousel Indicators */}
             <div className="relative z-10 flex items-center justify-between">
               <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-semibold tracking-wider uppercase text-lavender-200 border border-white/20">
                 <Crown1 size={14} className="text-lavender-300" variant="Bold" />
                 <span>Standar Artisan & Rekber Terpercaya</span>
               </span>
+
+              {/* Dynamic Image Indicator Dots */}
+              <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15">
+                {HERO_IMAGES.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentHeroIndex(idx)}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      idx === currentHeroIndex
+                        ? "w-6 bg-white"
+                        : "w-1.5 bg-white/40 hover:bg-white/75"
+                    }`}
+                    title={img.label}
+                    aria-label={`Pindah ke foto ${idx + 1}: ${img.label}`}
+                  />
+                ))}
+              </div>
             </div>
 
             {/* Center Editorial Headlines & Flamingo White Pill CTA */}
