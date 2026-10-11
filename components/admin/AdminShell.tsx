@@ -48,6 +48,12 @@ function AdminShellInner({ children }: AdminShellProps) {
     avatarUrl: null,
   });
 
+  // Detect Mac vs Windows/Linux
+  const [isMac, setIsMac] = useState(false);
+  useEffect(() => {
+    setIsMac(/(Mac|iPhone|iPod|iPad)/i.test(navigator.userAgent));
+  }, []);
+
   // Restore collapsed state from localStorage
   useEffect(() => {
     const saved = localStorage.getItem("buildmate_admin_collapsed");
@@ -57,9 +63,10 @@ function AdminShellInner({ children }: AdminShellProps) {
     }
   }, []);
 
-  // Keyboard shortcut ⌘B / Ctrl+B
+  // Global Keyboard shortcuts: ⌘K / Ctrl+K & / (Cari Cepat), ⌘B / Ctrl+B (Sidebar)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // 1. Sidebar toggle: Cmd+B / Ctrl+B
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
         e.preventDefault();
         setCollapsed((prev) => {
@@ -67,8 +74,31 @@ function AdminShellInner({ children }: AdminShellProps) {
           localStorage.setItem("buildmate_admin_collapsed", String(next));
           return next;
         });
+        return;
+      }
+
+      // 2. Command Palette toggle: Cmd+K / Ctrl+K
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+        return;
+      }
+
+      // 3. Quick Search trigger with '/' when not typing in an input
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const target = e.target as HTMLElement | null;
+        const isInput =
+          target?.tagName === "INPUT" ||
+          target?.tagName === "TEXTAREA" ||
+          target?.tagName === "SELECT" ||
+          target?.isContentEditable;
+        if (!isInput) {
+          e.preventDefault();
+          setIsCommandPaletteOpen(true);
+        }
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
@@ -323,19 +353,29 @@ function AdminShellInner({ children }: AdminShellProps) {
             type="button"
             onClick={() => setIsCommandPaletteOpen(true)}
             className={cn(
-              "w-full flex items-center rounded-xl bg-neutral-100 hover:bg-neutral-200/70 text-neutral-500 text-xs py-2 px-3 transition-colors border border-neutral-200/60 shadow-xs",
+              "w-full flex items-center rounded-xl bg-neutral-100 hover:bg-neutral-200/70 text-neutral-600 text-xs py-2 px-3 transition-all border border-neutral-200/70 shadow-2xs group cursor-pointer",
               collapsed ? "justify-center px-2" : "justify-between"
             )}
-            title="Cari cepat (⌘K)"
+            title={`Cari cepat (${isMac ? "⌘K" : "Ctrl+K"})`}
           >
-            <div className="flex items-center gap-2">
-              <SearchNormal1 size={16} className="text-neutral-400" />
-              {!collapsed && <span>Cari cepat…</span>}
+            <div className="flex items-center gap-2.5 truncate">
+              <SearchNormal1
+                size={15}
+                className="text-neutral-400 group-hover:text-lavender-600 transition-colors shrink-0"
+              />
+              {!collapsed && (
+                <span className="text-neutral-500 font-normal truncate">Cari cepat…</span>
+              )}
             </div>
             {!collapsed && (
-              <kbd className="px-1.5 py-0.5 text-[10px] bg-white text-neutral-400 rounded border border-neutral-200 font-mono">
-                ⌘K
-              </kbd>
+              <span className="flex items-center gap-0.5 shrink-0 ml-1">
+                <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-neutral-400 bg-white rounded border border-neutral-200/80 shadow-2xs font-sans leading-none">
+                  {isMac ? "⌘" : "Ctrl"}
+                </kbd>
+                <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-neutral-400 bg-white rounded border border-neutral-200/80 shadow-2xs font-sans leading-none">
+                  K
+                </kbd>
+              </span>
             )}
           </button>
         </div>
@@ -502,13 +542,26 @@ function AdminShellInner({ children }: AdminShellProps) {
             <button
               type="button"
               onClick={() => setIsCommandPaletteOpen(true)}
-              className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-neutral-200/80 bg-neutral-50 hover:bg-neutral-100 text-xs text-neutral-600 transition-colors shadow-xs"
+              className="hidden sm:inline-flex items-center justify-between gap-3 px-3.5 py-1.5 w-44 md:w-56 rounded-xl border border-neutral-200/90 bg-neutral-50/80 hover:bg-white hover:border-neutral-300 text-xs text-neutral-600 transition-all shadow-2xs cursor-pointer group"
+              title={`Pencarian Cepat (${isMac ? "⌘K" : "Ctrl+K"} atau /)`}
             >
-              <SearchNormal1 size={14} className="text-neutral-400" />
-              <span>Cari</span>
-              <kbd className="px-1 text-[10px] bg-white rounded border border-neutral-200 font-mono text-neutral-400">
-                ⌘K
-              </kbd>
+              <div className="flex items-center gap-2 truncate">
+                <SearchNormal1
+                  size={14}
+                  className="text-neutral-400 group-hover:text-lavender-600 transition-colors shrink-0"
+                />
+                <span className="text-neutral-400 group-hover:text-neutral-600 transition-colors truncate">
+                  Cari cepat...
+                </span>
+              </div>
+              <span className="flex items-center gap-0.5 shrink-0">
+                <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-neutral-400 bg-white rounded border border-neutral-200/80 shadow-2xs font-sans leading-none">
+                  {isMac ? "⌘" : "Ctrl"}
+                </kbd>
+                <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-neutral-400 bg-white rounded border border-neutral-200/80 shadow-2xs font-sans leading-none">
+                  K
+                </kbd>
+              </span>
             </button>
 
             {/* Notification Button with dropdown */}
