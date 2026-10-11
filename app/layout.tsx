@@ -24,6 +24,11 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "BuildMate — Ruang Kendali Admin & Marketplace Jasa Tukang",
   description: "Platform marketplace jasa perbaikan rumah terpercaya. Bayar aman, dana diteruskan setelah konfirmasi selesai.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

@@ -317,11 +317,23 @@ function AdminShellInner({ children }: AdminShellProps) {
             collapsed ? "justify-center px-2" : "justify-between px-5"
           )}
         >
-          {!collapsed && (
-            <Link href="/admin" className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-lavender-700 to-lavender-500 flex items-center justify-center text-white font-bold text-sm shadow-xs shrink-0">
-                BM
-              </div>
+          {collapsed ? (
+            <Link href="/admin" title="BuildMate Workspace" className="shrink-0 flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon.svg"
+                alt="BuildMate"
+                className="w-8 h-8 rounded-xl object-contain shadow-xs hover:scale-105 transition-transform"
+              />
+            </Link>
+          ) : (
+            <Link href="/admin" className="flex items-center gap-2.5 overflow-hidden group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon.svg"
+                alt="BuildMate"
+                className="w-8 h-8 rounded-xl object-contain shadow-xs shrink-0 group-hover:scale-105 transition-transform"
+              />
               <div className="flex flex-col leading-none">
                 <span className="font-bold text-sm tracking-tight text-neutral-900 flex items-center gap-1">
                   BuildMate<span className="text-[10px] text-lavender-600 font-semibold">™</span>
@@ -645,10 +657,13 @@ function AdminShellInner({ children }: AdminShellProps) {
         <div className="lg:hidden fixed inset-0 z-50 bg-neutral-950/40 backdrop-blur-xs flex">
           <div className="w-72 bg-neutral-25 h-full flex flex-col p-4 shadow-2xl border-r border-neutral-200 animate-in slide-in-from-left duration-200">
             <div className="flex items-center justify-between pb-4 border-b border-neutral-200">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-lavender-600 text-white font-bold flex items-center justify-center text-xs">
-                  BM
-                </div>
+              <div className="flex items-center gap-2.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/icon.svg"
+                  alt="BuildMate"
+                  className="w-8 h-8 rounded-xl object-contain shadow-xs shrink-0"
+                />
                 <span className="font-bold text-sm text-neutral-900">BuildMate Admin</span>
               </div>
               <button

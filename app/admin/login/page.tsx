@@ -123,9 +123,12 @@ function AdminLoginForm() {
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-lavender-50 via-lavender-100 to-lavender-200 p-12 flex-col justify-between border-r border-neutral-200">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-lavender-600 flex items-center justify-center text-white font-bold text-sm shadow-xs">
-              BM
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon.svg"
+              alt="BuildMate"
+              className="w-9 h-9 rounded-xl object-contain shadow-xs shrink-0"
+            />
             <span className="font-bold text-lg text-neutral-900 tracking-tight">
               BuildMate<span className="text-xs text-lavender-600 font-semibold">™</span>
             </span>
