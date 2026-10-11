@@ -177,7 +177,7 @@ export function StatCard({
             href={linkHref}
             className="inline-flex items-center gap-1.5 font-medium text-neutral-500 hover:text-lavender-700 transition-colors group-hover:text-lavender-600"
           >
-            <span>{linkText}</span>
+            <span>{linkText.replace(/\s*→\s*$/, "")}</span>
             <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>

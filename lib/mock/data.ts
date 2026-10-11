@@ -1008,7 +1008,7 @@ export function getMockDashboardStats(period: string = "7d"): DashboardStats {
         formattedValue: formatRupiah(escrowVal),
         accent: "warning",
         icon: "Lock1",
-        linkText: "Lihat 4 pesanan aktif →",
+        linkText: "Lihat 4 pesanan aktif",
         linkHref: "/admin/orders?tab=active",
         subStats: [
           { label: "Menunggu tukang", value: "Rp200.000", ticks: 3 },
@@ -1021,7 +1021,7 @@ export function getMockDashboardStats(period: string = "7d"): DashboardStats {
         formattedValue: formatRupiah(pendingPayoutVal),
         accent: "orange",
         icon: "WalletMoney",
-        linkText: "Lihat 1 pencairan →",
+        linkText: "Lihat 1 pencairan",
         linkHref: "/admin/payouts",
         subStats: [
           { label: "Tukang", value: "1 orang", ticks: 5 },
@@ -1034,7 +1034,7 @@ export function getMockDashboardStats(period: string = "7d"): DashboardStats {
         formattedValue: activePlusVal.toString(),
         accent: "lavender",
         icon: "Crown1",
-        linkText: "Lihat member →",
+        linkText: "Lihat member",
         linkHref: "/admin/customers?filter=plus",
         subStats: [
           { label: "Bulan ini", value: "+4 baru", ticks: 6 },
@@ -1047,7 +1047,7 @@ export function getMockDashboardStats(period: string = "7d"): DashboardStats {
         formattedValue: activeWorkersVal.toString(),
         accent: "teal",
         icon: "UserOctagon",
-        linkText: "Lihat tukang →",
+        linkText: "Lihat tukang",
         linkHref: "/admin/workers",
         subStats: [
           { label: "Terverifikasi", value: "3 mitra", ticks: 8 },
