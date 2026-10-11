@@ -24,6 +24,7 @@ import {
 import { formatRupiah, formatDateId } from "@/lib/format";
 import { getPackages } from "@/lib/data/services";
 import { getWorkerById } from "@/lib/data/workers";
+import { registerClientOrder } from "@/lib/data/orders";
 import { ServicePackage, Worker } from "@/lib/data/types";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -54,7 +55,6 @@ function OrderFormContent({ params }: PageProps) {
   const [selectedSlot, setSelectedSlot] = useState("Pagi (08.00 - 11.00)");
   const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
-  const [allowReassign, setAllowReassign] = useState(true);
 
   // Form Step 2: Confirmation
   const [agreeScope, setAgreeScope] = useState(false);
@@ -249,7 +249,7 @@ function OrderFormContent({ params }: PageProps) {
           time_slot: selectedSlot,
           description,
           photo_paths: photos,
-          allow_reassign: allowReassign,
+          allow_reassign: true,
           save_default_address: saveAsDefaultAddress,
           idempotency_key: idempotencyKey,
         }),
@@ -269,29 +269,14 @@ function OrderFormContent({ params }: PageProps) {
       // Clear draft
       sessionStorage.removeItem("bm_order_draft");
 
-      // Midtrans Snap Sandbox Trigger
-      const snapToken = data.snap_token;
-      if (typeof window !== "undefined" && (window as any).snap) {
-        (window as any).snap.pay(snapToken, {
-          onSuccess: () => {
-            router.push(`/payment/${data.order.id}?status=success`);
-          },
-          onPending: () => {
-            router.push(`/payment/${data.order.id}?status=pending`);
-          },
-          onError: () => {
-            router.push(`/payment/${data.order.id}?status=failed`);
-          },
-          onClose: () => {
-            router.push(`/payment/${data.order.id}?status=uncompleted`);
-          },
-        });
-      } else {
-        // Fallback / simulation navigation
-        setTimeout(() => {
-          router.push(`/payment/${data.order.id}`);
-        }, 1200);
+      // Register order locally in browser for zero-delay instant display
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(`bm_order_${data.order.id}`, JSON.stringify(data.order));
       }
+      registerClientOrder(data.order);
+
+      // Instantly open QRIS payment screen
+      router.push(`/payment/${data.order.id}`);
     } catch (err: any) {
       toast.error(err?.message || "Terjadi kesalahan pembayaran.");
       setSubmitting(false);
@@ -559,21 +544,6 @@ function OrderFormContent({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Checkbox Dispatch Allow Reassign */}
-            <div className="p-4 rounded-2xl bg-cream-100 border border-cream-200/80">
-              <label className="flex items-start gap-2.5 cursor-pointer text-xs text-neutral-700 select-none">
-                <input
-                  type="checkbox"
-                  checked={allowReassign}
-                  onChange={(e) => setAllowReassign(e.target.checked)}
-                  className="mt-0.5 rounded border-neutral-300 text-lavender-600 focus:ring-lavender-500 w-4 h-4"
-                />
-                <span className="leading-relaxed">
-                  Izinkan BuildMate mengalihkan pesanan ke tukang terdekat lain secara otomatis jika mitra favorit berhalangan hadir.
-                </span>
-              </label>
-            </div>
-
             {/* Button Lanjut ke Langkah 2 */}
             <button
               type="button"
@@ -765,10 +735,10 @@ function OrderFormContent({ params }: PageProps) {
 
             <div className="space-y-2">
               <h2 className="font-serif text-3xl text-neutral-900">
-                Membuka Pembayaran Aman...
+                Membuka Pembayaran QRIS...
               </h2>
               <p className="text-xs text-neutral-500 max-w-sm mx-auto leading-relaxed">
-                Popup Midtrans Snap Sandbox sedang dibuka. Selesaikan pembayaranmu menggunakan metode transfer VA atau QRIS.
+                Menghubungkan ke sistem Rekening Bersama QRIS BuildMate. Mengalihkan ke lembar pembayaran...
               </p>
             </div>
 
@@ -776,9 +746,9 @@ function OrderFormContent({ params }: PageProps) {
               <div className="pt-2">
                 <Link
                   href={`/payment/${createdOrder.id}`}
-                  className="inline-block px-5 py-2.5 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-semibold transition-colors"
+                  className="inline-block px-6 py-3 rounded-full bg-lavender-600 hover:bg-lavender-700 text-white text-xs font-semibold shadow-xs transition-colors"
                 >
-                  Buka Halaman Status Pembayaran
+                  Buka Halaman Pembayaran QRIS Sekarang
                 </Link>
               </div>
             )}

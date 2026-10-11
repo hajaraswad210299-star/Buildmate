@@ -79,9 +79,46 @@ export async function getOrders(filter: OrderFilter = {}): Promise<Order[]> {
   return list;
 }
 
+export function registerClientOrder(order: Order) {
+  const exists = inMemoryOrders.findIndex((o) => o.id === order.id || o.order_code === order.order_code);
+  if (exists >= 0) {
+    inMemoryOrders[exists] = order;
+  } else {
+    inMemoryOrders.unshift(order);
+  }
+}
+
 export async function getOrderById(id: string): Promise<Order | null> {
   const found = inMemoryOrders.find((o) => o.id === id || o.order_code === id);
-  return found || null;
+  if (found) return found;
+
+  // Browser-side fallback: check sessionStorage first
+  if (typeof window !== "undefined") {
+    try {
+      const cached = sessionStorage.getItem(`bm_order_${id}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.id) {
+          registerClientOrder(parsed);
+          return parsed;
+        }
+      }
+    } catch {}
+
+    // Then check server API
+    try {
+      const res = await fetch(`/api/orders/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.order) {
+          registerClientOrder(data.order);
+          return data.order;
+        }
+      }
+    } catch {}
+  }
+
+  return null;
 }
 
 export async function transitionOrder(

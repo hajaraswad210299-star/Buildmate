@@ -105,7 +105,30 @@ function PaymentStatusContent({ params }: PageProps) {
     let timer: NodeJS.Timeout;
 
     const checkStatus = async () => {
-      const ord = await getOrderById(resolvedParams.orderId);
+      let ord = await getOrderById(resolvedParams.orderId);
+
+      // Fallback 1: Direct check from sessionStorage for instant zero-latency loading
+      if (!ord && typeof window !== "undefined") {
+        try {
+          const cached = sessionStorage.getItem(`bm_order_${resolvedParams.orderId}`);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed?.id) ord = parsed;
+          }
+        } catch {}
+      }
+
+      // Fallback 2: Server API endpoint fetch
+      if (!ord && typeof window !== "undefined") {
+        try {
+          const res = await fetch(`/api/orders/${resolvedParams.orderId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.order) ord = data.order;
+          }
+        } catch {}
+      }
+
       if (ord) {
         setOrder(ord);
 
@@ -186,6 +209,13 @@ function PaymentStatusContent({ params }: PageProps) {
           note: `Pembayaran QRIS via ${app.name} berhasil disimulasikan.`,
         });
 
+        // Update local state and cache
+        const updatedOrder = { ...order, status: "paid" as const, paid_at: new Date().toISOString() };
+        setOrder(updatedOrder);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem(`bm_order_${order.id}`, JSON.stringify(updatedOrder));
+        }
+
         setIsScanning(false);
         setShowPhoneSimulator(false);
         setPaymentState("success");
@@ -208,8 +238,41 @@ function PaymentStatusContent({ params }: PageProps) {
   return (
     <CustomerShell title="Pembayaran QRIS" hideBottomNav={true}>
       <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
+        {/* Loading State */}
+        {loading && (
+          <div className="min-h-[45vh] flex flex-col items-center justify-center gap-3">
+            <div className="w-10 h-10 border-4 border-lavender-200 border-t-lavender-600 rounded-full animate-spin" />
+            <p className="text-xs text-neutral-500 font-medium">Menyiapkan kode QRIS Rekber...</p>
+          </div>
+        )}
+
+        {/* Not Found State */}
+        {!loading && !order && (
+          <div className="max-w-md mx-auto bg-white p-8 sm:p-10 rounded-3xl border border-neutral-200/90 shadow-sm text-center space-y-6">
+            <div className="w-16 h-16 rounded-full bg-danger-50 border border-danger-200 flex items-center justify-center mx-auto text-danger-600">
+              <CloseCircle size={36} variant="Bold" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="font-serif text-2xl text-neutral-900">
+                Pesanan Tidak Ditemukan
+              </h2>
+              <p className="text-xs text-neutral-500 max-w-xs mx-auto">
+                ID pesanan ini tidak dapat ditemukan dalam sistem.
+              </p>
+            </div>
+            <div className="pt-2">
+              <Link
+                href="/services"
+                className="inline-block w-full py-3 rounded-full bg-lavender-600 hover:bg-lavender-700 text-white text-xs font-semibold text-center"
+              >
+                Kembali ke Layanan
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* 1. STATE QRIS: AUTHENTIC QRIS STANDEE + SIMULATOR PANEL */}
-        {paymentState === "qris" && order && (
+        {!loading && paymentState === "qris" && order && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* LEFT / CENTER: AUTHENTIC INDONESIAN QRIS STANDEE CARD */}
             <div className="lg:col-span-7 flex flex-col items-center">
