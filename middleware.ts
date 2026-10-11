@@ -8,6 +8,14 @@ const OPEN_ADMIN_PATHS = [
   "/admin/denied",
 ];
 
+const CUSTOMER_PROTECTED_PATHS = [
+  "/order",
+  "/payment",
+  "/orders",
+  "/account",
+  "/welcome",
+];
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -41,8 +49,8 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // 1. ADMIN ROUTES
   if (pathname.startsWith("/admin")) {
-    // 1. If trying to visit /admin/login while already logged in as admin, lock them to /admin
     if (pathname === "/admin/login") {
       const {
         data: { user },
@@ -77,7 +85,6 @@ export async function middleware(request: NextRequest) {
         }
       }
 
-      // If not logged in, allow /admin/login with no-store
       response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
       response.headers.set("Pragma", "no-cache");
       response.headers.set("Expires", "0");
@@ -93,7 +100,6 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    // Refresh and check session
     const {
       data: { user },
       error: userError,
@@ -110,12 +116,10 @@ export async function middleware(request: NextRequest) {
       return redirectRes;
     }
 
-    // Check if user is configured ADMIN_EMAIL
     const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase() || "hajaraswad210299@gmail.com";
     const isConfiguredAdmin = Boolean(user.email?.toLowerCase() === adminEmail);
 
     if (!isConfiguredAdmin) {
-      // Check profiles.role
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
@@ -131,10 +135,85 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // Add strict anti-caching headers to all admin pages to prevent back-forward cache leakage
     response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
     response.headers.set("Pragma", "no-cache");
     response.headers.set("Expires", "0");
+    return response;
+  }
+
+  // 2. CUSTOMER AUTH PAGES (/login, /register)
+  if (pathname === "/login" || pathname === "/register") {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, onboarding_completed, phone")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role === "admin") {
+        return NextResponse.redirect(new URL("/admin", request.url));
+      }
+      if (profile?.role === "worker") {
+        return NextResponse.redirect(new URL("/mitra", request.url));
+      }
+
+      // Customer
+      const nextParam = request.nextUrl.searchParams.get("next");
+      const safeNext = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/";
+
+      if (!profile?.onboarding_completed || !profile?.phone) {
+        return NextResponse.redirect(new URL(`/welcome?next=${encodeURIComponent(safeNext)}`, request.url));
+      }
+
+      return NextResponse.redirect(new URL(safeNext, request.url));
+    }
+
+    return response;
+  }
+
+  // 3. CUSTOMER PROTECTED PATHS
+  const isProtectedCustomer = CUSTOMER_PROTECTED_PATHS.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+
+  if (isProtectedCustomer) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("next", pathname + (request.nextUrl.search || ""));
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, onboarding_completed, phone")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role === "admin") {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+    if (profile?.role === "worker") {
+      return NextResponse.redirect(new URL("/mitra", request.url));
+    }
+
+    // Require onboarding before accessing checkout or payment
+    if (pathname.startsWith("/order") || pathname.startsWith("/payment")) {
+      if (!profile?.onboarding_completed || !profile?.phone) {
+        const welcomeUrl = request.nextUrl.clone();
+        welcomeUrl.pathname = "/welcome";
+        welcomeUrl.searchParams.set("next", pathname + (request.nextUrl.search || ""));
+        return NextResponse.redirect(welcomeUrl);
+      }
+    }
   }
 
   return response;
@@ -144,5 +223,12 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/auth/callback",
+    "/order/:path*",
+    "/payment/:path*",
+    "/orders/:path*",
+    "/account/:path*",
+    "/welcome",
+    "/login",
+    "/register",
   ],
 };

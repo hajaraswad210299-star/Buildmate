@@ -372,3 +372,189 @@ export async function releaseWorkerAndRedispatch(
   return { success: true, order };
 }
 
+export async function createCustomerOrder(data: {
+  packageId: string;
+  workerId?: string | null;
+  address: string;
+  scheduledDate: string;
+  timeSlot: string;
+  description: string;
+  photoPaths?: string[];
+  allowReassign?: boolean;
+  customerId?: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  isPlus?: boolean;
+}): Promise<{ success: boolean; order?: Order; snapToken?: string; error?: string }> {
+  const { getPackages } = await import("./services");
+  const { getWorkerById } = await import("./workers");
+  const pkgs = await getPackages();
+  const pkg = pkgs.find((p) => p.id === data.packageId) || pkgs[0];
+
+  if (!pkg) {
+    return { success: false, error: "Paket layanan tidak ditemukan" };
+  }
+
+  const worker = data.workerId ? await getWorkerById(data.workerId) : null;
+  const nowIso = new Date().toISOString();
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const orderCode = `BM-${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-${randomSuffix}`;
+  const orderId = `ord-${Date.now()}`;
+
+  const serviceFee = data.isPlus ? 0 : 5000;
+  const total = pkg.price + serviceFee;
+
+  const photos: OrderPhoto[] = (data.photoPaths || []).map((path, idx) => ({
+    id: `photo-prob-${Date.now()}-${idx}`,
+    order_id: orderId,
+    type: "problem",
+    uploaded_by: "customer",
+    source_note: "Foto masalah saat pemesanan",
+    storage_path: path,
+    created_at: nowIso,
+  }));
+
+  const newOrder: Order = {
+    id: orderId,
+    order_code: orderCode,
+    customer_id: data.customerId || "cust-demo",
+    customer: {
+      id: data.customerId || "cust-demo",
+      name: data.customerName || "Pelanggan BuildMate",
+      email: data.customerEmail || "pelanggan@buildmate.id",
+      phone: data.customerPhone || "6281234567890",
+      is_plus: Boolean(data.isPlus),
+    },
+    worker_id: worker ? worker.id : null,
+    worker: worker
+      ? {
+          id: worker.id,
+          name: worker.full_name,
+          phone: worker.phone,
+          service_area: worker.service_area,
+          is_verified: worker.is_verified,
+          has_account: Boolean(worker.user_id),
+          avatar_url: worker.photo_path || undefined,
+        }
+      : undefined,
+    package_id: pkg.id,
+    package: {
+      id: pkg.id,
+      name: pkg.name,
+      category_name: pkg.category_name || "Layanan",
+      inclusions: pkg.inclusions,
+      exclusions: pkg.exclusions,
+    },
+    package_price: pkg.price,
+    service_fee: serviceFee,
+    total,
+    address: data.address,
+    scheduled_date: data.scheduledDate,
+    time_slot: data.timeSlot,
+    description: data.description,
+    status: "pending_payment",
+    worker_response: "pending",
+    allow_reassign: data.allowReassign !== undefined ? data.allowReassign : true,
+    dispatch_status: "idle",
+    photos,
+    events: [
+      {
+        id: `ev-${Date.now()}`,
+        order_id: orderId,
+        event_type: "order_created",
+        from_status: undefined,
+        to_status: "pending_payment",
+        actor_type: "customer",
+        actor_name: data.customerName || "Pelanggan",
+        note: `Pesanan dibuat untuk ${pkg.name}. Total: Rp${total.toLocaleString("id-ID")}`,
+        created_at: nowIso,
+      },
+    ],
+    created_at: nowIso,
+    updated_at: nowIso,
+  };
+
+  inMemoryOrders.unshift(newOrder);
+
+  // Simulated Midtrans Snap Token
+  const snapToken = `SNAP-DEMO-${Date.now()}-${randomSuffix}`;
+  return { success: true, order: newOrder, snapToken };
+}
+
+export async function confirmCustomerOrder(
+  orderId: string,
+  note?: string,
+  photoPath?: string
+): Promise<{ success: boolean; error?: string; order?: Order }> {
+  const order = inMemoryOrders.find((o) => o.id === orderId || o.order_code === orderId);
+  if (!order) return { success: false, error: "Pesanan tidak ditemukan" };
+
+  if (photoPath) {
+    const photo: OrderPhoto = {
+      id: `photo-res-${Date.now()}`,
+      order_id: order.id,
+      type: "result",
+      uploaded_by: "customer",
+      source_note: "Foto tambahan konfirmasi pelanggan",
+      storage_path: photoPath,
+      created_at: new Date().toISOString(),
+    };
+    order.photos = [...(order.photos || []), photo];
+  }
+
+  return transitionOrder(order.id, "completed", "customer", {
+    actorName: order.customer.name,
+    note: note || "Pelanggan telah memeriksa hasil dan mengonfirmasi pesanan selesai.",
+  });
+}
+
+export async function reportCustomerProblem(
+  orderId: string,
+  problemType: string,
+  description: string,
+  photoPath?: string,
+  isWarranty: boolean = false
+): Promise<{ success: boolean; error?: string; order?: Order }> {
+  const order = inMemoryOrders.find((o) => o.id === orderId || o.order_code === orderId);
+  if (!order) return { success: false, error: "Pesanan tidak ditemukan" };
+
+  const complaintId = `comp-${Date.now()}`;
+  order.complaint = {
+    id: complaintId,
+    order_id: order.id,
+    description: `[${problemType}] ${description}`,
+    status: "open",
+    is_warranty: isWarranty,
+    created_at: new Date().toISOString(),
+  };
+
+  const event = {
+    id: `ev-${Date.now()}`,
+    order_id: order.id,
+    event_type: "complaint_filed",
+    actor_type: "customer" as Actor,
+    actor_name: order.customer.name,
+    note: `Pelanggan melaporkan masalah: [${problemType}] ${description}. ${
+      isWarranty ? "(Garansi Plus diajukan)" : ""
+    }`,
+    created_at: new Date().toISOString(),
+  };
+
+  order.events = [event, ...(order.events || [])];
+  return { success: true, order };
+}
+
+export async function cancelCustomerPendingOrder(
+  orderId: string,
+  reason?: string
+): Promise<{ success: boolean; error?: string; order?: Order }> {
+  const order = inMemoryOrders.find((o) => o.id === orderId || o.order_code === orderId);
+  if (!order) return { success: false, error: "Pesanan tidak ditemukan" };
+
+  return transitionOrder(order.id, "cancelled", "customer", {
+    actorName: order.customer.name,
+    cancelReason: reason || "Dibatalkan oleh pelanggan sebelum pembayaran.",
+  });
+}
+

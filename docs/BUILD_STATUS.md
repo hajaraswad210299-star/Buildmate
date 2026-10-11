@@ -37,8 +37,30 @@ Keterangan: ⬜ belum · 🟡 sebagian · ✅ selesai
 | A08 | Pelanggan & Member (/admin/customers) | ✅ | Profil pelanggan, badge Plus aktif, hitungan transaksi & belanja, drawer detail pelanggan |
 | A09 | Pengaturan (/admin/settings) | ✅ | Dua tab ("Profil Saya" default & "Konfigurasi Sistem"): avatar bundar 80px (upload ≤2MB crop WebP ke bucket `avatars`, hapus foto), ubah nama, dialog ubah email dengan timer 60s, dialog ubah password dengan verifikasi password saat ini & link lupa password |
 
+## Customer (Sisi Pelanggan — Airbnb × Flamingo Estate Hybrid)
+| ID | Halaman / Fitur | Status | Catatan |
+|---|---|---|---|
+| A3 | Customer Shell & Navigasi | ✅ | Announcement bar 36px dismissable, desktop navbar 72px (wordmark Instrument Serif), mobile bottom nav 64px, floating WhatsApp help button (kanan bawah, 44px pill), lavender-900 footer 4-kolom |
+| C01 | Homepage (/) | ✅ | Hero editorial still-life photo card + typewriter search box, 6 kategori grid micro-interaction, carousel paket terpopuler dengan progress bar 2px, 3 langkah "Cara Kerja" bernomor gaya majalah, kartu tukang terverifikasi, diagram alur Rekber, banner BuildMate Plus, pita Mitra |
+| C02a | Masuk (/login) | ✅ | Split-screen desktop (panel gradien lavender + 3 trust bullets: Rekber, Terverifikasi, Bukti Foto), Google OAuth, form email & password dengan CapsLock warning, toggle intip, link ke pendaftaran mitra |
+| C02b | Daftar (/register) | ✅ | Deteksi typo domain email otomatis (gmail.co.id dsb), password strength bar 4-segmen + 5 checklist realtime, konfirmasi password, terms agreement checkbox |
+| C02c | Verifikasi Email (/verify-email) | ✅ | Suspense-safe, tombol cepat "Buka Gmail" & "Buka Webmail", hitung mundur kirim ulang 60s |
+| C02d | Lupa Password (/forgot-password) | ✅ | Pesan aman anti-enumerasi pengguna, timer kirim ulang 60 detik |
+| C02e | Reset Password (/reset-password) | ✅ | Suspense-safe token flow, form password baru dengan live strength checklist & CapsLock warning |
+| C02f | Onboarding Pelanggan (/welcome) | ✅ | Input nomor WhatsApp wajib dengan normalisasi `+62` chip, simpan nama lengkap, redirect ke riwayat atau homepage |
+| C03 | Pencarian & Filter (/search) | ✅ | Typewriter search box, scrollable category chips, segmented tab Tukang \| Paket, desktop filter sidebar 280px, mobile filter bottom sheet, sinkronisasi URL query string, state kosong ramah |
+| C04 | Profil & Layanan Tukang (/workers/[slug]) | ✅ | Header profil tukang (foto 1:1, badge Terverifikasi, spesialisasi, total pekerjaan selesai), bio truncate "Baca selengkapnya", galeri portofolio lightbox interaktif, pengecek jangkauan area kecamatan (B2), kartu radio paket dengan accordion inklusi/eksklusi, sticky bottom CTA bar pada mobile & desktop |
+| C05 | Pemesanan 3 Langkah (/order/[packageId]) | ✅ | Stepper 3 tahap (Detail → Ringkasan → Bayar): pemilih tanggal horizontal 14 hari, slot waktu pagi/siang/sore, form keluhan & uploader foto masalah, toggle `allow_reassign`, rincian biaya titik-titik (dotted breakdown), voucher diskon Plus 10%, integrasi Midtrans Snap Sandbox |
+| C06 | Status Pembayaran (/payment/[orderId]) | ✅ | 4 status pembayaran: Processing (polling), Success (animasi confetti canvas-confetti, rincian VA/metode, CTA ke pelacakan), Pending (hitung mundur batas bayar 24 jam), Failed (alasan kegagalan & tombol bayar ulang) |
+| C07 | Riwayat Pesanan (/orders) | ✅ | Tab aktif vs riwayat selesai, kartu pesanan dengan badge status B7, foto hasil ringkas, CTA kontekstual per status, tombol hubungi CS/tukang |
+| C08 | Detail & Pelacakan Pesanan (/orders/[id]) | ✅ | Hero status dengan copy ramah B15, timeline 7 tahap (Pesanan Dibuat hingga Selesai), slider Before/After interaktif saat status `awaiting_confirmation`, modal persetujuan hasil kerja (trigger rilis escrow ke tukang), bottom sheet / modal ajukan komplain garansi (termasuk klaim garansi 14 hari member Plus), info tukang yang bertugas |
+| C09 | BuildMate Plus (/plus) | ✅ | Landing page keanggotaan premium: kartu perbandingan benefit (Gratis biaya layanan, Garansi 14 hari, Prioritas dispatch, Diskon 10%), slider kalkulator estimasi hemat biaya bulanan, trigger checkout langganan Midtrans Snap Rp49.000/bulan, kartu status keanggotaan aktif dengan sisa hari, accordion FAQ |
+| C10 | Akun & Profil (/account) | ✅ | Edit profil inline (nama, nomor WhatsApp), modal ganti password aman, status langganan BuildMate Plus, bantuan WhatsApp satu klik, modal konfirmasi keluar dengan auth lock |
+| API | Endpoint Pesanan, Langganan & Webhook | ✅ | `/api/orders` (buat pesanan), `/api/orders/[id]/confirm` (konfirmasi pelanggan), `/api/orders/[id]/complaint` (ajukan komplain), `/api/orders/[id]/cancel` (batalkan pesanan), `/api/subscriptions/checkout` (Snap order subscription Plus), `/api/webhooks/midtrans` (handler notifikasi Midtrans SHA512 signature verified) |
+
 ## Verifikasi Tangkapan Layar (Screenshots)
 - `docs/screenshots/admin-1440.png`: Dashboard resolusi 1440×700 (shell penuh, sidebar fixed dengan kartu profil, ikon aktif, metrik tanpa spasi).
 - `docs/screenshots/admin-1024.png`: Dashboard resolusi 1024×700 (responsif, menu scroll mandiri, kartu profil bawah menempel).
 - `docs/screenshots/admin-orders-1440.png`: Daftar pesanan dengan tab "Mencari Tukang", badge status B7, dan tombol WA.
 - `docs/screenshots/admin-order-detail-1440.png`: Detail pesanan dengan sticky header full-width, B25 Panel Dispatch, stepper status, dan ringkasan biaya.
+

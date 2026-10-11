@@ -508,6 +508,15 @@ Semua sisi (admin, pelanggan, mitra) memakai design system yang sama. **Token di
 | `neutral-800` | `#2A2736` | Judul sekunder |
 | `neutral-900` | `#16141F` | Teks utama |
 
+### B7.2b Netral hangat (sisi pelanggan & mitra)
+| Token | Hex | Pemakaian |
+|---|---|---|
+| `cream-50` | `#FBF9F4` | Latar halaman pelanggan & mitra |
+| `cream-100` | `#F3F0E8` | Tile gambar paket/tukang, latar section editorial |
+| `cream-200` | `#E7E2D6` | Border di atas latar krem |
+
+Admin tetap memakai `neutral-50`. Krem hanya sebagai latar; warna brand tetap lavender.
+
 ### B7.3 Warna semantik
 | Peran | 50 (latar) | 500 (titik/ikon) | 600 (solid) | 700 (teks) |
 |---|---|---|---|---|
@@ -565,6 +574,7 @@ Skala:
 | `display-lg` | Instrument Serif | 44 / 48 | 400 | Panel auth desktop, hero mobile besar |
 | `display-md` | Instrument Serif | 32 / 38 | 400 | Judul auth, sapaan dashboard, nama tukang, judul status |
 | `display-sm` | Instrument Serif | 28 / 34 | 400 | Judul section pelanggan/mitra |
+| `display-xs` | Instrument Serif | 22 / 28 | 400 | Nama paket & nama tukang di kartu (sisi pelanggan) |
 | `h1` | Geist | 24 / 32 | 600 | Judul halaman admin |
 | `h2` | Geist | 20 / 28 | 600 | Judul kartu besar |
 | `h3` | Geist | 16 / 24 | 600 | Judul kartu, judul top bar |
@@ -576,7 +586,7 @@ Skala:
 | `metric` | Geist | 32 / 36 | 600, tracking −0.02em, `tabular-nums` | Angka kartu metrik |
 
 Aturan pasangan:
-- Instrument Serif hanya untuk judul ≥ 28px; **tidak pernah** di tombol, form, tabel, badge, atau angka.
+- Instrument Serif hanya untuk judul ≥ 28px, kecuali `display-xs` (22px) untuk nama di kartu sisi pelanggan; **tidak pernah** di tombol, form, tabel, badge, atau angka.
 - Maksimal satu judul serif per area pandang. Italic serif untuk satu kata penekanan ("Tukang yang *tepat*…").
 - Admin: serif hanya di halaman auth dan sapaan dashboard. Pelanggan & mitra: serif untuk hero, judul auth, judul section, judul status.
 - Semua angka uang/jumlah memakai `tabular-nums`. Format Rupiah: `Rp1.250.000` — **tanpa spasi** setelah "Rp", tanpa desimal, titik pemisah ribuan. Buat helper `formatRupiah()` sendiri (jangan langsung memakai `style: 'currency'` karena menyisipkan spasi).
@@ -656,6 +666,8 @@ Aturan pasangan:
   --color-neutral-400: #A6A2B5; --color-neutral-500: #7B778C; --color-neutral-600: #5D596D;
   --color-neutral-700: #433F52; --color-neutral-800: #2A2736; --color-neutral-900: #16141F;
 
+  --color-cream-50: #FBF9F4; --color-cream-100: #F3F0E8; --color-cream-200: #E7E2D6;
+
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --font-serif: var(--font-instrument-serif), Georgia, serif;
@@ -676,7 +688,7 @@ Hubungkan variabel shadcn/ui (`--primary`, `--ring`, `--border`, `--background`,
 ### B7.9 Komponen dasar (shadcn/ui, di-theme)
 | Komponen | Spesifikasi |
 |---|---|
-| Button | Varian: `primary` (lavender-600, hover 700, tekan 800), `secondary` (putih + border neutral-200), `ghost`, `destructive` (danger-600), `link`. Ukuran: `sm` 32, `md` 40, `lg` 48 (utama di mobile), `xl` 56 (bar aksi mitra). Radius md, teks 14/600 (lg/xl: 16/600). Ikon kiri opsional. State memuat: spinner + label proses, lebar tidak berubah |
+| Button | Varian: `primary` (lavender-600, hover 700, tekan 800), `secondary` (putih + border neutral-200), `ghost`, `destructive` (danger-600), `link`. Varian tambahan sisi pelanggan: `pill-outline` & `pill-solid` (radius full, teks 12/600 UPPERCASE tracking 0.08em, boleh berisi label kiri + harga kanan) untuk tombol di kartu & section editorial. Ukuran: `sm` 32, `md` 40, `lg` 48 (utama di mobile), `xl` 56 (bar aksi mitra). Radius md, teks 14/600 (lg/xl: 16/600). Ikon kiri opsional. State memuat: spinner + label proses, lebar tidak berubah |
 | Input / Textarea / Select | Tinggi 44 (mobile 48), radius md, border neutral-200 → hover neutral-300 → fokus lavender-600 + shadow-focus. Label di atas 13/500 neutral-700; helper 12 neutral-500; error 12 danger-700 dengan ikon `Warning2` |
 | Checkbox / Radio / Switch | Warna terpilih lavender-600; switch 36×20 |
 | Card | Putih, border neutral-200, radius lg, shadow-xs, padding 16 (mobile) / 20 (desktop) |

@@ -4,24 +4,31 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/admin";
+  const next = url.searchParams.get("next") ?? "/";
+  const as = url.searchParams.get("as");
 
   // Prevent open redirect: only local paths allowed
-  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/admin";
+  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
 
   if (!code) {
-    return NextResponse.redirect(new URL("/admin/login?error=invalid_link", url.origin));
+    const errorRedirect = safeNext.startsWith("/admin")
+      ? "/admin/login?error=invalid_link"
+      : "/login?error=invalid_link";
+    return NextResponse.redirect(new URL(errorRedirect, url.origin));
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    return NextResponse.redirect(new URL("/admin/login?error=link_expired", url.origin));
+    const errorRedirect = safeNext.startsWith("/admin")
+      ? "/admin/login?error=link_expired"
+      : "/login?error=link_expired";
+    return NextResponse.redirect(new URL(errorRedirect, url.origin));
   }
 
-  // If user is resetting password, allow them directly
-  if (safeNext === "/admin/reset-password") {
+  // If user is resetting password, allow them directly to their reset form
+  if (safeNext.includes("reset-password")) {
     return NextResponse.redirect(new URL(safeNext, url.origin));
   }
 
@@ -30,21 +37,32 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser();
 
   if (user) {
-    // If this is the configured admin email, allow access
-    const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
-    if (adminEmail && user.email?.toLowerCase() === adminEmail) {
-      return NextResponse.redirect(new URL(safeNext, url.origin));
-    }
+    const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase() || "hajaraswad210299@gmail.com";
+    const isConfiguredAdmin = Boolean(user.email?.toLowerCase() === adminEmail);
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("*")
       .eq("id", user.id)
       .single();
 
-    if (profile?.role !== "admin") {
-      return NextResponse.redirect(new URL("/admin/denied", url.origin));
+    if (isConfiguredAdmin || profile?.role === "admin") {
+      const target = safeNext.startsWith("/admin") ? safeNext : "/admin";
+      return NextResponse.redirect(new URL(target, url.origin));
     }
+
+    if (profile?.role === "worker") {
+      return NextResponse.redirect(new URL("/mitra", url.origin));
+    }
+
+    // Customer
+    if (!profile?.onboarding_completed || !profile?.phone) {
+      return NextResponse.redirect(
+        new URL(`/welcome?next=${encodeURIComponent(safeNext)}`, url.origin)
+      );
+    }
+
+    return NextResponse.redirect(new URL(safeNext, url.origin));
   }
 
   return NextResponse.redirect(new URL(safeNext, url.origin));

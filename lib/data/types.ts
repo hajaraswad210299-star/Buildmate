@@ -1,4 +1,5 @@
 import { OrderStatus } from "../orders/transitions";
+export type { OrderStatus };
 
 export type Role = "customer" | "worker" | "admin";
 
@@ -155,7 +156,7 @@ export interface Order {
   events?: OrderEvent[];
   complaint?: Complaint;
   transaction_id?: string;
-  dispatch_status?: "searching" | "assigned" | "exhausted";
+  dispatch_status?: "idle" | "searching" | "assigned" | "exhausted";
   customer_preferred_worker_name?: string;
   allow_reassign?: boolean;
   dispatch_offers?: DispatchOffer[];

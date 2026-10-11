@@ -1,7 +1,7 @@
 # BuildMate — SPEC CUSTOMER (Pelanggan)
 
 > **File 2 dari 3:** `SPEC_ADMIN.md` · `SPEC_CUSTOMER.md` · `SPEC_MITRA.md`
-> Versi 1.1 (Bagian A belum disesuaikan dengan dispatch otomatis B25; Bagian B sudah) · Bahasa UI: Indonesia · Mata uang: Rupiah (IDR) · Nama kode: English/snake_case
+> Versi 1.3 (Bagian A belum disesuaikan dengan dispatch otomatis B25; Bagian B sudah) · Bahasa UI: Indonesia · Mata uang: Rupiah (IDR) · Nama kode: English/snake_case
 > **Bagian A** = khusus sisi pelanggan. **Bagian B** = fondasi bersama, **identik di ketiga file**.
 
 ---
@@ -36,29 +36,65 @@ Prinsip:
 
 ---
 
-## A2. Referensi visual sisi pelanggan
+## A2. Referensi visual sisi pelanggan — Airbnb × Flamingo Estate
 
-> **Diisi pengguna.** Simpan screenshot di `docs/design/customer/` dan/atau tulis URL di tabel ini.
+Arah gaya: **hibrida**. **Airbnb** memberi kerangka dan cara kerja; **Flamingo Estate** memberi rasa dan karakter. Token brand BuildMate (B7) selalu menang.
 
-| Referensi | URL / file | Yang diambil |
+| Referensi | Sumber | Yang diambil | Yang **tidak** diambil |
+|---|---|---|---|
+| Airbnb | airbnb.com (termasuk Airbnb Services); screenshot di `docs/design/customer/airbnb/` | Struktur halaman, kartu listing, pencarian & filter, halaman detail dengan CTA sticky, alur pesan & bayar, halaman status/perjalanan, bottom nav mobile, pola tanda kepercayaan | Warna merah Airbnb, logo, ikon, teks, fitur yang tidak ada di BuildMate |
+| Flamingo Estate | flamingoestate.com; screenshot dari pengguna di `docs/design/customer/flamingo/` (beranda desktop, halaman produk desktop, beranda mobile) | Tipografi serif besar yang anggun, komposisi editorial, ruang lega, nada bahasa hangat, gaya foto (cahaya alami, still life, detail tangan & alat) | Palet warna, logo, foto, teks, ritme lambat di halaman tugas |
+
+### Pola dari Flamingo Estate (hasil analisis screenshot beranda desktop, halaman produk desktop, beranda mobile)
+| Pola Flamingo Estate | Penerapan di BuildMate | Screen |
 |---|---|---|
-| Ref 1 | _(isi)_ | _(mis. pola hero & pencarian)_ |
-| Ref 2 | _(isi)_ | _(mis. kartu listing & halaman detail)_ |
-| Ref 3 | _(isi)_ | _(mis. alur checkout / status pesanan)_ |
+| Bar pengumuman tipis di paling atas ("The Estate Membership →") | Bar `lavender-800` teks putih 13px: "BuildMate Plus — bebas biaya layanan & garansi →" (tautan ke C09; disembunyikan untuk member Plus; bisa ditutup) | Semua halaman pelanggan |
+| Header: menu kiri, **wordmark serif di tengah**, akun & keranjang kanan | Desktop: kiri tautan Cari · Cara kerja · Plus · Jadi Mitra; tengah wordmark "BuildMate" (Instrument Serif); kanan Pesanan + avatar/Masuk. Mobile: ikon `SearchNormal1` kiri, wordmark tengah, avatar/Masuk kanan (navigasi utama tetap bottom nav) | A3 |
+| Hero berupa **kartu foto bersudut membulat** (radius ±24px) dengan margin dari tepi layar, judul serif putih di atas foto, tombol pill putih | Hero C01: kartu foto radius 24px (mobile margin 16px), overlay gradasi gelap lembut, judul serif putih, subjudul, **kolom cari putih** di dalam kartu | C01 |
+| Label section kecil UPPERCASE berjarak huruf, di tengah ("MOST LOVED") | Label section 12/600 uppercase tracking 0.12em `neutral-600` di tengah: "PAKET POPULER", "TUKANG PILIHAN", "CARA KERJA" | C01, C04 |
+| Kartu produk: tile gambar latar netral polos, badge pill, **judul serif**, deskripsi 1 baris, tombol pill outline berisi label + harga ("ADD TO BASKET  $80") | `PackageCard`: tile `cream-100` dengan ikon kategori Bulk besar atau foto alat; badge pill; nama paket serif 22px; 1 baris cakupan; tombol pill outline "LIHAT TUKANG · Rp150.000" | C01, C03 |
+| Carousel menampilkan potongan kartu berikutnya + **garis progres tipis** di bawah (bukan titik) | Carousel paket & tukang: kartu 85% lebar di mobile, indikator garis progres 2px yang bergerak mengikuti scroll | C01, C04 |
+| Tile editorial 2 kolom: foto besar, judul serif di tengah bawah, deskripsi pendek, tombol pill kecil gelap | Blok "Cara kerja" & "Rekber" sebagai tile editorial 2 kolom (desktop) / bertumpuk (mobile) dengan foto/ilustrasi, judul serif, kalimat pendek, tombol pill kecil | C01 |
+| Kutipan besar serif di tengah + deretan logo media | **Pernyataan janji** serif besar: "Dana kamu baru diteruskan ke tukang setelah kamu puas." + 3 ikon kepercayaan. **Tanpa** logo media atau testimoni palsu | C01 |
+| Pita foto penuh lebar dengan judul serif italic putih + tombol pill putih ("The Flamingo Fund") | Pita CTA mitra: foto alat kerja, "Jadi *Mitra* BuildMate", tombol pill putih → `/mitra/register` | C01 |
+| Halaman produk: galeri kiri (thumbnail vertikal), info kanan; breadcrumb kecil; badge outline; judul serif besar | C04 desktop: kolom kiri portofolio/foto tukang (thumbnail vertikal), kolom kanan sticky: breadcrumb (Beranda / Plumbing / Nama), badge outline (Terverifikasi, area), nama serif 40px | C04 |
+| Cek "Are you within our local delivery area?" dengan input + tombol bulat panah | **Cek area layanan:** "Apakah alamatmu dalam jangkauan?" — pilih kecamatan + tombol bulat `ArrowRight` → "Tukang ini melayani area kamu" / "Di luar area — lihat tukang lain di area kamu" | C04 |
+| Opsi pembelian sebagai baris radio dengan harga di kanan, lalu tombol pill lebar | Daftar paket sebagai baris radio (nama + durasi kiri, harga kanan), lalu tombol pill lebar **PESAN** | C04 |
+| Tab bergaris bawah (This Week's Harvest / Delivery Schedule / Sourcing) | Tab: **Cakupan · Tentang tukang · Cara kerja** | C04 |
+| Daftar dengan **garis titik-titik** penghubung (item ........ sumber) | Cakupan paket & rincian biaya memakai garis titik: "Ganti kepala keran ........ Termasuk", "Biaya layanan ........ Rp5.000" | C04, C05, C08 |
+| "Pairs Better With" carousel | "Paket lain dari tukang ini" dan "Tukang lain di areamu" | C04 |
+| Ulasan & bintang | **Tidak dipakai** (rating di luar scope). Diganti jumlah pekerjaan selesai yang nyata + badge terverifikasi | — |
+| Footer gelap berwarna brand, judul kolom serif, emblem di tengah | Footer `lavender-900`, teks `lavender-100`, judul kolom serif, wordmark serif di tengah bawah, catatan "Simulasi — pembayaran memakai sandbox" | Semua |
+| Tombol chat melayang di kanan bawah | Tombol `Whatsapp` melayang "Hubungi BuildMate" (di atas bottom nav di mobile; disembunyikan di halaman dengan bar CTA sticky) | Semua halaman pelanggan |
+| Latar krem hangat, foto still life cahaya alami | Latar halaman pelanggan `cream-50`, tile gambar `cream-100`, kartu putih; gaya foto: alat kerja & sudut rumah dengan cahaya alami | Semua |
+| Teks tombol UPPERCASE berjarak huruf | Varian tombol `pill` (B7.9) untuk tombol di kartu & section editorial; tombol utama di form/pembayaran tetap gaya standar agar jelas | C01, C03, C04, C09 |
 
-Cara memakai (untuk agent):
-1. Buka setiap URL dengan browser bawaan Antigravity pada lebar **1440px** dan **390px**; simpan screenshot ke `docs/design/customer/`.
-2. Catat pola yang diambil di `docs/design/customer/NOTES.md`: struktur layout, kepadatan, gaya kartu, pola navigasi, gaya foto, ritme spasi, pola interaksi.
-3. **Token brand BuildMate selalu menang:** warna lavender, Geist + Instrument Serif, ikon Iconsax, radius & shadow (B7). Referensi hanya memengaruhi tata letak, hierarki, dan pola interaksi.
-4. Jangan menyalin logo, ilustrasi, foto, teks, atau aset milik situs referensi.
-5. Jika referensi bertentangan dengan spesifikasi screen di A5, ikuti A5 dan catat di `docs/DECISIONS.md`.
+### Pembagian halaman
+| Mode | Halaman | Karakter |
+|---|---|---|
+| **Editorial** (meyakinkan) | C01 hero, cara kerja, penjelas rekber, banner Plus · C09 Plus · state terima kasih C08 · panel visual auth C02 · landing daftar mitra | Serif besar, ruang lega, foto/ilustrasi terkurasi, kalimat pendek yang hangat |
+| **Fungsional** (menyelesaikan urusan) | C03 Cari · C04 Detail tukang · C05 Form pesanan · C06 Status pembayaran · C07 Pesanan saya · C08 Detail pesanan · C10 Akun | Pola Airbnb: padat tapi lega, harga & CTA selalu terlihat, tanpa elemen dekoratif yang menunda |
+
+### Aturan kombinasi
+1. **Satu sistem visual:** warna lavender, Geist + Instrument Serif, Iconsax, radius, tombol, dan badge sama di semua halaman. Yang berubah hanya "volume" gayanya.
+2. **Tugas menang atas suasana:** di halaman fungsional tidak boleh ada foto besar, animasi panjang, atau teks cerita yang menunda pengguna.
+3. **Ringan di HP:** foto editorial maks 3–4 per halaman, format WebP/AVIF lewat `next/image`, `sizes` tepat, lazy load di bawah lipatan, placeholder blur. Target LCP < 2,5 detik di HP kelas menengah (throttling "Fast 4G").
+4. **Foto jujur:** gaya foto Flamingo diterjemahkan ke konteks rumah & perbaikan (alat kerja, detail tangan, sudut rumah yang rapi, cahaya alami). Tidak memakai wajah orang sebagai "tukang" jika bukan tukang sungguhan. Foto stok hanya dari sumber berlisensi bebas (mis. Unsplash) dan dicatat di `docs/design/customer/CREDITS.md`.
+5. **Latar hangat:** halaman editorial boleh memakai `neutral-25`/`lavender-50` sebagai latar section untuk kesan hangat; tidak menambah warna brand baru.
+
+### Cara memakai (untuk agent)
+1. Baca screenshot di `docs/design/customer/airbnb/` dan `docs/design/customer/flamingo/`. Jika folder Airbnb kosong, buka airbnb.com dengan browser bawaan Antigravity pada lebar 1440px dan 390px, lalu simpan screenshot ke folder itu.
+2. Tulis catatan pola di `docs/design/customer/NOTES.md`: per referensi, apa yang diambil untuk tiap screen C01–C10.
+3. Jangan menyalin logo, ilustrasi, foto, teks, atau aset milik situs referensi.
+4. Jika referensi bertentangan dengan spesifikasi screen di A5, ikuti A5 dan catat di `docs/DECISIONS.md`.
 
 ---
 
 ## A3. Layout & navigasi
 
 ### Mobile (< 768px)
-- **Top app bar** 56px: di beranda berisi logo + avatar/tombol Masuk; di halaman lain berisi `ArrowLeft2` kembali + judul halaman (16/600) + aksi kanan opsional. Shadow muncul saat konten digulir.
+- **Bar pengumuman Plus** 36px di paling atas (lihat A2), bisa ditutup.
+- **Top app bar** 56px: di beranda berisi `SearchNormal1` kiri, wordmark serif di tengah, avatar/tombol Masuk kanan; di halaman lain berisi `ArrowLeft2` kembali + judul halaman (16/600) + aksi kanan opsional. Shadow muncul saat konten digulir.
 - **Bottom nav** 64px + `env(safe-area-inset-bottom)`:
   `Home2` Beranda · `SearchNormal1` Cari · `ReceiptText` Pesanan (badge jumlah pesanan aktif) · `ProfileCircle` Akun.
   Item aktif: ikon varian **Bold** `lavender-600`, label 12/600, pill `lavender-50` di belakang ikon.
@@ -66,9 +102,10 @@ Cara memakai (untuk agent):
 - Padding konten 16px; jarak antar section 32px.
 
 ### Desktop (≥ 1024px)
-- **Navbar** 72px: logo · kolom cari (di semua halaman kecuali beranda) · tautan Pesanan · Plus (`Crown1`) · avatar menu (Akun, Pesanan, Keluar) atau tombol **Masuk** / **Daftar**.
+- **Navbar** 72px (pola Flamingo): kiri tautan Cari · Cara kerja · Plus (`Crown1`) · Jadi Mitra; **tengah wordmark "BuildMate" (Instrument Serif 28px)**; kanan Pesanan + avatar menu (Akun, Pesanan, Keluar) atau **Masuk** / **Daftar**. Di halaman selain beranda, ikon cari membuka overlay pencarian.
+- Latar halaman pelanggan `cream-50`; kartu putih.
 - Container maksimum 1200px, padding 32px.
-- **Footer** 4 kolom: tentang BuildMate, layanan (kategori), bantuan (WA BuildMate, cara kerja), mitra (Jadi Mitra BuildMate). Baris bawah: hak cipta + "Simulasi — pembayaran memakai sandbox".
+- **Footer** `lavender-900` (teks `lavender-100`, judul kolom serif) 4 kolom: tentang BuildMate, layanan (kategori), bantuan (WA BuildMate, cara kerja), mitra (Jadi Mitra BuildMate). Baris bawah: hak cipta + "Simulasi — pembayaran memakai sandbox".
 
 ### Micro-interaction navigasi
 - Pill aktif bottom nav meluncur antar item; ikon berganti Linear → Bold dengan scale 0.9 → 1.
@@ -157,7 +194,7 @@ Setiap screen wajib: skeleton, empty state dengan ajakan tindakan, error inline 
 8. **CTA mitra:** "Kamu tukang? Dapatkan pekerjaan lewat BuildMate" → `/mitra/register`.
 9. Footer (desktop) / tautan bantuan (mobile).
 
-**Micro-interaction:** kata-kata judul hero muncul fade-up berurutan saat pertama dimuat (sekali); placeholder typewriter (mengetik 60ms/karakter, jeda 1.5s, menghapus) berhenti saat input difokus; fokus kolom cari → shadow membesar + panel saran slide-down; tile kategori hover naik 2px + ikon memantul kecil (tekan di mobile = scale 0.97); carousel snap dengan titik indikator yang memanjang pada slide aktif; langkah cara kerja muncul berurutan saat masuk viewport; garis alur rekber tergambar saat masuk viewport (800ms); banner Plus memiliki kilau gradasi yang menyapu sekali.
+**Micro-interaction:** kata-kata judul hero muncul fade-up berurutan saat pertama dimuat (sekali); placeholder typewriter (mengetik 60ms/karakter, jeda 1.5s, menghapus) berhenti saat input difokus; fokus kolom cari → shadow membesar + panel saran slide-down; tile kategori hover naik 2px + ikon memantul kecil (tekan di mobile = scale 0.97); carousel snap dengan garis progres tipis yang bergerak mengikuti scroll; langkah cara kerja muncul berurutan saat masuk viewport; garis alur rekber tergambar saat masuk viewport (800ms); banner Plus memiliki kilau gradasi yang menyapu sekali.
 
 **Acceptance:** Enter di kolom cari → `/search?q=`; tile kategori → `/search?category={slug}`; semua data dari database (bukan hardcode).
 
@@ -602,6 +639,15 @@ Semua sisi (admin, pelanggan, mitra) memakai design system yang sama. **Token di
 | `neutral-800` | `#2A2736` | Judul sekunder |
 | `neutral-900` | `#16141F` | Teks utama |
 
+### B7.2b Netral hangat (sisi pelanggan & mitra)
+| Token | Hex | Pemakaian |
+|---|---|---|
+| `cream-50` | `#FBF9F4` | Latar halaman pelanggan & mitra |
+| `cream-100` | `#F3F0E8` | Tile gambar paket/tukang, latar section editorial |
+| `cream-200` | `#E7E2D6` | Border di atas latar krem |
+
+Admin tetap memakai `neutral-50`. Krem hanya sebagai latar; warna brand tetap lavender.
+
 ### B7.3 Warna semantik
 | Peran | 50 (latar) | 500 (titik/ikon) | 600 (solid) | 700 (teks) |
 |---|---|---|---|---|
@@ -659,6 +705,7 @@ Skala:
 | `display-lg` | Instrument Serif | 44 / 48 | 400 | Panel auth desktop, hero mobile besar |
 | `display-md` | Instrument Serif | 32 / 38 | 400 | Judul auth, sapaan dashboard, nama tukang, judul status |
 | `display-sm` | Instrument Serif | 28 / 34 | 400 | Judul section pelanggan/mitra |
+| `display-xs` | Instrument Serif | 22 / 28 | 400 | Nama paket & nama tukang di kartu (sisi pelanggan) |
 | `h1` | Geist | 24 / 32 | 600 | Judul halaman admin |
 | `h2` | Geist | 20 / 28 | 600 | Judul kartu besar |
 | `h3` | Geist | 16 / 24 | 600 | Judul kartu, judul top bar |
@@ -670,7 +717,7 @@ Skala:
 | `metric` | Geist | 32 / 36 | 600, tracking −0.02em, `tabular-nums` | Angka kartu metrik |
 
 Aturan pasangan:
-- Instrument Serif hanya untuk judul ≥ 28px; **tidak pernah** di tombol, form, tabel, badge, atau angka.
+- Instrument Serif hanya untuk judul ≥ 28px, kecuali `display-xs` (22px) untuk nama di kartu sisi pelanggan; **tidak pernah** di tombol, form, tabel, badge, atau angka.
 - Maksimal satu judul serif per area pandang. Italic serif untuk satu kata penekanan ("Tukang yang *tepat*…").
 - Admin: serif hanya di halaman auth dan sapaan dashboard. Pelanggan & mitra: serif untuk hero, judul auth, judul section, judul status.
 - Semua angka uang/jumlah memakai `tabular-nums`. Format Rupiah: `Rp1.250.000` — **tanpa spasi** setelah "Rp", tanpa desimal, titik pemisah ribuan. Buat helper `formatRupiah()` sendiri (jangan langsung memakai `style: 'currency'` karena menyisipkan spasi).
@@ -750,6 +797,8 @@ Aturan pasangan:
   --color-neutral-400: #A6A2B5; --color-neutral-500: #7B778C; --color-neutral-600: #5D596D;
   --color-neutral-700: #433F52; --color-neutral-800: #2A2736; --color-neutral-900: #16141F;
 
+  --color-cream-50: #FBF9F4; --color-cream-100: #F3F0E8; --color-cream-200: #E7E2D6;
+
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --font-serif: var(--font-instrument-serif), Georgia, serif;
@@ -770,7 +819,7 @@ Hubungkan variabel shadcn/ui (`--primary`, `--ring`, `--border`, `--background`,
 ### B7.9 Komponen dasar (shadcn/ui, di-theme)
 | Komponen | Spesifikasi |
 |---|---|
-| Button | Varian: `primary` (lavender-600, hover 700, tekan 800), `secondary` (putih + border neutral-200), `ghost`, `destructive` (danger-600), `link`. Ukuran: `sm` 32, `md` 40, `lg` 48 (utama di mobile), `xl` 56 (bar aksi mitra). Radius md, teks 14/600 (lg/xl: 16/600). Ikon kiri opsional. State memuat: spinner + label proses, lebar tidak berubah |
+| Button | Varian: `primary` (lavender-600, hover 700, tekan 800), `secondary` (putih + border neutral-200), `ghost`, `destructive` (danger-600), `link`. Varian tambahan sisi pelanggan: `pill-outline` & `pill-solid` (radius full, teks 12/600 UPPERCASE tracking 0.08em, boleh berisi label kiri + harga kanan) untuk tombol di kartu & section editorial. Ukuran: `sm` 32, `md` 40, `lg` 48 (utama di mobile), `xl` 56 (bar aksi mitra). Radius md, teks 14/600 (lg/xl: 16/600). Ikon kiri opsional. State memuat: spinner + label proses, lebar tidak berubah |
 | Input / Textarea / Select | Tinggi 44 (mobile 48), radius md, border neutral-200 → hover neutral-300 → fokus lavender-600 + shadow-focus. Label di atas 13/500 neutral-700; helper 12 neutral-500; error 12 danger-700 dengan ikon `Warning2` |
 | Checkbox / Radio / Switch | Warna terpilih lavender-600; switch 36×20 |
 | Card | Putih, border neutral-200, radius lg, shadow-xs, padding 16 (mobile) / 20 (desktop) |

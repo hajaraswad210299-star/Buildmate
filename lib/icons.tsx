@@ -132,6 +132,16 @@ export const Ruler = createIcon("Ruler", Iconsax.Ruler);
 export const Wind = createIcon("Wind", Iconsax.Wind2);
 export const Refresh = createIcon("Refresh", Iconsax.Refresh);
 export const Refresh2 = createIcon("Refresh2", Iconsax.Refresh2);
+export const Sun1 = createIcon("Sun1", Iconsax.Sun1);
+export const Sun = createIcon("Sun", Iconsax.Sun);
+export const CloudSunny = createIcon("CloudSunny", Iconsax.CloudSunny);
+export const SearchStatus = createIcon("SearchStatus", Iconsax.SearchStatus);
+export const SearchStatus1 = createIcon("SearchStatus1", Iconsax.SearchStatus1);
+export const Star1 = createIcon("Star1", Iconsax.Star1);
+export const DirectRight = createIcon("DirectRight", Iconsax.DirectRight);
+export const Heart = createIcon("Heart", Iconsax.Heart);
+export const MessageQuestion = createIcon("MessageQuestion", Iconsax.MessageQuestion);
+export const Call = createIcon("Call", Iconsax.Call);
 
 /**
  * WhatsApp SVG Icon (since standard Iconsax lacks WhatsApp branding)

@@ -33,6 +33,9 @@
   --color-neutral-700: #433F52;
   --color-neutral-800: #2A2736;
   --color-neutral-900: #16141F;
+  --color-cream-50: #FBF9F4;
+  --color-cream-100: #F3F0E8;
+  --color-cream-200: #E7E2D6;
 
   /* Semantics (B7.3) */
   --color-success-50: #ECFDF3;
