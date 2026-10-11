@@ -23,6 +23,32 @@ import {
   UserEdit,
   DocumentDownload,
 } from "@/lib/icons";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
+
+const STATUS_OPTIONS: { value: OrderStatus | "all"; label: string }[] = [
+  { value: "all", label: "Semua Status" },
+  { value: "pending_payment", label: "Menunggu Pembayaran" },
+  { value: "paid", label: "Dibayar (Mencari Tukang)" },
+  { value: "worker_confirmed", label: "Tukang Terkonfirmasi" },
+  { value: "on_the_way", label: "Menuju Lokasi" },
+  { value: "in_progress", label: "Sedang Dikerjakan" },
+  { value: "awaiting_confirmation", label: "Menunggu Konfirmasi" },
+  { value: "completed", label: "Selesai" },
+  { value: "cancelled", label: "Dibatalkan" },
+];
+
+const CATEGORY_OPTIONS = [
+  { value: "all", label: "Semua Kategori" },
+  { value: "plumbing", label: "Plumbing" },
+  { value: "pengecatan", label: "Pengecatan" },
+  { value: "perbaikan umum", label: "Perbaikan Umum" },
+];
+
+const CUSTOMER_TYPE_OPTIONS: { value: "all" | "free" | "plus"; label: string }[] = [
+  { value: "all", label: "Semua Tipe Pelanggan" },
+  { value: "free", label: "Pelanggan Reguler" },
+  { value: "plus", label: "Member Plus" },
+];
 
 function AdminOrdersContent() {
   const [activeTab, setActiveTab] = useState<OrderFilter["tab"]>("all");
@@ -243,44 +269,28 @@ function AdminOrdersContent() {
 
           <div className="flex items-center gap-2 flex-wrap text-xs">
             {/* Status Filter */}
-            <select
+            <FilterDropdown
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value as OrderStatus | "all")}
-              className="px-2.5 py-1.5 rounded-xl border border-neutral-200 bg-white text-neutral-700 focus:outline-none focus:ring-2 focus:ring-lavender-300 font-medium"
-            >
-              <option value="all">Semua Status</option>
-              <option value="pending_payment">Menunggu Pembayaran</option>
-              <option value="paid">Dibayar (Mencari Tukang)</option>
-              <option value="worker_confirmed">Tukang Terkonfirmasi</option>
-              <option value="on_the_way">Menuju Lokasi</option>
-              <option value="in_progress">Sedang Dikerjakan</option>
-              <option value="awaiting_confirmation">Menunggu Konfirmasi</option>
-              <option value="completed">Selesai</option>
-              <option value="cancelled">Dibatalkan</option>
-            </select>
+              options={STATUS_OPTIONS}
+              onChange={(val) => setSelectedStatus(val)}
+              menuWidth="min-w-[200px]"
+            />
 
             {/* Category Filter */}
-            <select
+            <FilterDropdown
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-2.5 py-1.5 rounded-xl border border-neutral-200 bg-white text-neutral-700 focus:outline-none focus:ring-2 focus:ring-lavender-300"
-            >
-              <option value="all">Semua Kategori</option>
-              <option value="plumbing">Plumbing</option>
-              <option value="pengecatan">Pengecatan</option>
-              <option value="perbaikan umum">Perbaikan Umum</option>
-            </select>
+              options={CATEGORY_OPTIONS}
+              onChange={(val) => setSelectedCategory(val)}
+              menuWidth="min-w-[170px]"
+            />
 
             {/* Customer Type Filter */}
-            <select
+            <FilterDropdown
               value={customerType}
-              onChange={(e) => setCustomerType(e.target.value as "all" | "free" | "plus")}
-              className="px-2.5 py-1.5 rounded-xl border border-neutral-200 bg-white text-neutral-700 focus:outline-none focus:ring-2 focus:ring-lavender-300"
-            >
-              <option value="all">Semua Tipe Pelanggan</option>
-              <option value="free">Pelanggan Reguler (Gratis)</option>
-              <option value="plus">Member Plus</option>
-            </select>
+              options={CUSTOMER_TYPE_OPTIONS}
+              onChange={(val) => setCustomerType(val)}
+              menuWidth="min-w-[180px]"
+            />
 
             {(search || selectedCategory !== "all" || selectedStatus !== "all" || customerType !== "all" || activeTab !== "all") && (
               <button
