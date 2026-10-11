@@ -117,7 +117,7 @@ export function AirbnbSearchBar({ className = "" }: AirbnbSearchBarProps) {
 
         <div className="h-8 w-px bg-neutral-200" />
 
-        {/* Segment 2: Wilayah Surabaya */}
+        {/* Segment 2: Wilayah */}
         <div
           onClick={() => setActiveTab("district")}
           className={`flex-1 px-5 py-2.5 rounded-full cursor-pointer transition-colors text-left ${
@@ -128,7 +128,7 @@ export function AirbnbSearchBar({ className = "" }: AirbnbSearchBarProps) {
             Wilayah
           </span>
           <span className="block text-sm text-neutral-900 truncate">
-            {selectedDistrict ? selectedDistrict : "Semua Surabaya"}
+            {selectedDistrict ? selectedDistrict : "Semua Wilayah"}
           </span>
         </div>
 
@@ -181,7 +181,7 @@ export function AirbnbSearchBar({ className = "" }: AirbnbSearchBarProps) {
                 {serviceQuery || "Mau benerin apa hari ini?"}
               </p>
               <p className="text-[11px] text-neutral-500">
-                {selectedDistrict || "Semua Surabaya"} · {selectedDate}
+                {selectedDistrict || "Semua Wilayah"} · {selectedDate}
               </p>
             </div>
           </div>
@@ -196,7 +196,7 @@ export function AirbnbSearchBar({ className = "" }: AirbnbSearchBarProps) {
         <div className="absolute left-0 right-0 top-full mt-3 bg-white rounded-3xl p-5 border border-neutral-200/90 shadow-xl z-50 text-left">
           <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
             <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-              Paling Sering Dicari di Surabaya
+              Paling Sering Dicari
             </p>
             <button
               type="button"
@@ -254,10 +254,10 @@ export function AirbnbSearchBar({ className = "" }: AirbnbSearchBarProps) {
           <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
             <div>
               <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Pilih Wilayah Surabaya
+                Pilih Wilayah Layanan
               </p>
               <p className="text-xs text-neutral-400">
-                Pilih kecamatan lokasimu untuk melihat tukang terdekat
+                Pilih wilayah lokasimu untuk melihat tukang terdekat
               </p>
             </div>
             <button
@@ -282,7 +282,7 @@ export function AirbnbSearchBar({ className = "" }: AirbnbSearchBarProps) {
                   : "border-neutral-200 hover:border-neutral-300 text-neutral-700"
               }`}
             >
-              Semua Surabaya
+              Semua Wilayah
             </button>
             {DISTRICTS.map((dist, idx) => (
               <button
@@ -346,7 +346,7 @@ export function AirbnbSearchBar({ className = "" }: AirbnbSearchBarProps) {
 
           <div className="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between">
             <span className="text-xs text-neutral-500">
-              {serviceQuery || "Semua Layanan"} · {selectedDistrict || "Semua Surabaya"} · {selectedDate}
+              {serviceQuery || "Semua Layanan"} · {selectedDistrict || "Semua Wilayah"} · {selectedDate}
             </span>
             <button
               type="button"
