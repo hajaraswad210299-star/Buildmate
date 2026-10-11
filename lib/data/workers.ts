@@ -321,3 +321,35 @@ export async function toggleWorkerActive(
 
   return { success: true, is_active: nextActive };
 }
+
+export async function resetDemoWorkerApplication(): Promise<{ success: boolean }> {
+  const targetId = "c0000000-0000-0000-0000-000000000004";
+  try {
+    const supabase = createClient();
+    await supabase
+      .from("workers")
+      .update({
+        application_status: "pending",
+        is_active: false,
+        is_verified: false,
+        rejection_reason: null,
+        reviewed_at: null,
+        reviewed_by: null,
+      })
+      .eq("id", targetId);
+  } catch (err) {
+    console.warn("resetDemoWorkerApplication db error:", err);
+  }
+
+  const w = inMemoryWorkers.find((item) => item.id === targetId || item.id === "w-4");
+  if (w) {
+    w.application_status = "pending";
+    w.is_active = false;
+    w.is_verified = false;
+    w.rejection_reason = undefined;
+    w.reviewed_at = undefined;
+    w.reviewed_by = undefined;
+  }
+
+  return { success: true };
+}

@@ -9,6 +9,7 @@ import {
   saveWorker,
   reviewWorkerApplication,
   toggleWorkerActive,
+  resetDemoWorkerApplication,
 } from "@/lib/data/workers";
 import { getPackages } from "@/lib/data/services";
 import { Worker, ServicePackage } from "@/lib/data/types";
@@ -23,6 +24,7 @@ import {
   Edit2,
   CloseCircle,
   ArrowRight,
+  Refresh,
 } from "@/lib/icons";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 
@@ -53,14 +55,27 @@ export default function AdminWorkersPage() {
   // Lightbox
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
+  const [pendingCount, setPendingCount] = useState<number>(0);
+
   const loadData = React.useCallback(() => {
     getWorkers({ tab: activeTab, search }).then((res) => setWorkers(res));
     getPackages().then((res) => setPackages(res));
+    getWorkers({ tab: "applications" }).then((apps) => setPendingCount(apps.length));
   }, [activeTab, search]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const handleResetDemoApplicant = async () => {
+    try {
+      await resetDemoWorkerApplication();
+      toast.success("Pendaftar simulasi (Rian Pramono) berhasil dimuat kembali");
+      loadData();
+    } catch (err: any) {
+      toast.error("Gagal memuat ulang pendaftar simulasi");
+    }
+  };
 
   const handleOpenReviewDrawer = (w: Worker) => {
     setReviewingWorker(w);
@@ -188,7 +203,11 @@ export default function AdminWorkersPage() {
         <div className="flex items-center gap-1 border-b border-neutral-200/80 pb-px">
           {[
             { id: "active", label: "Aktif" },
-            { id: "applications", label: "Pendaftaran Menunggu", badge: 1 },
+            {
+              id: "applications",
+              label: "Pendaftaran Menunggu",
+              badge: pendingCount > 0 ? pendingCount : undefined,
+            },
             { id: "inactive", label: "Nonaktif & Ditolak" },
           ].map((tab) => (
             <button
@@ -346,8 +365,21 @@ export default function AdminWorkersPage() {
         {activeTab === "applications" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {workers.length === 0 ? (
-              <div className="col-span-full py-16 text-center text-xs text-neutral-400">
-                Tidak ada pendaftaran mitra baru yang menunggu peninjauan.
+              <div className="col-span-full py-16 text-center space-y-3">
+                <p className="text-xs text-neutral-400">
+                  Tidak ada pendaftaran mitra baru yang menunggu peninjauan.
+                </p>
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleResetDemoApplicant}
+                    leftIcon={<Refresh size={14} />}
+                  >
+                    Muat Ulang Pendaftar Simulasi (Rian Pramono)
+                  </Button>
+                </div>
               </div>
             ) : (
               workers.map((w) => (
