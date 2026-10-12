@@ -302,22 +302,20 @@ export default function AdminServicesPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Cari paket layanan..."
-                  className="w-full pl-8 pr-2.5 py-1.5 rounded-xl border border-neutral-200 text-xs focus:outline-none focus:border-lavender-500"
+                  className="w-full pl-8 pr-2.5 py-1.5 rounded-xl border border-neutral-200 text-xs placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-lavender-300"
                 />
               </div>
 
-              <select
+              <FilterDropdown
                 value={selectedCatFilter}
-                onChange={(e) => setSelectedCatFilter(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl border border-neutral-200 text-xs bg-white focus:outline-none focus:border-lavender-500 text-neutral-700"
-              >
-                <option value="all">Semua Kategori</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: "all", label: "Semua Kategori" },
+                  ...categories.map((c) => ({ value: c.id, label: c.name })),
+                ]}
+                onChange={(val) => setSelectedCatFilter(val)}
+                align="right"
+                menuWidth="min-w-[180px]"
+              />
             </div>
           )}
         </div>

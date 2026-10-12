@@ -19,6 +19,7 @@ interface FilterDropdownProps<T extends string = string> {
   size?: "sm" | "md";
   placeholder?: string;
   disabled?: boolean;
+  align?: "left" | "right";
 }
 
 export function FilterDropdown<T extends string = string>({
@@ -31,6 +32,7 @@ export function FilterDropdown<T extends string = string>({
   size = "sm",
   placeholder = "Pilih opsi...",
   disabled = false,
+  align = "left",
 }: FilterDropdownProps<T>) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -94,7 +96,8 @@ export function FilterDropdown<T extends string = string>({
       {open && (
         <div
           className={cn(
-            "absolute left-0 top-full mt-1.5 max-h-64 overflow-y-auto bg-white rounded-xl shadow-xl border border-neutral-200/90 p-1 z-50 animate-in fade-in zoom-in-95 duration-100",
+            "absolute top-full mt-1.5 max-h-64 overflow-y-auto bg-white rounded-xl shadow-xl border border-neutral-200/90 p-1 z-50 animate-in fade-in zoom-in-95 duration-100",
+            align === "right" ? "right-0" : "left-0",
             fullWidth ? "w-full" : menuWidth || "min-w-[180px]"
           )}
         >
