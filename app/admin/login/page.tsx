@@ -18,7 +18,7 @@ function AdminLoginForm() {
   const [capsLockActive, setCapsLockActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // If already logged in, lock immediately to dashboard
+  // If already logged in AS ADMIN, lock immediately to dashboard
   React.useEffect(() => {
     const checkSession = async () => {
       try {
@@ -27,8 +27,21 @@ function AdminLoginForm() {
           data: { user },
         } = await supabase.auth.getUser();
         if (user) {
-          const next = searchParams.get("next") || "/admin";
-          window.location.replace(next);
+          const adminEmail = "hajaraswad210299@gmail.com";
+          const isSuperAdmin = user.email?.toLowerCase() === adminEmail.toLowerCase();
+          let isAdmin = isSuperAdmin;
+          if (!isAdmin) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("role")
+              .eq("id", user.id)
+              .single();
+            isAdmin = profile?.role === "admin";
+          }
+          if (isAdmin) {
+            const next = searchParams.get("next") || "/admin";
+            window.location.replace(next);
+          }
         }
       } catch {
         // ignore
