@@ -355,6 +355,7 @@ export function DispatchPanel({
                     "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=100"
                   }
                   alt={order.worker.name}
+                  referrerPolicy="no-referrer"
                   className="w-10 h-10 rounded-full object-cover border border-neutral-200 shrink-0"
                 />
                 <div>

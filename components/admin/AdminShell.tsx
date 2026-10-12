@@ -494,6 +494,7 @@ function AdminShellInner({ children }: AdminShellProps) {
                 <img
                   src={adminUser.avatarUrl}
                   alt={adminUser.name}
+                  referrerPolicy="no-referrer"
                   className="w-9 h-9 rounded-full object-cover shrink-0 ring-1 ring-lavender-200"
                 />
               ) : (
@@ -632,6 +633,7 @@ function AdminShellInner({ children }: AdminShellProps) {
                   <img
                     src={adminUser.avatarUrl}
                     alt={adminUser.name}
+                    referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
                   />
                 ) : (

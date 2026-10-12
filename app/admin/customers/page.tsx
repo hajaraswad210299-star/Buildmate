@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
 import { AdminShell } from "@/components/admin/AdminShell";
 import {
   Crown1,
@@ -27,6 +26,53 @@ export interface CustomerItem {
   total_spent: number;
   created_at: string;
   is_real: boolean;
+}
+
+function CustomerAvatar({
+  src,
+  name,
+  size = "sm",
+}: {
+  src?: string | null;
+  name: string;
+  size?: "sm" | "lg";
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [src]);
+
+  const initials = name && name.trim() ? name.trim().slice(0, 2).toUpperCase() : "BM";
+
+  if (src && !imgError) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={name}
+        referrerPolicy="no-referrer"
+        onError={() => setImgError(true)}
+        className={
+          size === "lg"
+            ? "w-13 h-13 rounded-full object-cover border-2 border-lavender-200 shrink-0"
+            : "w-7 h-7 rounded-full object-cover border border-neutral-200 shrink-0"
+        }
+      />
+    );
+  }
+
+  return (
+    <div
+      className={
+        size === "lg"
+          ? "w-13 h-13 rounded-full bg-lavender-100 text-lavender-800 flex items-center justify-center font-bold text-lg shrink-0"
+          : "w-7 h-7 rounded-full bg-lavender-100 text-lavender-700 font-bold flex items-center justify-center text-xs shrink-0"
+      }
+    >
+      {initials}
+    </div>
+  );
 }
 
 export default function AdminCustomersPage() {
@@ -288,20 +334,7 @@ export default function AdminCustomersPage() {
                     >
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2.5">
-                          {c.avatar_url ? (
-                            <Image
-                              src={c.avatar_url}
-                              alt={c.name}
-                              width={28}
-                              height={28}
-                              unoptimized
-                              className="w-7 h-7 rounded-full object-cover border border-neutral-200"
-                            />
-                          ) : (
-                            <div className="w-7 h-7 rounded-full bg-lavender-100 text-lavender-700 font-bold flex items-center justify-center text-xs">
-                              {c.name.slice(0, 2).toUpperCase()}
-                            </div>
-                          )}
+                          <CustomerAvatar src={c.avatar_url} name={c.name} size="sm" />
                           <div className="flex flex-col">
                             <span className="font-semibold text-neutral-800">{c.name}</span>
                           </div>
@@ -411,20 +444,11 @@ export default function AdminCustomersPage() {
 
               {/* CARD PROFIL */}
               <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center gap-3.5">
-                {selectedCustomer.avatar_url ? (
-                  <Image
-                    src={selectedCustomer.avatar_url}
-                    alt={selectedCustomer.name}
-                    width={52}
-                    height={52}
-                    unoptimized
-                    className="w-13 h-13 rounded-full object-cover border-2 border-lavender-200 shrink-0"
-                  />
-                ) : (
-                  <div className="w-13 h-13 rounded-full bg-lavender-100 text-lavender-800 flex items-center justify-center font-bold text-lg shrink-0">
-                    {selectedCustomer.name.slice(0, 2).toUpperCase()}
-                  </div>
-                )}
+                <CustomerAvatar
+                  src={selectedCustomer.avatar_url}
+                  name={selectedCustomer.name}
+                  size="lg"
+                />
                 <div className="min-w-0 flex-1">
                   <h4 className="font-bold text-neutral-900 text-base truncate">
                     {selectedCustomer.name}

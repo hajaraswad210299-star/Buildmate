@@ -439,6 +439,7 @@ function AdminOrdersContent() {
                                   "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=100"
                                 }
                                 alt={ord.worker.name}
+                                referrerPolicy="no-referrer"
                                 className="w-6 h-6 rounded-full object-cover border border-neutral-200 shrink-0"
                               />
                               <div className="flex flex-col">
