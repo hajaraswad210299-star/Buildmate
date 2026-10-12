@@ -294,6 +294,7 @@ export default function AdminCustomersPage() {
                               alt={c.name}
                               width={28}
                               height={28}
+                              unoptimized
                               className="w-7 h-7 rounded-full object-cover border border-neutral-200"
                             />
                           ) : (
@@ -416,6 +417,7 @@ export default function AdminCustomersPage() {
                     alt={selectedCustomer.name}
                     width={52}
                     height={52}
+                    unoptimized
                     className="w-13 h-13 rounded-full object-cover border-2 border-lavender-200 shrink-0"
                   />
                 ) : (

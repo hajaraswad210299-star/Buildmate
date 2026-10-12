@@ -403,6 +403,7 @@ export default function AdminServicesPage() {
                               alt={pkg.name}
                               width={40}
                               height={40}
+                              unoptimized
                               className="w-10 h-10 rounded-xl object-cover border border-neutral-200 shrink-0"
                             />
                           ) : (
