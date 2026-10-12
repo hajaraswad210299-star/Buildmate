@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Category, ServicePackage } from "@/lib/data/types";
 import { formatRupiah, slugify } from "@/lib/format";
@@ -20,6 +21,7 @@ import {
   SearchNormal1,
   Refresh,
   GalleryAdd,
+  Eye,
 } from "@/lib/icons";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 
@@ -517,16 +519,26 @@ export default function AdminServicesPage() {
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingPackage(pkg);
-                            setIsPkgDrawerOpen(true);
-                          }}
-                          className="px-2.5 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg font-semibold transition-colors text-xs"
-                        >
-                          Edit
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Link
+                            href={`/services/${pkg.id}`}
+                            target="_blank"
+                            title="Lihat Halaman Pelanggan"
+                            className="p-1.5 text-neutral-400 hover:text-neutral-800 hover:bg-neutral-100 rounded-lg transition-colors"
+                          >
+                            <Eye size={16} />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingPackage(pkg);
+                              setIsPkgDrawerOpen(true);
+                            }}
+                            className="px-2.5 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg font-semibold transition-colors text-xs"
+                          >
+                            Edit
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -700,9 +712,22 @@ export default function AdminServicesPage() {
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
-                <h3 className="text-base font-bold text-neutral-900">
-                  {editingPackage.id ? "Edit Paket Layanan" : "Tambah Paket Baru"}
-                </h3>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-base font-bold text-neutral-900">
+                    {editingPackage.id ? "Edit Paket Layanan" : "Tambah Paket Baru"}
+                  </h3>
+                  {editingPackage.id && (
+                    <Link
+                      href={`/services/${editingPackage.id}`}
+                      target="_blank"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-lavender-700 bg-lavender-50 hover:bg-lavender-100 border border-lavender-200 transition-colors"
+                      title="Lihat tampilan halaman pelanggan"
+                    >
+                      <Eye size={13} />
+                      <span>Lihat di Web</span>
+                    </Link>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => setIsPkgDrawerOpen(false)}

@@ -399,6 +399,10 @@ function SearchPageContent() {
                         id={pkg.id}
                         name={pkg.name}
                         categoryName={pkg.category_name || "Layanan"}
+                        categorySlug={pkg.category_slug}
+                        imageUrl={pkg.image_url}
+                        badge={pkg.badge}
+                        description={pkg.description}
                         price={pkg.price}
                         durationMinutes={pkg.est_duration_minutes}
                         inclusions={pkg.inclusions}
