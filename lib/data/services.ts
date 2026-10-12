@@ -95,8 +95,9 @@ export async function savePackage(
       worker_count: pkg.worker_count || 6,
       badge: pkg.badge || "STANDAR",
       image_url:
-        pkg.image_url ||
-        "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=800&auto=format&fit=crop&q=80",
+        pkg.image_url !== undefined
+          ? pkg.image_url
+          : "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=800&auto=format&fit=crop&q=80",
       created_at: new Date().toISOString(),
     };
     inMemoryPackages.push(newPkg);

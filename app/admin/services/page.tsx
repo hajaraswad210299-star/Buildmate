@@ -19,6 +19,7 @@ import {
   CloseCircle,
   SearchNormal1,
   Refresh,
+  GalleryAdd,
 } from "@/lib/icons";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 
@@ -40,6 +41,73 @@ export default function AdminServicesPage() {
   const [inclusionsInput, setInclusionsInput] = useState("");
   const [exclusionsInput, setExclusionsInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Image Upload & Delete State
+  const [imageInputMode, setImageInputMode] = useState<"upload" | "url">("upload");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleUploadFile = async (file: File) => {
+    const validTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      toast.error("Format foto harus JPG, PNG, atau WebP");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ukuran foto maksimal 5 MB");
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/services/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Gagal mengunggah foto");
+      }
+
+      const data = await res.json();
+      if (data.url) {
+        setEditingPackage((prev) => (prev ? { ...prev, image_url: data.url } : prev));
+        toast.success("Foto paket layanan berhasil diunggah!");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal mengunggah foto paket");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleUploadFile(file);
+    }
+    e.target.value = "";
+  };
+
+  const handleDropFile = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleUploadFile(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setEditingPackage((prev) => (prev ? { ...prev, image_url: "" } : prev));
+    toast.success("Foto paket layanan berhasil dihapus");
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -726,55 +794,164 @@ export default function AdminServicesPage() {
                   </div>
                 </div>
 
-                {/* Badge Promosi & Foto URL */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-medium text-neutral-700 block mb-1">
-                      Badge Web (Label Kartu)
-                    </label>
-                    <input
-                      type="text"
-                      value={editingPackage.badge || ""}
-                      onChange={(e) =>
-                        setEditingPackage({ ...editingPackage, badge: e.target.value })
-                      }
-                      placeholder="mis. RESPON CEPAT, BERGARANSI"
-                      className="w-full p-2.5 rounded-xl border border-neutral-200 uppercase font-semibold text-xs focus:outline-none focus:border-lavender-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-medium text-neutral-700 block mb-1">
-                      URL Foto Produk (Unsplash)
-                    </label>
-                    <input
-                      type="text"
-                      value={editingPackage.image_url || ""}
-                      onChange={(e) =>
-                        setEditingPackage({ ...editingPackage, image_url: e.target.value })
-                      }
-                      placeholder="https://images.unsplash.com/..."
-                      className="w-full p-2.5 rounded-xl border border-neutral-200 text-xs font-mono focus:outline-none focus:border-lavender-500 truncate"
-                    />
-                  </div>
+                {/* Badge Promosi */}
+                <div>
+                  <label className="font-medium text-neutral-700 block mb-1">
+                    Badge Web (Label Kartu)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingPackage.badge || ""}
+                    onChange={(e) =>
+                      setEditingPackage({ ...editingPackage, badge: e.target.value })
+                    }
+                    placeholder="mis. RESPON CEPAT, BERGARANSI"
+                    className="w-full p-2.5 rounded-xl border border-neutral-200 uppercase font-semibold text-xs focus:outline-none focus:border-lavender-500"
+                  />
                 </div>
 
-                {/* Foto Preview */}
-                {editingPackage.image_url && (
-                  <div className="p-2 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center gap-3">
-                    <img
-                      src={editingPackage.image_url}
-                      alt="Pratinjau Foto"
-                      className="w-14 h-14 rounded-lg object-cover border border-neutral-200 shrink-0"
-                    />
-                    <div className="min-w-0 text-[11px] text-neutral-500">
-                      <span className="font-semibold text-neutral-800 block">Pratinjau Foto Web</span>
-                      <span className="truncate block font-mono text-[10px] text-neutral-400">
-                        {editingPackage.image_url}
-                      </span>
+                {/* Foto Produk Layanan (Upload Sendiri / Input URL & Hapus Foto) */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-medium text-neutral-700 block text-xs">
+                      Foto Paket Layanan
+                    </label>
+                    <div className="flex items-center gap-1 text-[11px] bg-neutral-100 p-0.5 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => setImageInputMode("upload")}
+                        className={`px-2 py-0.5 rounded-md font-medium transition-colors ${
+                          imageInputMode === "upload"
+                            ? "bg-white text-lavender-900 shadow-2xs font-semibold"
+                            : "text-neutral-500 hover:text-neutral-800"
+                        }`}
+                      >
+                        Unggah Sendiri
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setImageInputMode("url")}
+                        className={`px-2 py-0.5 rounded-md font-medium transition-colors ${
+                          imageInputMode === "url"
+                            ? "bg-white text-lavender-900 shadow-2xs font-semibold"
+                            : "text-neutral-500 hover:text-neutral-800"
+                        }`}
+                      >
+                        Input URL
+                      </button>
                     </div>
                   </div>
-                )}
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleFileInputChange}
+                  />
+
+                  {/* KONDISI 1: JIKA FOTO SUDAH ADA */}
+                  {editingPackage.image_url ? (
+                    <div className="p-3 rounded-2xl bg-neutral-50 border border-neutral-200/90 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-neutral-200 shrink-0 bg-neutral-200">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={editingPackage.image_url}
+                            alt="Pratinjau Foto"
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-semibold text-neutral-800 block truncate">
+                            Foto Paket Terpasang
+                          </span>
+                          <span className="truncate block font-mono text-[10px] text-neutral-400 max-w-[200px] sm:max-w-xs mt-0.5">
+                            {editingPackage.image_url.startsWith("data:")
+                              ? "Gambar Unggahan Lokal (Data URL)"
+                              : editingPackage.image_url}
+                          </span>
+                          <span className="inline-block mt-1 text-[10px] text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/40">
+                            ✓ Siap Tampil di Web
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          disabled={uploadingImage}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-2.5 py-1.5 rounded-xl border border-neutral-200 text-xs font-medium text-neutral-700 hover:bg-white hover:border-neutral-300 transition-colors flex items-center gap-1"
+                          title="Ganti foto dengan file lain"
+                        >
+                          <Edit2 size={13} />
+                          <span>Ganti</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="px-2.5 py-1.5 rounded-xl border border-danger-200 bg-danger-50 text-xs font-semibold text-danger-700 hover:bg-danger-100 transition-colors flex items-center gap-1"
+                          title="Hapus foto dari paket layanan"
+                        >
+                          <Trash size={13} />
+                          <span>Hapus</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* KONDISI 2: BELUM ADA FOTO (MODE UPLOAD ATAU URL) */
+                    imageInputMode === "upload" ? (
+                      <div
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setIsDragging(true);
+                        }}
+                        onDragLeave={() => setIsDragging(false)}
+                        onDrop={handleDropFile}
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`p-5 rounded-2xl border-2 border-dashed transition-all text-center cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                          isDragging
+                            ? "border-lavender-500 bg-lavender-50/50"
+                            : "border-neutral-200 bg-neutral-50/50 hover:bg-neutral-100/70 hover:border-neutral-300"
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-lavender-100 text-lavender-700 flex items-center justify-center">
+                          {uploadingImage ? (
+                            <div className="w-5 h-5 border-2 border-lavender-600 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <GalleryAdd size={20} />
+                          )}
+                        </div>
+                        <div className="text-xs">
+                          <span className="font-semibold text-lavender-800">
+                            {uploadingImage ? "Sedang mengunggah foto..." : "Klik untuk unggah foto"}
+                          </span>
+                          <span className="text-neutral-500"> atau seret ke sini</span>
+                        </div>
+                        <span className="text-[10px] text-neutral-400">
+                          Mendukung JPG, PNG, atau WebP (maks. 5MB)
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <input
+                          type="text"
+                          value={editingPackage.image_url || ""}
+                          onChange={(e) =>
+                            setEditingPackage({ ...editingPackage, image_url: e.target.value })
+                          }
+                          placeholder="https://images.unsplash.com/... atau URL foto lainnya"
+                          className="w-full p-2.5 rounded-xl border border-neutral-200 text-xs font-mono focus:outline-none focus:border-lavender-500"
+                        />
+                        <span className="text-[10px] text-neutral-400 block">
+                          Tempel tautan gambar dari web (Unsplash, Supabase, Cloudinary, dll).
+                        </span>
+                      </div>
+                    )
+                  )}
+                </div>
 
                 {/* Deskripsi */}
                 <div>
