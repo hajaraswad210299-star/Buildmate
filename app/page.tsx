@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { CustomerShell } from "@/components/customer/CustomerShell";
 import { AirbnbSearchBar } from "@/components/customer/AirbnbSearchBar";
@@ -187,13 +187,51 @@ const HERO_IMAGES = [
 
 export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
 
   useEffect(() => {
     getCategories().then((cats) => setCategories(cats.filter((c) => c.is_active)));
+    getPackages().then((pkgs) => setPackages(pkgs.filter((p) => p.is_active)));
     getWorkers({ tab: "active" }).then((wks) => setWorkers(wks.slice(0, 4)));
   }, []);
+
+  const row1List = useMemo(() => {
+    return CURATED_PACKAGES_ROW_1.map((item) => {
+      const live = packages.find((p) => p.id === item.id);
+      if (!live) return item;
+      return {
+        ...item,
+        name: live.name,
+        price: live.price,
+        durationMinutes: live.est_duration_minutes,
+        categoryName: live.category_name || item.categoryName,
+        categorySlug: live.category_slug || item.categorySlug,
+        description: live.description || item.description,
+        badge: live.badge || item.badge,
+        imageUrl: live.image_url || item.imageUrl,
+      };
+    });
+  }, [packages]);
+
+  const row2List = useMemo(() => {
+    return CURATED_PACKAGES_ROW_2.map((item) => {
+      const live = packages.find((p) => p.id === item.id);
+      if (!live) return item;
+      return {
+        ...item,
+        name: live.name,
+        price: live.price,
+        durationMinutes: live.est_duration_minutes,
+        categoryName: live.category_name || item.categoryName,
+        categorySlug: live.category_slug || item.categorySlug,
+        description: live.description || item.description,
+        badge: live.badge || item.badge,
+        imageUrl: live.image_url || item.imageUrl,
+      };
+    });
+  }, [packages]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -325,7 +363,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[20px]">
-          {CURATED_PACKAGES_ROW_1.map((pkg) => (
+          {row1List.map((pkg) => (
             <FlamingoProductCard key={pkg.id} {...pkg} />
           ))}
         </div>
@@ -380,7 +418,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[20px]">
-          {CURATED_PACKAGES_ROW_2.map((pkg) => (
+          {row2List.map((pkg) => (
             <FlamingoProductCard key={pkg.id} {...pkg} />
           ))}
         </div>

@@ -33,6 +33,7 @@ export interface ServicePackage {
   id: string;
   category_id: string;
   category_name?: string;
+  category_slug?: string;
   name: string;
   description: string;
   price: number;
@@ -42,6 +43,8 @@ export interface ServicePackage {
   is_active: boolean;
   worker_count?: number;
   created_at: string;
+  image_url?: string;
+  badge?: string;
 }
 
 export type ApplicationStatus = "draft" | "pending" | "approved" | "rejected";

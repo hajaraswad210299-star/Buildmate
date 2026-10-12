@@ -1,13 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { AdminShell } from "@/components/admin/AdminShell";
-import {
-  getCategories,
-  getPackages,
-  saveCategory,
-  savePackage,
-} from "@/lib/data/services";
 import { Category, ServicePackage } from "@/lib/data/types";
 import { formatRupiah, slugify } from "@/lib/format";
 import { Button } from "@/components/shared/Button";
@@ -15,19 +10,25 @@ import { toast } from "sonner";
 import {
   AddCircle,
   Edit2,
+  Trash,
   Drop,
   Brush2,
   Ruler,
   Wind,
   Setting4,
   CloseCircle,
+  SearchNormal1,
+  Refresh,
 } from "@/lib/icons";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 
 export default function AdminServicesPage() {
-  const [activeTab, setActiveTab] = useState<"categories" | "packages">("categories");
+  const [activeTab, setActiveTab] = useState<"packages" | "categories">("packages");
   const [categories, setCategories] = useState<Category[]>([]);
   const [packages, setPackages] = useState<ServicePackage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selectedCatFilter, setSelectedCatFilter] = useState("all");
 
   // Drawer Category
   const [isCatDrawerOpen, setIsCatDrawerOpen] = useState(false);
@@ -38,10 +39,33 @@ export default function AdminServicesPage() {
   const [editingPackage, setEditingPackage] = useState<Partial<ServicePackage> | null>(null);
   const [inclusionsInput, setInclusionsInput] = useState("");
   const [exclusionsInput, setExclusionsInput] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const loadData = () => {
-    getCategories().then((res) => setCategories(res));
-    getPackages().then((res) => setPackages(res));
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/services", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.categories) setCategories(data.categories);
+        if (data.packages) setPackages(data.packages);
+      } else {
+        // Fallback to client lib
+        const { getCategories, getPackages } = await import("@/lib/data/services");
+        const cats = await getCategories();
+        const pkgs = await getPackages();
+        setCategories(cats);
+        setPackages(pkgs);
+      }
+    } catch {
+      const { getCategories, getPackages } = await import("@/lib/data/services");
+      const cats = await getCategories();
+      const pkgs = await getPackages();
+      setCategories(cats);
+      setPackages(pkgs);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -61,11 +85,16 @@ export default function AdminServicesPage() {
   const handleOpenAddPackage = () => {
     setEditingPackage({
       name: "",
-      category_id: categories[0]?.id || "",
-      price: 150000,
+      category_id: categories[0]?.id || "cat-1",
+      category_name: categories[0]?.name || "Plumbing",
+      category_slug: categories[0]?.slug || "plumbing",
+      price: 120000,
       est_duration_minutes: 60,
+      badge: "POPULER",
+      image_url:
+        "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=800&auto=format&fit=crop&q=80",
       inclusions: ["Pembersihan area", "Pemasangan komponen presisi"],
-      exclusions: ["Material sparepart baru"],
+      exclusions: ["Material sparepart baru disediakan pelanggan"],
       is_active: true,
     });
     setInclusionsInput("");
@@ -78,10 +107,31 @@ export default function AdminServicesPage() {
       toast.error("Nama kategori wajib diisi");
       return;
     }
-    await saveCategory(editingCategory as Parameters<typeof saveCategory>[0]);
-    toast.success("Kategori layanan berhasil disimpan");
-    setIsCatDrawerOpen(false);
-    loadData();
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "category",
+          data: editingCategory,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Gagal menyimpan kategori");
+      }
+
+      toast.success("Kategori layanan berhasil disimpan");
+      setIsCatDrawerOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSavePkg = async () => {
@@ -89,10 +139,61 @@ export default function AdminServicesPage() {
       toast.error("Nama paket dan harga wajib diisi");
       return;
     }
-    await savePackage(editingPackage as Parameters<typeof savePackage>[0]);
-    toast.success("Paket layanan berhasil disimpan");
-    setIsPkgDrawerOpen(false);
-    loadData();
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "package",
+          data: editingPackage,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Gagal menyimpan paket");
+      }
+
+      toast.success("Paket layanan berhasil disimpan dan disinkronkan ke web!");
+      setIsPkgDrawerOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeletePackage = async (id: string) => {
+    if (!confirm("Apakah kamu yakin ingin menghapus paket layanan ini?")) return;
+    try {
+      const res = await fetch(`/api/admin/services?type=package&id=${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Gagal menghapus paket");
+      toast.success("Paket layanan berhasil dihapus");
+      setIsPkgDrawerOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menghapus paket");
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm("Apakah kamu yakin ingin menghapus kategori ini?")) return;
+    try {
+      const res = await fetch(`/api/admin/services?type=category&id=${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Gagal menghapus kategori");
+      toast.success("Kategori berhasil dihapus");
+      setIsCatDrawerOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menghapus kategori");
+    }
   };
 
   const renderCategoryIcon = (iconName: string) => {
@@ -110,6 +211,22 @@ export default function AdminServicesPage() {
     }
   };
 
+  const filteredPackages = packages.filter((p) => {
+    const q = search.toLowerCase();
+    const matchSearch =
+      p.name.toLowerCase().includes(q) ||
+      (p.category_name || "").toLowerCase().includes(q) ||
+      (p.description || "").toLowerCase().includes(q);
+
+    if (!matchSearch) return false;
+
+    if (selectedCatFilter !== "all") {
+      return p.category_id === selectedCatFilter || p.category_slug === selectedCatFilter;
+    }
+
+    return true;
+  });
+
   return (
     <AdminShell>
       <div className="space-y-5">
@@ -120,170 +237,233 @@ export default function AdminServicesPage() {
               Katalog Layanan & Paket
             </h2>
             <p className="text-xs text-neutral-500 mt-0.5">
-              Atur daftar kategori keahlian, paket harga tetap (fixed-price), dan cakupan kerja
+              Atur daftar kategori keahlian, paket harga pasti, durasi, foto, dan cakupan kerja yang tampil di web
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={activeTab === "categories" ? handleOpenAddCategory : handleOpenAddPackage}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-lavender-600 hover:bg-lavender-700 text-white text-xs font-semibold shadow-xs transition-colors self-start sm:self-auto"
-          >
-            <AddCircle size={16} />
-            <span>{activeTab === "categories" ? "Tambah Kategori" : "Tambah Paket"}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={loadData}
+              disabled={loading}
+              className="gap-1.5"
+            >
+              <Refresh size={14} className={loading ? "animate-spin" : ""} />
+              <span>Segarkan</span>
+            </Button>
+            <button
+              type="button"
+              onClick={activeTab === "categories" ? handleOpenAddCategory : handleOpenAddPackage}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-lavender-600 hover:bg-lavender-700 text-white text-xs font-semibold shadow-xs transition-colors"
+            >
+              <AddCircle size={16} />
+              <span>{activeTab === "categories" ? "Tambah Kategori" : "Tambah Paket"}</span>
+            </button>
+          </div>
         </div>
 
-        {/* TABS */}
-        <div className="flex items-center gap-1 border-b border-neutral-200/80 pb-px">
-          <button
-            type="button"
-            onClick={() => setActiveTab("categories")}
-            className={`px-3.5 py-2 text-xs font-medium border-b-2 transition-all ${
-              activeTab === "categories"
-                ? "border-lavender-600 text-lavender-700 font-semibold"
-                : "border-transparent text-neutral-500 hover:text-neutral-800"
-            }`}
-          >
-            Kategori ({categories.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("packages")}
-            className={`px-3.5 py-2 text-xs font-medium border-b-2 transition-all ${
-              activeTab === "packages"
-                ? "border-lavender-600 text-lavender-700 font-semibold"
-                : "border-transparent text-neutral-500 hover:text-neutral-800"
-            }`}
-          >
-            Paket Layanan ({packages.length})
-          </button>
+        {/* TABS & TOOLBAR */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200/80 pb-px">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab("packages")}
+              className={`px-3.5 py-2 text-xs font-medium border-b-2 transition-all ${
+                activeTab === "packages"
+                  ? "border-lavender-600 text-lavender-700 font-semibold"
+                  : "border-transparent text-neutral-500 hover:text-neutral-800"
+              }`}
+            >
+              Paket Layanan ({packages.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("categories")}
+              className={`px-3.5 py-2 text-xs font-medium border-b-2 transition-all ${
+                activeTab === "categories"
+                  ? "border-lavender-600 text-lavender-700 font-semibold"
+                  : "border-transparent text-neutral-500 hover:text-neutral-800"
+              }`}
+            >
+              Kategori ({categories.length})
+            </button>
+          </div>
+
+          {activeTab === "packages" && (
+            <div className="flex items-center gap-2 pb-2 sm:pb-0">
+              <div className="relative w-56">
+                <SearchNormal1
+                  size={14}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400"
+                />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari paket layanan..."
+                  className="w-full pl-8 pr-2.5 py-1.5 rounded-xl border border-neutral-200 text-xs focus:outline-none focus:border-lavender-500"
+                />
+              </div>
+
+              <select
+                value={selectedCatFilter}
+                onChange={(e) => setSelectedCatFilter(e.target.value)}
+                className="px-2.5 py-1.5 rounded-xl border border-neutral-200 text-xs bg-white focus:outline-none focus:border-lavender-500 text-neutral-700"
+              >
+                <option value="all">Semua Kategori</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* TAB 1: KATEGORI */}
         {activeTab === "categories" && (
-          <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-xs overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-neutral-50/70 border-b border-neutral-100 text-neutral-500 font-medium">
-                  <th className="py-3 px-4 font-medium">Ikon</th>
-                  <th className="py-3 px-3 font-medium">Nama Kategori</th>
-                  <th className="py-3 px-3 font-medium">Slug</th>
-                  <th className="py-3 px-3 font-medium text-center">Jumlah Paket</th>
-                  <th className="py-3 px-3 font-medium text-center">Status</th>
-                  <th className="py-3 px-4 text-center font-medium">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {categories.map((cat) => (
-                  <tr key={cat.id} className="hover:bg-neutral-50/60">
-                    <td className="py-3 px-4">
-                      <div className="w-9 h-9 rounded-xl bg-neutral-50 border border-neutral-100 flex items-center justify-center">
-                        {renderCategoryIcon(cat.icon)}
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 font-semibold text-neutral-800">
-                      {cat.name}
-                    </td>
-                    <td className="py-3 px-3 font-mono text-neutral-400">
-                      /{cat.slug}
-                    </td>
-                    <td className="py-3 px-3 text-center font-semibold text-neutral-700 tabular-nums">
-                      {cat.package_count || 0} paket
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                          cat.is_active
-                            ? "bg-success-50 text-success-700"
-                            : "bg-neutral-100 text-neutral-500"
-                        }`}
-                      >
-                        {cat.is_active ? "Aktif" : "Nonaktif"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingCategory(cat);
-                          setIsCatDrawerOpen(true);
-                        }}
-                        className="p-1.5 rounded-lg text-neutral-400 hover:text-lavender-600 hover:bg-lavender-50 transition-colors"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {categories.map((cat) => (
+              <div
+                key={cat.id}
+                className="p-4 rounded-2xl bg-white border border-neutral-200/80 shadow-xs flex flex-col justify-between hover:border-lavender-300 transition-all"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center">
+                      {renderCategoryIcon(cat.icon)}
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                        cat.is_active
+                          ? "bg-success-50 text-success-700"
+                          : "bg-neutral-100 text-neutral-500"
+                      }`}
+                    >
+                      {cat.is_active ? "Aktif" : "Nonaktif"}
+                    </span>
+                  </div>
+
+                  <h3 className="font-bold text-neutral-900 text-sm mb-1">{cat.name}</h3>
+                  <p className="text-[11px] font-mono text-neutral-400">/{cat.slug}</p>
+                </div>
+
+                <div className="pt-4 border-t border-neutral-100 flex items-center justify-between mt-4">
+                  <span className="text-xs text-neutral-500 font-medium">
+                    {cat.package_count || 0} paket aktif
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingCategory(cat);
+                      setIsCatDrawerOpen(true);
+                    }}
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-lavender-600 hover:bg-lavender-50 transition-colors"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* TAB 2: PAKET */}
+        {/* TAB 2: PAKET LAYANAN */}
         {activeTab === "packages" && (
           <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-xs overflow-hidden">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="bg-neutral-50/70 border-b border-neutral-100 text-neutral-500 font-medium">
-                  <th className="py-3 px-4 font-medium">Nama Paket</th>
+                  <th className="py-3 px-4 font-medium">Paket Layanan</th>
                   <th className="py-3 px-3 font-medium">Kategori</th>
-                  <th className="py-3 px-3 font-medium text-right">Harga Tetap</th>
-                  <th className="py-3 px-3 font-medium text-center">Estimasi Durasi</th>
-                  <th className="py-3 px-3 font-medium text-center">Tukang Terdaftar</th>
+                  <th className="py-3 px-3 font-medium text-right">Tarif Tetap</th>
+                  <th className="py-3 px-3 font-medium text-center">Durasi</th>
+                  <th className="py-3 px-3 font-medium text-center">Badge Web</th>
                   <th className="py-3 px-3 font-medium text-center">Status</th>
                   <th className="py-3 px-4 text-center font-medium">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
-                {packages.map((pkg) => (
-                  <tr key={pkg.id} className="hover:bg-neutral-50/60">
-                    <td className="py-3 px-4">
-                      <span className="font-semibold text-neutral-800 block">
-                        {pkg.name}
-                      </span>
-                      <span className="text-[11px] text-neutral-400 line-clamp-1">
-                        {pkg.description}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 font-medium text-neutral-600">
-                      {pkg.category_name}
-                    </td>
-                    <td className="py-3 px-3 font-bold text-neutral-900 tabular-nums text-right">
-                      {formatRupiah(pkg.price)}
-                    </td>
-                    <td className="py-3 px-3 text-center text-neutral-600 tabular-nums">
-                      {pkg.est_duration_minutes} menit
-                    </td>
-                    <td className="py-3 px-3 text-center font-semibold text-neutral-700 tabular-nums">
-                      {pkg.worker_count || 0}
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                          pkg.is_active
-                            ? "bg-success-50 text-success-700"
-                            : "bg-neutral-100 text-neutral-500"
-                        }`}
-                      >
-                        {pkg.is_active ? "Aktif" : "Nonaktif"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingPackage(pkg);
-                          setIsPkgDrawerOpen(true);
-                        }}
-                        className="p-1.5 rounded-lg text-neutral-400 hover:text-lavender-600 hover:bg-lavender-50 transition-colors"
-                      >
-                        <Edit2 size={16} />
-                      </button>
+                {filteredPackages.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-neutral-400">
+                      Tidak ada paket layanan yang sesuai pencarian / filter.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredPackages.map((pkg) => (
+                    <tr key={pkg.id} className="hover:bg-neutral-50/60 transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          {pkg.image_url ? (
+                            <Image
+                              src={pkg.image_url}
+                              alt={pkg.name}
+                              width={40}
+                              height={40}
+                              className="w-10 h-10 rounded-xl object-cover border border-neutral-200 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-lavender-50 text-lavender-600 flex items-center justify-center font-bold text-xs shrink-0">
+                              BM
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <span className="font-semibold text-neutral-800 block truncate">
+                              {pkg.name}
+                            </span>
+                            <span className="text-[11px] text-neutral-400 block truncate max-w-xs">
+                              {pkg.description}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-3 font-medium text-neutral-600">
+                        {pkg.category_name}
+                      </td>
+                      <td className="py-3.5 px-3 font-bold text-neutral-900 tabular-nums text-right font-mono">
+                        {formatRupiah(pkg.price)}
+                      </td>
+                      <td className="py-3.5 px-3 text-center text-neutral-600 tabular-nums">
+                        {pkg.est_duration_minutes} mnt
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        {pkg.badge ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 text-neutral-700 uppercase tracking-wider">
+                            {pkg.badge}
+                          </span>
+                        ) : (
+                          <span className="text-neutral-300">-</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                            pkg.is_active
+                              ? "bg-success-50 text-success-700"
+                              : "bg-neutral-100 text-neutral-500"
+                          }`}
+                        >
+                          {pkg.is_active ? "Aktif" : "Nonaktif"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingPackage(pkg);
+                            setIsPkgDrawerOpen(true);
+                          }}
+                          className="px-2.5 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg font-semibold transition-colors text-xs"
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -332,13 +512,13 @@ export default function AdminServicesPage() {
                       })
                     }
                     placeholder="Contoh: Plumbing"
-                    className="w-full p-2.5 rounded-xl border border-neutral-200"
+                    className="w-full p-2.5 rounded-xl border border-neutral-200 focus:outline-none focus:border-lavender-500"
                   />
                 </div>
 
                 <div>
                   <label className="font-medium text-neutral-700 block mb-1">
-                    Slug Kategori
+                    Slug Kategori (URL)
                   </label>
                   <input
                     type="text"
@@ -380,14 +560,16 @@ export default function AdminServicesPage() {
                         }`}
                       >
                         {renderCategoryIcon(iconOption.name)}
-                        <span className="text-[10px] text-neutral-600">{iconOption.name}</span>
+                        <span className="text-[10px] text-neutral-600 font-medium">
+                          {iconOption.label}
+                        </span>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <label className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 border border-neutral-100 cursor-pointer">
-                  <span className="font-semibold text-neutral-800">Status Aktif</span>
+                  <span className="font-semibold text-neutral-800">Status Aktif Kategori</span>
                   <input
                     type="checkbox"
                     checked={editingCategory.is_active}
@@ -403,21 +585,35 @@ export default function AdminServicesPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-neutral-100">
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => setIsCatDrawerOpen(false)}
-              >
-                Batal
-              </Button>
-              <Button
-                variant="primary"
-                size="md"
-                onClick={handleSaveCat}
-              >
-                Simpan Kategori
-              </Button>
+            <div className="flex items-center justify-between gap-2.5 pt-4 border-t border-neutral-100">
+              {editingCategory.id ? (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCategory(editingCategory.id!)}
+                  className="px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1"
+                >
+                  <Trash size={14} />
+                  <span>Hapus</span>
+                </button>
+              ) : <div />}
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setIsCatDrawerOpen(false)}
+                >
+                  Batal
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  disabled={isSubmitting}
+                  onClick={handleSaveCat}
+                >
+                  {isSubmitting ? "Menyimpan..." : "Simpan Kategori"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -449,10 +645,11 @@ export default function AdminServicesPage() {
                 </button>
               </div>
 
-              <div className="space-y-3 text-xs">
+              <div className="space-y-3.5 text-xs">
+                {/* Nama Paket */}
                 <div>
                   <label className="font-medium text-neutral-700 block mb-1">
-                    Nama Paket <span className="text-danger-600">*</span>
+                    Nama Paket Layanan <span className="text-danger-600">*</span>
                   </label>
                   <input
                     type="text"
@@ -460,31 +657,39 @@ export default function AdminServicesPage() {
                     onChange={(e) =>
                       setEditingPackage({ ...editingPackage, name: e.target.value })
                     }
-                    placeholder="Contoh: Ganti Keran Air"
-                    className="w-full p-2.5 rounded-xl border border-neutral-200"
+                    placeholder="Contoh: Ganti Keran & Deteksi Pipa"
+                    className="w-full p-2.5 rounded-xl border border-neutral-200 focus:outline-none focus:border-lavender-500 font-semibold text-neutral-900"
                   />
                 </div>
 
+                {/* Kategori */}
                 <div>
                   <label className="font-medium text-neutral-700 block mb-1">
-                    Kategori
+                    Kategori Layanan
                   </label>
                   <FilterDropdown
                     value={editingPackage.category_id || categories[0]?.id || ""}
                     options={categories.map((c) => ({ value: c.id, label: c.name }))}
-                    onChange={(val) =>
-                      setEditingPackage({ ...editingPackage, category_id: val })
-                    }
+                    onChange={(val) => {
+                      const selCat = categories.find((c) => c.id === val);
+                      setEditingPackage({
+                        ...editingPackage,
+                        category_id: val,
+                        category_name: selCat?.name || "Layanan",
+                        category_slug: selCat?.slug || "plumbing",
+                      });
+                    }}
                     fullWidth
                     size="md"
                     placeholder="Pilih Kategori"
                   />
                 </div>
 
+                {/* Harga & Durasi */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="font-medium text-neutral-700 block mb-1">
-                      Harga Tetap (Rp) <span className="text-danger-600">*</span>
+                      Tarif Paket Pasti (Rp) <span className="text-danger-600">*</span>
                     </label>
                     <input
                       type="number"
@@ -496,8 +701,11 @@ export default function AdminServicesPage() {
                           price: parseInt(e.target.value) || 0,
                         })
                       }
-                      className="w-full p-2.5 rounded-xl border border-neutral-200 font-mono"
+                      className="w-full p-2.5 rounded-xl border border-neutral-200 font-mono font-bold text-neutral-900 focus:outline-none focus:border-lavender-500"
                     />
+                    <span className="text-[11px] text-lavender-700 font-semibold mt-1 block">
+                      {formatRupiah(editingPackage.price || 0)}
+                    </span>
                   </div>
 
                   <div>
@@ -514,14 +722,65 @@ export default function AdminServicesPage() {
                           est_duration_minutes: parseInt(e.target.value) || 60,
                         })
                       }
-                      className="w-full p-2.5 rounded-xl border border-neutral-200 font-mono"
+                      className="w-full p-2.5 rounded-xl border border-neutral-200 font-mono focus:outline-none focus:border-lavender-500"
                     />
                   </div>
                 </div>
 
+                {/* Badge Promosi & Foto URL */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-medium text-neutral-700 block mb-1">
+                      Badge Web (Label Kartu)
+                    </label>
+                    <input
+                      type="text"
+                      value={editingPackage.badge || ""}
+                      onChange={(e) =>
+                        setEditingPackage({ ...editingPackage, badge: e.target.value })
+                      }
+                      placeholder="mis. RESPON CEPAT, BERGARANSI"
+                      className="w-full p-2.5 rounded-xl border border-neutral-200 uppercase font-semibold text-xs focus:outline-none focus:border-lavender-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-medium text-neutral-700 block mb-1">
+                      URL Foto Produk (Unsplash)
+                    </label>
+                    <input
+                      type="text"
+                      value={editingPackage.image_url || ""}
+                      onChange={(e) =>
+                        setEditingPackage({ ...editingPackage, image_url: e.target.value })
+                      }
+                      placeholder="https://images.unsplash.com/..."
+                      className="w-full p-2.5 rounded-xl border border-neutral-200 text-xs font-mono focus:outline-none focus:border-lavender-500 truncate"
+                    />
+                  </div>
+                </div>
+
+                {/* Foto Preview */}
+                {editingPackage.image_url && (
+                  <div className="p-2 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center gap-3">
+                    <img
+                      src={editingPackage.image_url}
+                      alt="Pratinjau Foto"
+                      className="w-14 h-14 rounded-lg object-cover border border-neutral-200 shrink-0"
+                    />
+                    <div className="min-w-0 text-[11px] text-neutral-500">
+                      <span className="font-semibold text-neutral-800 block">Pratinjau Foto Web</span>
+                      <span className="truncate block font-mono text-[10px] text-neutral-400">
+                        {editingPackage.image_url}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Deskripsi */}
                 <div>
                   <label className="font-medium text-neutral-700 block mb-1">
-                    Deskripsi Ringkas
+                    Deskripsi Ringkas (Tampil di Kartu & Halaman Pesanan)
                   </label>
                   <textarea
                     rows={2}
@@ -530,7 +789,7 @@ export default function AdminServicesPage() {
                       setEditingPackage({ ...editingPackage, description: e.target.value })
                     }
                     placeholder="Penjelasan ringkas pekerjaan..."
-                    className="w-full p-2.5 rounded-xl border border-neutral-200 resize-none"
+                    className="w-full p-2.5 rounded-xl border border-neutral-200 resize-none focus:outline-none focus:border-lavender-500"
                   />
                 </div>
 
@@ -543,9 +802,9 @@ export default function AdminServicesPage() {
                     {editingPackage.inclusions?.map((inc, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between p-1.5 px-2 bg-neutral-50 rounded-lg text-[11px]"
+                        className="flex items-center justify-between p-1.5 px-2 bg-emerald-50 border border-emerald-100 rounded-lg text-[11px]"
                       >
-                        <span className="text-neutral-700">✓ {inc}</span>
+                        <span className="text-emerald-800 font-medium">✓ {inc}</span>
                         <button
                           type="button"
                           onClick={() =>
@@ -554,7 +813,7 @@ export default function AdminServicesPage() {
                               inclusions: editingPackage.inclusions?.filter((_, idx) => idx !== i),
                             })
                           }
-                          className="text-neutral-400 hover:text-danger-600"
+                          className="text-neutral-400 hover:text-danger-600 font-bold ml-2"
                         >
                           ×
                         </button>
@@ -567,7 +826,7 @@ export default function AdminServicesPage() {
                       value={inclusionsInput}
                       onChange={(e) => setInclusionsInput(e.target.value)}
                       placeholder="Tambah poin cakupan pekerjaan..."
-                      className="flex-1 p-2 rounded-xl border border-neutral-200 text-xs"
+                      className="flex-1 p-2 rounded-xl border border-neutral-200 text-xs focus:outline-none focus:border-lavender-500"
                     />
                     <button
                       type="button"
@@ -596,9 +855,9 @@ export default function AdminServicesPage() {
                     {editingPackage.exclusions?.map((exc, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between p-1.5 px-2 bg-neutral-50 rounded-lg text-[11px]"
+                        className="flex items-center justify-between p-1.5 px-2 bg-neutral-50 border border-neutral-200 rounded-lg text-[11px]"
                       >
-                        <span className="text-neutral-700">✗ {exc}</span>
+                        <span className="text-neutral-600">✗ {exc}</span>
                         <button
                           type="button"
                           onClick={() =>
@@ -607,7 +866,7 @@ export default function AdminServicesPage() {
                               exclusions: editingPackage.exclusions?.filter((_, idx) => idx !== i),
                             })
                           }
-                          className="text-neutral-400 hover:text-danger-600"
+                          className="text-neutral-400 hover:text-danger-600 font-bold ml-2"
                         >
                           ×
                         </button>
@@ -620,7 +879,7 @@ export default function AdminServicesPage() {
                       value={exclusionsInput}
                       onChange={(e) => setExclusionsInput(e.target.value)}
                       placeholder="Tambah pengecualian..."
-                      className="flex-1 p-2 rounded-xl border border-neutral-200 text-xs"
+                      className="flex-1 p-2 rounded-xl border border-neutral-200 text-xs focus:outline-none focus:border-lavender-500"
                     />
                     <button
                       type="button"
@@ -640,8 +899,9 @@ export default function AdminServicesPage() {
                   </div>
                 </div>
 
+                {/* Status Aktif */}
                 <label className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 border border-neutral-100 cursor-pointer">
-                  <span className="font-semibold text-neutral-800">Status Aktif Paket</span>
+                  <span className="font-semibold text-neutral-800">Tampilkan di Web Pelanggan (Aktif)</span>
                   <input
                     type="checkbox"
                     checked={editingPackage.is_active}
@@ -657,21 +917,35 @@ export default function AdminServicesPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-neutral-100">
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => setIsPkgDrawerOpen(false)}
-              >
-                Batal
-              </Button>
-              <Button
-                variant="primary"
-                size="md"
-                onClick={handleSavePkg}
-              >
-                Simpan Paket
-              </Button>
+            <div className="flex items-center justify-between gap-2.5 pt-4 border-t border-neutral-100">
+              {editingPackage.id ? (
+                <button
+                  type="button"
+                  onClick={() => handleDeletePackage(editingPackage.id!)}
+                  className="px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1"
+                >
+                  <Trash size={14} />
+                  <span>Hapus Paket</span>
+                </button>
+              ) : <div />}
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setIsPkgDrawerOpen(false)}
+                >
+                  Batal
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  disabled={isSubmitting}
+                  onClick={handleSavePkg}
+                >
+                  {isSubmitting ? "Menyimpan..." : "Simpan & Sinkronkan"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
