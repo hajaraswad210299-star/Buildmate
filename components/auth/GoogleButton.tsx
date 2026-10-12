@@ -38,17 +38,18 @@ export function GoogleButton({
       setLoading(true);
       const supabase = createClient();
       const siteUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+        typeof window !== "undefined" && window.location.origin
+          ? window.location.origin
+          : (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
+
       const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(
         next
       )}&as=${signupAs}`;
 
-      // Use skipBrowserRedirect: true to pre-validate before sending user to a raw JSON error page
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo,
-          skipBrowserRedirect: true,
         },
       });
 
@@ -67,31 +68,7 @@ export function GoogleButton({
       }
 
       if (data?.url) {
-        // Preflight check: test if Supabase provider is enabled or returns HTTP 400
-        try {
-          const checkRes = await fetch(data.url, {
-            method: "GET",
-            redirect: "manual",
-          });
-
-          if (checkRes.status === 400) {
-            const errJson = await checkRes.json().catch(() => null);
-            if (
-              errJson?.msg?.includes("provider is not enabled") ||
-              errJson?.error_code === "validation_failed"
-            ) {
-              setLoading(false);
-              setShowSetupModal(true);
-              return;
-            }
-          }
-
-          // If enabled, proceed with browser redirect
-          window.location.href = data.url;
-        } catch {
-          // If fetch fails (CORS redirect to accounts.google.com), provider is enabled
-          window.location.href = data.url;
-        }
+        window.location.href = data.url;
       }
     } catch (err) {
       console.error("Google auth exception:", err);

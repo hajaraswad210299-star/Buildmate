@@ -90,7 +90,10 @@ function LoginForm() {
     try {
       setResendStatus("Mengirim...");
       const supabase = createClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const siteUrl =
+        typeof window !== "undefined" && window.location.origin
+          ? window.location.origin
+          : (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
       await supabase.auth.resend({
         type: "signup",
         email: email.trim(),

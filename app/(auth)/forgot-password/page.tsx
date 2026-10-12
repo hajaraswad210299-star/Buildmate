@@ -22,7 +22,10 @@ export default function ForgotPasswordPage() {
       setErrorMsg("");
 
       const supabase = createClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const siteUrl =
+        typeof window !== "undefined" && window.location.origin
+          ? window.location.origin
+          : (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
       const redirectTo = `${siteUrl}/auth/callback?next=/reset-password`;
 
       await supabase.auth.resetPasswordForEmail(email.trim(), {
@@ -41,7 +44,10 @@ export default function ForgotPasswordPage() {
   const handleResend = async () => {
     if (!email.trim()) return;
     const supabase = createClient();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const siteUrl =
+      typeof window !== "undefined" && window.location.origin
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
     await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${siteUrl}/auth/callback?next=/reset-password`,
     });

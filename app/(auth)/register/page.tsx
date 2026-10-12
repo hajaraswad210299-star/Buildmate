@@ -84,7 +84,10 @@ function RegisterForm() {
       setErrorMsg("");
 
       const supabase = createClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const siteUrl =
+        typeof window !== "undefined" && window.location.origin
+          ? window.location.origin
+          : (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
       const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`;
 
       const { data, error } = await supabase.auth.signUp({
