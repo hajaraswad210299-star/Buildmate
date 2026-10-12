@@ -48,6 +48,7 @@ function AdminSettingsContent() {
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [emailCountdown, setEmailCountdown] = useState(60);
   const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
 
   // Password change dialog
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
@@ -81,6 +82,10 @@ function AdminSettingsContent() {
       if (user) {
         setUserId(user.id);
         setEmail(user.email || "hajaraswad210299@gmail.com");
+        const pending = (user as any).new_email || (user as any).email_change;
+        if (pending) {
+          setPendingEmail(pending);
+        }
         supabase
           .from("profiles")
           .select("full_name, avatar_url")
@@ -96,7 +101,25 @@ function AdminSettingsContent() {
           });
       }
     });
-  }, []);
+
+    // Cek jika baru saja redirect dari verifikasi email
+    const verifiedParam = searchParams.get("verified");
+    if (verifiedParam === "email") {
+      toast.success("Alamat email berhasil diverifikasi dan diperbarui!");
+      setPendingEmail(null);
+      supabase.auth.refreshSession().then(({ data: { session } }) => {
+        if (session?.user?.email) {
+          setEmail(session.user.email);
+          window.dispatchEvent(
+            new CustomEvent("admin_profile_updated", {
+              detail: { email: session.user.email },
+            })
+          );
+        }
+      });
+      router.replace("/admin/settings?tab=profile");
+    }
+  }, [router, searchParams]);
 
   // Email countdown timer
   useEffect(() => {
@@ -319,9 +342,15 @@ function AdminSettingsContent() {
     setIsSubmittingEmail(true);
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.updateUser({
-        email: newEmail.trim(),
-      });
+      const siteUrl = window.location.origin;
+      const { error } = await supabase.auth.updateUser(
+        {
+          email: newEmail.trim(),
+        },
+        {
+          emailRedirectTo: `${siteUrl}/auth/callback?next=/admin/settings`,
+        }
+      );
 
       if (error) {
         toast.error(error.message);
@@ -336,6 +365,42 @@ function AdminSettingsContent() {
     } finally {
       setIsSubmittingEmail(false);
     }
+  };
+
+  // Handle resend change email
+  const handleResendChangeEmail = async () => {
+    if (!pendingEmail) return;
+    setIsResendingEmail(true);
+    try {
+      const supabase = createClient();
+      const siteUrl = window.location.origin;
+      const { error } = await supabase.auth.updateUser(
+        { email: pendingEmail },
+        { emailRedirectTo: `${siteUrl}/auth/callback?next=/admin/settings` }
+      );
+      if (error) {
+        toast.error(error.message);
+      } else {
+        setEmailCountdown(60);
+        toast.success(`Tautan konfirmasi dikirim ulang ke ${pendingEmail}`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal mengirim ulang email konfirmasi");
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
+
+  // Handle cancel change email
+  const handleCancelChangeEmail = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.updateUser({ email });
+    } catch {
+      // ignore
+    }
+    setPendingEmail(null);
+    toast.info("Permintaan perubahan email dibatalkan");
   };
 
   // Password strength checklist rules
@@ -546,8 +611,8 @@ function AdminSettingsContent() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setPendingEmail(null)}
-                    className="px-2.5 py-1 text-[11px] font-semibold text-amber-900 hover:underline"
+                    onClick={handleCancelChangeEmail}
+                    className="px-2.5 py-1 text-[11px] font-semibold text-amber-900 hover:underline cursor-pointer"
                   >
                     Batalkan
                   </button>
@@ -555,13 +620,14 @@ function AdminSettingsContent() {
                     type="button"
                     variant="secondary"
                     size="sm"
-                    disabled={emailCountdown > 0}
-                    onClick={() => {
-                      setEmailCountdown(60);
-                      toast.success(`Tautan konfirmasi dikirim ulang ke ${pendingEmail}`);
-                    }}
+                    disabled={emailCountdown > 0 || isResendingEmail}
+                    onClick={handleResendChangeEmail}
                   >
-                    {emailCountdown > 0 ? `Kirim ulang (${emailCountdown}s)` : "Kirim ulang"}
+                    {isResendingEmail
+                      ? "Mengirim..."
+                      : emailCountdown > 0
+                      ? `Kirim ulang (${emailCountdown}s)`
+                      : "Kirim ulang"}
                   </Button>
                 </div>
               </div>

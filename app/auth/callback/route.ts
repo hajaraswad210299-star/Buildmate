@@ -4,26 +4,49 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
+  const token_hash = url.searchParams.get("token_hash");
+  const type = url.searchParams.get("type");
   const next = url.searchParams.get("next") ?? "/";
   const as = url.searchParams.get("as");
+  const error = url.searchParams.get("error");
 
   // Prevent open redirect: only local paths allowed
   const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
 
-  if (!code) {
+  if (error) {
     const errorRedirect = safeNext.startsWith("/admin")
-      ? "/admin/login?error=invalid_link"
-      : "/login?error=invalid_link";
+      ? `/admin/login?error=${encodeURIComponent(error)}`
+      : `/login?error=${encodeURIComponent(error)}`;
     return NextResponse.redirect(new URL(errorRedirect, url.origin));
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-  if (error) {
+  if (token_hash && type) {
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      token_hash,
+      type: type as any,
+    });
+    if (verifyError) {
+      console.error("verifyOtp error:", verifyError);
+      const errorRedirect = safeNext.startsWith("/admin")
+        ? "/admin/login?error=link_expired"
+        : "/login?error=link_expired";
+      return NextResponse.redirect(new URL(errorRedirect, url.origin));
+    }
+  } else if (code) {
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    if (exchangeError) {
+      console.error("exchangeCodeForSession error:", exchangeError);
+      const errorRedirect = safeNext.startsWith("/admin")
+        ? "/admin/login?error=link_expired"
+        : "/login?error=link_expired";
+      return NextResponse.redirect(new URL(errorRedirect, url.origin));
+    }
+  } else {
     const errorRedirect = safeNext.startsWith("/admin")
-      ? "/admin/login?error=link_expired"
-      : "/login?error=link_expired";
+      ? "/admin/login?error=invalid_link"
+      : "/login?error=invalid_link";
     return NextResponse.redirect(new URL(errorRedirect, url.origin));
   }
 
@@ -79,6 +102,16 @@ export async function GET(request: Request) {
         await adminSupabase.from("subscriptions").insert({ user_id: user.id }).select();
       } else {
         profile = existingProfile;
+        // If configured admin, guarantee profile role is admin
+        if (isConfiguredAdmin && existingProfile.role !== "admin") {
+          const { data: updatedProfile } = await adminSupabase
+            .from("profiles")
+            .update({ role: "admin" })
+            .eq("id", user.id)
+            .select()
+            .single();
+          if (updatedProfile) profile = updatedProfile;
+        }
         // Sync avatar if existing is empty
         if (!existingProfile.avatar_url && googleAvatar) {
           const { data: updatedProfile } = await adminSupabase
@@ -100,8 +133,14 @@ export async function GET(request: Request) {
       profile = fallbackProf;
     }
 
-    if (isConfiguredAdmin || profile?.role === "admin") {
-      const target = safeNext.startsWith("/admin") ? safeNext : "/admin";
+    // Handle Admin or Email Change
+    if (isConfiguredAdmin || profile?.role === "admin" || type === "email_change") {
+      let target = safeNext.startsWith("/admin") ? safeNext : "/admin/settings";
+      if (type === "email_change") {
+        target = "/admin/settings?verified=email";
+      } else if (target.startsWith("/admin/settings") && !target.includes("verified=")) {
+        target = "/admin/settings?verified=email";
+      }
       return NextResponse.redirect(new URL(target, url.origin));
     }
 

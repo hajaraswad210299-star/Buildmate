@@ -168,6 +168,7 @@ function AdminShellInner({ children }: AdminShellProps) {
         setAdminUser((prev) => ({
           ...prev,
           name: e.detail.fullName ?? prev.name,
+          email: e.detail.email ?? prev.email,
           avatarUrl: e.detail.avatarUrl !== undefined ? e.detail.avatarUrl : prev.avatarUrl,
         }));
       } else {

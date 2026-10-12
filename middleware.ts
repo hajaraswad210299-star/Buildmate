@@ -49,6 +49,24 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // Intercept any confirmation or auth code arriving at non-callback URLs (e.g. '/' or '/admin')
+  const code = request.nextUrl.searchParams.get("code");
+  const tokenHash = request.nextUrl.searchParams.get("token_hash");
+  const type = request.nextUrl.searchParams.get("type");
+
+  if ((code || tokenHash) && pathname !== "/auth/callback") {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = "/auth/callback";
+    if (!callbackUrl.searchParams.has("next")) {
+      if (type === "email_change" || pathname.startsWith("/admin")) {
+        callbackUrl.searchParams.set("next", "/admin/settings?verified=email");
+      } else {
+        callbackUrl.searchParams.set("next", "/admin/settings");
+      }
+    }
+    return NextResponse.redirect(callbackUrl);
+  }
+
   // 1. ADMIN ROUTES
   if (pathname.startsWith("/admin")) {
     if (pathname === "/admin/login") {
@@ -221,8 +239,10 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/admin/:path*",
     "/auth/callback",
+    "/auth/confirm",
     "/order/:path*",
     "/payment/:path*",
     "/orders/:path*",

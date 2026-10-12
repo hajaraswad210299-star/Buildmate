@@ -65,6 +65,15 @@ export function CustomerShell({
   }, []);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      if (hash.includes("email_change") || search.includes("type=email_change")) {
+        window.location.href = "/admin/settings?verified=email";
+        return;
+      }
+    }
+
     // Fetch customer auth state
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {

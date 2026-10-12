@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { Toaster } from "sonner";
+import { AuthRedirectHandler } from "@/components/auth/AuthRedirectHandler";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -42,6 +44,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} antialiased`}
     >
       <body className="min-h-screen bg-neutral-50 text-neutral-900 font-sans selection:bg-lavender-200 selection:text-lavender-900">
+        <Suspense fallback={null}>
+          <AuthRedirectHandler />
+        </Suspense>
         {children}
         <Toaster
           position="bottom-right"
