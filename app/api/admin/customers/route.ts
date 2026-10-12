@@ -16,6 +16,8 @@ export interface CustomerItem {
   is_real: boolean;
 }
 
+const deletedMockIds = new Set<string>();
+
 const MOCK_CUSTOMERS: CustomerItem[] = [
   {
     id: "cust-mock-1",
@@ -247,12 +249,13 @@ export async function GET() {
     }
 
     // Combine with mock customers if mock is enabled
+    const availableMockCustomers = MOCK_CUSTOMERS.filter((c) => !deletedMockIds.has(c.id));
     const useMock = process.env.USE_MOCK_DATA === "true";
     const allCustomers = useMock
-      ? [...realCustomers, ...MOCK_CUSTOMERS]
+      ? [...realCustomers, ...availableMockCustomers]
       : realCustomers.length > 0
       ? realCustomers
-      : MOCK_CUSTOMERS;
+      : availableMockCustomers;
 
     return NextResponse.json({
       success: true,
@@ -331,6 +334,108 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (err: any) {
     console.error("PATCH /api/admin/customers error:", err);
+    return NextResponse.json(
+      { error: err?.message || "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const adminUser = await checkAdminAuth();
+    if (!adminUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "ID pelanggan wajib disertakan" }, { status: 400 });
+    }
+
+    if (id === adminUser.id) {
+      return NextResponse.json(
+        { error: "Tidak dapat menghapus akun admin yang sedang login" },
+        { status: 400 }
+      );
+    }
+
+    // Jika ini ID akun simulasi mock
+    if (id.startsWith("cust-mock-")) {
+      deletedMockIds.add(id);
+      return NextResponse.json({
+        success: true,
+        message: "Akun simulasi berhasil dihapus",
+      });
+    }
+
+    const adminSupabase = createAdminClient();
+
+    // Safety check: Cegah penghapusan email Super Admin
+    const adminEmail = (process.env.ADMIN_EMAIL || "hajaraswad210299@gmail.com").toLowerCase();
+    try {
+      const { data: targetAuthUser } = await adminSupabase.auth.admin.getUserById(id);
+      if (targetAuthUser?.user?.email?.toLowerCase() === adminEmail) {
+        return NextResponse.json(
+          { error: "Tidak dapat menghapus akun Super Admin" },
+          { status: 400 }
+        );
+      }
+    } catch {
+      // Abaikan jika user tidak ada di auth
+    }
+
+    // 1. Hapus subscriptions
+    try {
+      await adminSupabase.from("subscriptions").delete().eq("user_id", id);
+    } catch (e) {
+      console.warn("Delete subscriptions error:", e);
+    }
+
+    // 2. Hapus payments
+    try {
+      await adminSupabase.from("payments").delete().eq("customer_id", id);
+    } catch (e) {
+      console.warn("Delete payments error:", e);
+    }
+
+    // 3. Hapus orders (akan cascade ke order_photos, order_events, complaints, payouts)
+    try {
+      await adminSupabase.from("orders").delete().eq("customer_id", id);
+    } catch (e) {
+      console.warn("Delete orders error:", e);
+    }
+
+    // 4. Hapus workers jika akun pernah mendaftar sebagai mitra
+    try {
+      await adminSupabase.from("workers").delete().eq("user_id", id);
+    } catch (e) {
+      console.warn("Delete workers error:", e);
+    }
+
+    // 5. Hapus profiles
+    try {
+      await adminSupabase.from("profiles").delete().eq("id", id);
+    } catch (e) {
+      console.warn("Delete profile error:", e);
+    }
+
+    // 6. Hapus akun di auth.users Supabase
+    // Ini langkah krusial: menghapus kredensial di auth.users membebaskan email tersebut
+    // sehingga pengguna dapat mendaftar kembali secara mandiri (via Google atau form pendaftaran biasa)
+    const { error: authDeleteError } = await adminSupabase.auth.admin.deleteUser(id);
+    if (authDeleteError) {
+      console.warn("adminSupabase.auth.admin.deleteUser warning:", authDeleteError.message);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Akun pelanggan berhasil dihapus secara permanen. Pengguna dapat mendaftar kembali secara mandiri.",
+    });
+  } catch (err: any) {
+    console.error("DELETE /api/admin/customers error:", err);
     return NextResponse.json(
       { error: err?.message || "Internal server error" },
       { status: 500 }

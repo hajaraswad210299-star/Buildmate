@@ -9,6 +9,7 @@ import {
   Refresh,
   TickCircle,
   WhatsappIcon,
+  Trash,
 } from "@/lib/icons";
 import { formatRupiah, formatDateId } from "@/lib/format";
 import { Button } from "@/components/shared/Button";
@@ -82,6 +83,7 @@ export default function AdminCustomersPage() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | "plus" | "regular" | "real">("all");
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null);
+  const [customerToDelete, setCustomerToDelete] = useState<CustomerItem | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchCustomers = useCallback(async (isRefresh = false) => {
@@ -143,6 +145,33 @@ export default function AdminCustomersPage() {
       setSelectedCustomer(updatedCustomer);
     } catch (err: any) {
       toast.error(err.message || "Terjadi kesalahan");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteCustomer = async (customer: CustomerItem) => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/customers?id=${customer.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal menghapus akun pelanggan");
+      }
+
+      toast.success(
+        `Akun ${customer.name} berhasil dihapus permanen. Pengguna dapat mendaftar kembali secara mandiri.`
+      );
+      setCustomerToDelete(null);
+      if (selectedCustomer?.id === customer.id) {
+        setSelectedCustomer(null);
+      }
+      fetchCustomers(true);
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menghapus akun pelanggan");
     } finally {
       setActionLoading(false);
     }
@@ -389,16 +418,29 @@ export default function AdminCustomersPage() {
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedCustomer(c);
-                          }}
-                          className="px-2.5 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg font-semibold transition-colors"
-                        >
-                          Detail
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedCustomer(c);
+                            }}
+                            className="px-2.5 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg font-semibold transition-colors"
+                          >
+                            Detail
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCustomerToDelete(c);
+                            }}
+                            className="p-1.5 text-neutral-400 hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
+                            title="Hapus akun pelanggan"
+                          >
+                            <Trash size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -558,6 +600,32 @@ export default function AdminCustomersPage() {
                   </span>
                 </p>
               </div>
+
+              {/* ZONA HAPUS AKUN PELANGGAN */}
+              <div className="p-3.5 rounded-2xl bg-danger-50/60 border border-danger-200/80 flex flex-col gap-2.5">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-danger-100 text-danger-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Trash size={15} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-danger-900 block">
+                      Hapus Akun Pelanggan
+                    </span>
+                    <p className="text-[11px] text-danger-700 leading-relaxed mt-0.5">
+                      Akun dan profil akan dihapus permanen. Pengguna ini dapat mendaftar kembali secara mandiri kapan saja seperti alur biasa.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={() => setCustomerToDelete(selectedCustomer)}
+                  className="w-full py-2 px-3 rounded-xl bg-danger-600 hover:bg-danger-700 active:bg-danger-800 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Trash size={14} />
+                  <span>Hapus Akun Permanen</span>
+                </button>
+              </div>
             </div>
 
             <div className="pt-4 border-t border-neutral-100">
@@ -568,6 +636,68 @@ export default function AdminCustomersPage() {
                 onClick={() => setSelectedCustomer(null)}
               >
                 Tutup
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI HAPUS AKUN */}
+      {customerToDelete && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => !actionLoading && setCustomerToDelete(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-neutral-100 animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-danger-100 text-danger-700 flex items-center justify-center mb-4">
+              <Trash size={24} />
+            </div>
+
+            <h3 className="text-lg font-bold text-neutral-900 mb-1">
+              Hapus Akun Pelanggan?
+            </h3>
+
+            <p className="text-xs text-neutral-600 leading-relaxed mb-4">
+              Apakah kamu yakin ingin menghapus akun{" "}
+              <strong className="text-neutral-900">{customerToDelete.name}</strong>{" "}
+              (<span className="font-mono text-neutral-700">{customerToDelete.email}</span>)?
+            </p>
+
+            <div className="p-3.5 bg-neutral-50 rounded-2xl border border-neutral-200/80 mb-5 text-[11px] text-neutral-600 space-y-1.5">
+              <p className="font-semibold text-neutral-800">Setelah akun dihapus:</p>
+              <ul className="list-disc list-inside space-y-1 text-neutral-500">
+                <li>Data profil dan riwayat pesanan/membership dihapus dari sistem.</li>
+                <li>Akun di Supabase Auth dihapus secara permanen.</li>
+                <li>
+                  <span className="text-emerald-700 font-semibold">Pengguna dapat mendaftar lagi</span>{" "}
+                  secara mandiri (Google / Email) seperti alur biasa.
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Button
+                variant="secondary"
+                size="md"
+                className="flex-1"
+                disabled={actionLoading}
+                onClick={() => setCustomerToDelete(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="destructive"
+                size="md"
+                className="flex-1"
+                disabled={actionLoading}
+                onClick={() => handleDeleteCustomer(customerToDelete)}
+              >
+                {actionLoading ? "Menghapus..." : "Ya, Hapus Akun"}
               </Button>
             </div>
           </div>
