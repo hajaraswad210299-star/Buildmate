@@ -165,7 +165,7 @@ export function CustomerShell({
             : "bg-white border-b border-neutral-200/80"
         }`}
       >
-        <div className="w-full px-6">
+        <div className="w-full px-6 lg:px-[70px]">
           {/* Desktop Nav (≥1024px) */}
           <div className="hidden lg:flex items-center justify-between h-[72px]">
             {/* Left Menu Links */}

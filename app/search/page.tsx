@@ -171,7 +171,7 @@ function SearchPageContent() {
 
   return (
     <CustomerShell title="Cari Tukang & Paket">
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-8 lg:px-[70px] py-6 sm:py-8">
         {/* Sticky Top Search & Category Bar (Mobile & Desktop) */}
         <div className="space-y-4 mb-8">
           <div className="max-w-2xl mx-auto">
@@ -392,7 +392,7 @@ function SearchPageContent() {
 
                 {/* Packages View */}
                 {activeTab === "packages" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filteredPackages.slice(0, visibleCount).map((pkg) => (
                       <PackageCard
                         key={pkg.id}
