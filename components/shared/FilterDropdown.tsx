@@ -71,7 +71,7 @@ export function FilterDropdown<T extends string = string>({
           "border font-medium transition-all shadow-2xs select-none",
           sizeClasses,
           fullWidth
-            ? "w-full flex items-center justify-between bg-white text-neutral-800 hover:border-neutral-300"
+            ? "w-full flex items-center justify-between bg-white text-neutral-800 hover:border-neutral-300 border-neutral-200"
             : "inline-flex items-center gap-1.5",
           !fullWidth &&
             (isFiltered
@@ -82,11 +82,13 @@ export function FilterDropdown<T extends string = string>({
           className
         )}
       >
-        <span className="truncate">{displayLabel}</span>
+        <span className={cn("truncate", !currentOption && "text-neutral-400 font-normal")}>
+          {displayLabel}
+        </span>
         <ArrowDown2
-          size={12}
+          size={14}
           className={cn(
-            "text-neutral-400 transition-transform duration-200 shrink-0",
+            "text-neutral-400 transition-transform duration-200 shrink-0 ml-2",
             open && "rotate-180 text-lavender-600",
             isFiltered && "text-lavender-700"
           )}

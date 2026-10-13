@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 export function AuthRedirectHandler() {
   useEffect(() => {
@@ -18,6 +17,7 @@ export function AuthRedirectHandler() {
       search.includes("error=")
     ) {
       if (pathname.startsWith("/admin") || hash.includes("email_change")) {
+        window.history.replaceState(null, "", pathname + search);
         window.location.href = "/admin/login?error=link_expired";
         return;
       }
@@ -30,45 +30,29 @@ export function AuthRedirectHandler() {
       search.includes("type=email_change");
 
     if (isEmailChange) {
-      // Clear hash or redirect immediately to admin settings with verified flag
-      const supabase = createClient();
+      // Immediately clean hash from URL to avoid re-triggering redirect loop
+      window.history.replaceState(null, "", pathname + search);
 
-      // Check current user session
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user) {
-          window.location.href = "/admin/settings?verified=email";
-        }
-      });
+      if (pathname.startsWith("/admin/settings")) {
+        return;
+      }
 
-      // Listen for auth state change triggered by Supabase parsing the hash
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((event, session) => {
-        if (
-          event === "USER_UPDATED" ||
-          event === "SIGNED_IN" ||
-          session?.user
-        ) {
-          window.location.href = "/admin/settings?verified=email";
-        }
-      });
+      if (pathname.startsWith("/admin/denied") || pathname.startsWith("/admin/login")) {
+        return;
+      }
 
-      // Fallback redirect after 800ms to guarantee user does not stay on customer home
-      const timer = setTimeout(() => {
-        window.location.href = "/admin/settings?verified=email";
-      }, 800);
-
-      return () => {
-        subscription.unsubscribe();
-        clearTimeout(timer);
-      };
+      window.location.href = "/admin/settings?verified=email";
+      return;
     }
 
     // 3. Handle password recovery
     const isRecovery =
       hash.includes("type=recovery") || search.includes("type=recovery");
     if (isRecovery) {
-      window.location.href = "/admin/reset-password";
+      window.history.replaceState(null, "", pathname + search);
+      if (!pathname.startsWith("/admin/reset-password")) {
+        window.location.href = "/admin/reset-password";
+      }
       return;
     }
 

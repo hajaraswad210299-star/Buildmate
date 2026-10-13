@@ -88,6 +88,7 @@ export function CustomerShell({
       const hash = window.location.hash;
       const search = window.location.search;
       if (hash.includes("email_change") || search.includes("type=email_change")) {
+        window.history.replaceState(null, "", window.location.pathname + search);
         window.location.href = "/admin/settings?verified=email";
         return;
       }

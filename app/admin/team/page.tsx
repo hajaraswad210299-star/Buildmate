@@ -31,6 +31,7 @@ import {
 } from "@/lib/auth/permissions";
 import { TeamMember } from "@/lib/data/team";
 import { Role } from "@/lib/data/roles";
+import { FilterDropdown } from "@/components/shared/FilterDropdown";
 
 export default function AdminTeamPage() {
   const [activeTab, setActiveTab] = useState<"members" | "roles">("members");
@@ -38,6 +39,8 @@ export default function AdminTeamPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
 
   // Invite Drawer
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -98,9 +101,12 @@ export default function AdminTeamPage() {
         m.full_name.toLowerCase().includes(search.toLowerCase()) ||
         m.email.toLowerCase().includes(search.toLowerCase()) ||
         m.role_name.toLowerCase().includes(search.toLowerCase());
-      return matchSearch;
+      if (!matchSearch) return false;
+      if (statusFilter !== "all" && m.staff_status !== statusFilter) return false;
+      if (roleFilter !== "all" && m.role_id !== roleFilter) return false;
+      return true;
     });
-  }, [members, search]);
+  }, [members, search, statusFilter, roleFilter]);
 
   // Handle Invite Staff
   const handleSendInvite = async (e: React.FormEvent) => {
@@ -436,23 +442,45 @@ export default function AdminTeamPage() {
           {/* TAB CONTENT: MEMBERS */}
           {activeTab === "members" && (
             <div className="space-y-4">
-              {/* SEARCH BAR */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="relative w-full max-w-xs">
-                  <SearchNormal1
-                    size={15}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+              {/* SEARCH & FILTERS BAR */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap flex-1">
+                  <div className="relative w-full max-w-xs">
+                    <SearchNormal1
+                      size={15}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                    />
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Cari anggota atau peran..."
+                      className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-neutral-200 text-xs placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-lavender-300 bg-white"
+                    />
+                  </div>
+
+                  <FilterDropdown
+                    value={statusFilter}
+                    options={[
+                      { value: "all", label: "Semua Status" },
+                      { value: "active", label: "Aktif" },
+                      { value: "invited", label: "Diundang" },
+                      { value: "disabled", label: "Dinonaktifkan" },
+                    ]}
+                    onChange={(val) => setStatusFilter(val)}
                   />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Cari anggota atau peran..."
-                    className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-neutral-200 text-xs placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-lavender-300 bg-white"
+
+                  <FilterDropdown
+                    value={roleFilter}
+                    options={[
+                      { value: "all", label: "Semua Peran" },
+                      ...roles.map((r) => ({ value: r.id, label: r.name })),
+                    ]}
+                    onChange={(val) => setRoleFilter(val)}
                   />
                 </div>
 
-                <div className="text-xs text-neutral-500">
+                <div className="text-xs text-neutral-500 whitespace-nowrap">
                   Maksimal <strong className="text-neutral-800">10 staf</strong> pembantu (MVP).
                 </div>
               </div>
@@ -795,19 +823,17 @@ export default function AdminTeamPage() {
                   <label className="text-xs font-semibold text-neutral-700 block">
                     Pilih Peran <span className="text-danger-500">*</span>
                   </label>
-                  <select
-                    required
+                  <FilterDropdown
                     value={inviteRoleId}
-                    onChange={(e) => setInviteRoleId(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-neutral-200 bg-white focus:outline-none focus:ring-2 focus:ring-lavender-300"
-                  >
-                    <option value="">-- Pilih Peran Staf --</option>
-                    {roles.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name} ({r.permissions.length} hak akses)
-                      </option>
-                    ))}
-                  </select>
+                    options={roles.map((r) => ({
+                      value: r.id,
+                      label: `${r.name} (${r.permissions.length} hak akses)`,
+                    }))}
+                    onChange={(val) => setInviteRoleId(val)}
+                    fullWidth
+                    size="md"
+                    placeholder="-- Pilih Peran Staf --"
+                  />
                 </div>
 
                 {inviteRoleId && (
@@ -1031,17 +1057,17 @@ export default function AdminTeamPage() {
                 <label className="text-xs font-semibold text-neutral-700 block">
                   Pilih Peran Baru:
                 </label>
-                <select
+                <FilterDropdown
                   value={newSelectedRoleId}
-                  onChange={(e) => setNewSelectedRoleId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-neutral-200 bg-white focus:outline-none focus:ring-2 focus:ring-lavender-300"
-                >
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name} ({r.permissions.length} izin)
-                    </option>
-                  ))}
-                </select>
+                  options={roles.map((r) => ({
+                    value: r.id,
+                    label: `${r.name} (${r.permissions.length} izin)`,
+                  }))}
+                  onChange={(val) => setNewSelectedRoleId(val)}
+                  fullWidth
+                  size="md"
+                  placeholder="Pilih Peran Staf..."
+                />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">
