@@ -101,22 +101,44 @@ function AdminLoginForm() {
         return;
       }
 
-      // Pastikan role = 'admin' di profiles
-      const adminEmail = "hajaraswad210299@gmail.com";
-      const isSuperAdmin = data.user.email?.toLowerCase() === adminEmail.toLowerCase();
+      // Pastikan akun memiliki hak akses admin atau staf
+      const configuredAdmins = [
+        (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
+        "jonathanhuang88@proton.me",
+        "hajaraswad210299@gmail.com",
+      ].filter(Boolean);
+
+      const userEmail = (data.user.email || "").toLowerCase();
+      const isSuperAdmin = configuredAdmins.includes(userEmail) || data.user.user_metadata?.role === "admin";
 
       if (!isSuperAdmin) {
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from("profiles")
-          .select("role")
+          .select("role, staff_status")
           .eq("id", data.user.id)
           .single();
 
-        if (profileError || !profile || profile.role !== "admin") {
+        const role = profile?.role || data.user.user_metadata?.role || data.user.user_metadata?.signup_as;
+
+        if (role !== "admin" && role !== "staff") {
           await supabase.auth.signOut();
           setIsLoading(false);
           window.location.replace("/admin/denied");
           return;
+        }
+
+        if (role === "staff") {
+          const status = profile?.staff_status || data.user.user_metadata?.staff_status || "invited";
+          if (status === "disabled") {
+            await supabase.auth.signOut();
+            setIsLoading(false);
+            window.location.replace("/admin/denied");
+            return;
+          }
+          if (status === "invited") {
+            window.location.replace("/admin/accept-invite");
+            return;
+          }
         }
       }
 

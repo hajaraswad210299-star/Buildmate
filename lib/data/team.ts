@@ -20,7 +20,7 @@ export interface TeamMember {
 let inMemoryStaff: TeamMember[] = [];
 
 export async function getTeamMembers(): Promise<TeamMember[]> {
-  const adminEmail = (process.env.ADMIN_EMAIL || "hajaraswad210299@gmail.com").toLowerCase();
+  const adminEmail = (process.env.ADMIN_EMAIL || "jonathanhuang88@proton.me").toLowerCase();
   const roles = await getRoles();
 
   // Super Admin row is always first (A10: "Baris pertama selalu Admin Utama (kamu) dengan badge Crown1 'Admin Utama'")
@@ -45,11 +45,13 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
     const foundAdmin = users.find((u) => u.email?.toLowerCase() === adminEmail);
     if (foundAdmin) {
       superAdmin.id = foundAdmin.id;
+      const { data: prof } = await supabase.from("profiles").select("full_name, avatar_url").eq("id", foundAdmin.id).single();
       superAdmin.full_name =
+        prof?.full_name ||
         foundAdmin.user_metadata?.full_name ||
         foundAdmin.user_metadata?.name ||
         "Super Admin";
-      superAdmin.avatar_url = foundAdmin.user_metadata?.avatar_url || null;
+      superAdmin.avatar_url = prof?.avatar_url || foundAdmin.user_metadata?.avatar_url || null;
       superAdmin.last_sign_in_at = foundAdmin.last_sign_in_at || null;
       superAdmin.created_at = foundAdmin.created_at;
     }

@@ -25,9 +25,14 @@ export async function getUserPermissions(
   user: any,
   profile: any
 ): Promise<UserPermissionContext> {
-  const adminEmail = (process.env.ADMIN_EMAIL || "hajaraswad210299@gmail.com").toLowerCase();
+  const configuredAdmins = [
+    (process.env.ADMIN_EMAIL || "").toLowerCase(),
+    (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
+    "jonathanhuang88@proton.me",
+    "hajaraswad210299@gmail.com",
+  ].filter(Boolean);
   const isSuperAdmin = Boolean(
-    (user.email && user.email.toLowerCase() === adminEmail) ||
+    (user.email && configuredAdmins.includes(user.email.toLowerCase())) ||
     profile?.role === "admin"
   );
 
@@ -112,8 +117,13 @@ export async function requireRole(
     .single();
 
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-  const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase() || "hajaraswad210299@gmail.com";
-  const isConfiguredAdmin = Boolean(adminEmail && user.email?.toLowerCase() === adminEmail);
+  const configuredAdmins = [
+    (process.env.ADMIN_EMAIL || "").toLowerCase(),
+    (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
+    "jonathanhuang88@proton.me",
+    "hajaraswad210299@gmail.com",
+  ].filter(Boolean);
+  const isConfiguredAdmin = Boolean(user.email && configuredAdmins.includes(user.email.toLowerCase()));
 
   if (profile && roles.includes(profile.role as UserRole)) {
     return { user, profile };

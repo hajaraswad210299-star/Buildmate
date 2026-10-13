@@ -94,7 +94,7 @@ async function runTests() {
     fullName: "Ahmad Editor (Staf)",
     email: testEmailEditor,
     roleId: editorRole.id,
-    invitedBy: "admin-super",
+    actorId: "admin-super",
   });
 
   assert(!inviteResult1.error, `Invited Editor Konten staff successfully: ${inviteResult1.member?.email}`);
@@ -103,7 +103,7 @@ async function runTests() {
     fullName: "Budi Pemantau (Staf)",
     email: testEmailPemantau,
     roleId: pemantauRole.id,
-    invitedBy: "admin-super",
+    actorId: "admin-super",
   });
 
   assert(!inviteResult2.error, `Invited Pemantau Tukang staff successfully: ${inviteResult2.member?.email}`);
@@ -183,28 +183,31 @@ async function runTests() {
   assert(!customRoleRes.error && Boolean(customRoleRes.role?.id), `Created custom role: ${customRoleRes.role?.name}`);
 
   if (customRoleRes.role && inviteResult2.member) {
+    const assignedRole = customRoleRes.role;
+    const assignedMember = inviteResult2.member;
+
     // Assign member to custom role
     await updateStaffRole({
-      userId: inviteResult2.member.id,
-      roleId: customRoleRes.role.id,
+      userId: assignedMember.id,
+      roleId: assignedRole.id,
       actorId: "admin-super",
     });
     const teamAfterUpdate = await getTeamMembers();
-    const memberWithCustom = teamAfterUpdate.find((m) => m.id === inviteResult2.member.id);
+    const memberWithCustom = teamAfterUpdate.find((m) => m.id === assignedMember.id);
     assert(
       memberWithCustom?.role_name === uniqueRoleName,
       `Staff member role changed to ${uniqueRoleName}`
     );
 
     // Update role permissions and verify propagation
-    await updateRole(customRoleRes.role.id, {
+    await updateRole(assignedRole.id, {
       name: uniqueRoleName,
       description: "Updated description",
       permissions: ["dashboard.view", "transactions.view"],
     });
 
     const refreshedRoles = await getRoles();
-    const updatedRole = refreshedRoles.find((r) => r.id === customRoleRes.role.id);
+    const updatedRole = refreshedRoles.find((r) => r.id === assignedRole.id);
     assert(
       Boolean(updatedRole && !updatedRole.permissions.includes("payouts.manage")),
       "Role permissions update propagated immediately"

@@ -77,8 +77,13 @@ export async function middleware(request: NextRequest) {
       } = await supabase.auth.getUser();
 
       if (user) {
-        const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase() || "hajaraswad210299@gmail.com";
-        const isConfiguredAdmin = Boolean(user.email?.toLowerCase() === adminEmail);
+        const configuredAdmins = [
+          (process.env.ADMIN_EMAIL || "").toLowerCase(),
+          (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
+          "jonathanhuang88@proton.me",
+          "hajaraswad210299@gmail.com",
+        ].filter(Boolean);
+        const isConfiguredAdmin = Boolean(user.email && configuredAdmins.includes(user.email.toLowerCase()));
 
         if (isConfiguredAdmin) {
           const dashboardUrl = request.nextUrl.clone();
@@ -154,8 +159,13 @@ export async function middleware(request: NextRequest) {
       return redirectRes;
     }
 
-    const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase() || "hajaraswad210299@gmail.com";
-    const isConfiguredAdmin = Boolean(user.email?.toLowerCase() === adminEmail);
+    const configuredAdmins = [
+      (process.env.ADMIN_EMAIL || "").toLowerCase(),
+      (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
+      "jonathanhuang88@proton.me",
+      "hajaraswad210299@gmail.com",
+    ].filter(Boolean);
+    const isConfiguredAdmin = Boolean(user.email && configuredAdmins.includes(user.email.toLowerCase()));
 
     if (!isConfiguredAdmin) {
       const { data: profile } = await supabase
