@@ -26,7 +26,7 @@ loadEnvLocal();
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const adminEmail = process.env.ADMIN_EMAIL || "hajaraswad210299@gmail.com";
+const adminEmail = process.env.ADMIN_EMAIL || "jonathanhuang88@proton.me";
 
 async function setPassword(newPassword: string) {
   if (!newPassword || newPassword.length < 8) {
