@@ -48,8 +48,8 @@ function AdminShellInner({ children }: AdminShellProps) {
     email: string;
     avatarUrl?: string | null;
   }>({
-    name: "Super Admin",
-    email: "hajaraswad210299@gmail.com",
+    name: "Theo Nakamura",
+    email: "jonathanhuang88@proton.me",
     avatarUrl: null,
   });
 
@@ -155,8 +155,8 @@ function AdminShellInner({ children }: AdminShellProps) {
               .single()
               .then(({ data: profile }) => {
                 setAdminUser({
-                  name: profile?.full_name || user.user_metadata?.full_name || "Super Admin",
-                  email: user.email || "hajaraswad210299@gmail.com",
+                  name: profile?.full_name || user.user_metadata?.full_name || "Theo Nakamura",
+                  email: user.email || "jonathanhuang88@proton.me",
                   avatarUrl: profile?.avatar_url || null,
                 });
               });

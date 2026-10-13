@@ -29,7 +29,6 @@ export async function getUserPermissions(
     (process.env.ADMIN_EMAIL || "").toLowerCase(),
     (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
     "jonathanhuang88@proton.me",
-    "hajaraswad210299@gmail.com",
   ].filter(Boolean);
   const isSuperAdmin = Boolean(
     (user.email && configuredAdmins.includes(user.email.toLowerCase())) ||
@@ -121,7 +120,6 @@ export async function requireRole(
     (process.env.ADMIN_EMAIL || "").toLowerCase(),
     (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
     "jonathanhuang88@proton.me",
-    "hajaraswad210299@gmail.com",
   ].filter(Boolean);
   const isConfiguredAdmin = Boolean(user.email && configuredAdmins.includes(user.email.toLowerCase()));
 

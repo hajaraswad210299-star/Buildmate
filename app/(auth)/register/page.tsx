@@ -83,6 +83,18 @@ function RegisterForm() {
       setLoading(true);
       setErrorMsg("");
 
+      // Validate email cross-role availability
+      const checkRes = await fetch("/api/auth/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), role: "customer" }),
+      }).then((r) => r.json());
+
+      if (checkRes && checkRes.available === false) {
+        setErrorMsg(checkRes.message || "Email ini sudah terdaftar dan tidak dapat digunakan untuk peran lain.");
+        return;
+      }
+
       const supabase = createClient();
       const siteUrl =
         typeof window !== "undefined" && window.location.origin

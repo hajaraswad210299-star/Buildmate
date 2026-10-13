@@ -69,7 +69,6 @@ export async function GET(request: Request) {
       (process.env.ADMIN_EMAIL || "").toLowerCase(),
       (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
       "jonathanhuang88@proton.me",
-      "hajaraswad210299@gmail.com",
     ].filter(Boolean);
     const isConfiguredAdmin = Boolean(user.email && configuredAdmins.includes(user.email.toLowerCase()));
 

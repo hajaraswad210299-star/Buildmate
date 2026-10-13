@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getRoles, getRoleById } from "./roles";
 import { logAdminAudit } from "./audit";
 import { Permission } from "@/lib/auth/permissions";
+import { checkEmailRoleAvailability } from "@/lib/auth/email-check";
 import { randomUUID } from "crypto";
 
 export interface TeamMember {
@@ -28,7 +29,7 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
   // Super Admin row is always first (A10: "Baris pertama selalu Admin Utama (kamu) dengan badge Crown1 'Admin Utama'")
   const superAdmin: TeamMember = {
     id: "admin-super-id",
-    full_name: "Super Admin",
+    full_name: "Theo Nakamura",
     email: adminEmail,
     role: "admin",
     is_super_admin: true,
@@ -52,7 +53,7 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
         prof?.full_name ||
         foundAdmin.user_metadata?.full_name ||
         foundAdmin.user_metadata?.name ||
-        "Super Admin";
+        "Theo Nakamura";
       superAdmin.avatar_url = prof?.avatar_url || foundAdmin.user_metadata?.avatar_url || null;
       superAdmin.last_sign_in_at = foundAdmin.last_sign_in_at || null;
       superAdmin.created_at = foundAdmin.created_at;
@@ -139,6 +140,12 @@ export async function inviteStaffMember(params: {
 
   if (!cleanEmail || !cleanName) {
     return { error: "Email dan nama lengkap staf wajib diisi." };
+  }
+
+  // Cross-role validation: if email is already registered with any role, cannot be invited
+  const check = await checkEmailRoleAvailability(cleanEmail, "staff");
+  if (!check.available) {
+    return { error: check.message || "Email ini sudah terdaftar dan tidak dapat digunakan untuk peran lain." };
   }
 
   if (allMembers.some((m) => m.email.toLowerCase() === cleanEmail)) {

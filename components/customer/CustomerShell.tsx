@@ -103,37 +103,52 @@ export function CustomerShell({
       }
     }
 
-    // Fetch customer auth state
+    // Fetch customer auth state - only display as logged-in if role is 'customer'
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user) {
-        setUser(user);
-        const metaAvatar =
-          user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
-        const metaName =
-          user.user_metadata?.full_name ||
-          user.user_metadata?.name ||
-          user.email?.split("@")[0] ||
-          "";
+        try {
+          const { data } = await supabase
+            .from("profiles")
+            .select("full_name, avatar_url, role")
+            .eq("id", user.id)
+            .single();
 
-        supabase
-          .from("profiles")
-          .select("full_name, avatar_url")
-          .eq("id", user.id)
-          .single()
-          .then(({ data }) => {
-            if (data) {
-              setProfile({
-                full_name: data.full_name || metaName,
-                avatar_url: data.avatar_url || metaAvatar,
-              });
-            } else {
-              setProfile({
-                full_name: metaName,
-                avatar_url: metaAvatar,
-              });
-            }
-          });
+          const role = data?.role || user.user_metadata?.role || user.user_metadata?.signup_as;
+          // Admin, Staff, or Worker accounts are NOT logged-in customers
+          if (role && role !== "customer") {
+            setUser(null);
+            setProfile(null);
+            return;
+          }
+
+          setUser(user);
+          const metaAvatar =
+            user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+          const metaName =
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.email?.split("@")[0] ||
+            "";
+
+          if (data) {
+            setProfile({
+              full_name: data.full_name || metaName,
+              avatar_url: data.avatar_url || metaAvatar,
+            });
+          } else {
+            setProfile({
+              full_name: metaName,
+              avatar_url: metaAvatar,
+            });
+          }
+        } catch {
+          setUser(null);
+          setProfile(null);
+        }
+      } else {
+        setUser(null);
+        setProfile(null);
       }
     });
   }, []);

@@ -73,6 +73,18 @@ export default function CustomerAccountPage() {
         .eq("id", user.id)
         .single()
         .then(({ data: prof }) => {
+          const role = prof?.role || user.user_metadata?.role || user.user_metadata?.signup_as;
+          if (role && role !== "customer") {
+            if (role === "admin" || role === "staff") {
+              router.push("/admin");
+            } else if (role === "worker") {
+              router.push("/mitra");
+            } else {
+              router.push("/login?next=/account");
+            }
+            return;
+          }
+
           if (prof) {
             setProfile({
               ...prof,
