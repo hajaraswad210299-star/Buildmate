@@ -24,7 +24,12 @@ export default function AcceptInvitePage() {
 
   const [loadingUser, setLoadingUser] = useState(true);
   const [user, setUser] = useState<any>(null);
-  const [roleName, setRoleName] = useState<string>("Staf");
+  const [roleData, setRoleData] = useState<{
+    name: string;
+    description?: string;
+    permissions?: string[];
+  } | null>(null);
+  const [isAlreadyActive, setIsAlreadyActive] = useState(false);
 
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -32,36 +37,94 @@ export default function AcceptInvitePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: currentUser }, error }) => {
-      setLoadingUser(false);
-      if (currentUser && !error) {
-        setUser(currentUser);
-        const meta = currentUser.user_metadata || {};
-        setName(meta.full_name || meta.name || "");
+  // Helper to load profile & role
+  const loadProfileAndRole = async (currentUser: any) => {
+    setUser(currentUser);
+    const meta = currentUser.user_metadata || {};
+    setName(meta.full_name || meta.name || "");
 
-        // Fetch role name from profile or metadata
-        supabase
-          .from("profiles")
-          .select("staff_role_id, role")
-          .eq("id", currentUser.id)
-          .single()
-          .then(({ data: prof }) => {
-            if (prof?.staff_role_id) {
-              supabase
-                .from("roles")
-                .select("name")
-                .eq("id", prof.staff_role_id)
-                .single()
-                .then(({ data: r }) => {
-                  if (r?.name) setRoleName(r.name);
-                });
-            } else if (meta.role_name) {
-              setRoleName(meta.role_name);
-            }
+    try {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("staff_role_id, role, staff_status, full_name")
+        .eq("id", currentUser.id)
+        .single();
+
+      if (prof?.full_name) {
+        setName(prof.full_name);
+      }
+
+      if (prof?.staff_status === "active" && !prof?.staff_status?.includes("invite")) {
+        setIsAlreadyActive(true);
+      }
+
+      const roleId = prof?.staff_role_id || meta.staff_role_id;
+      if (roleId) {
+        const { data: r } = await supabase
+          .from("roles")
+          .select("name, description, permissions")
+          .eq("id", roleId)
+          .single();
+
+        if (r) {
+          setRoleData({
+            name: r.name,
+            description: r.description,
+            permissions: r.permissions || [],
           });
+        }
+      } else if (meta.role_name) {
+        setRoleData({ name: meta.role_name });
+      }
+    } catch {
+      // fallback
+    } finally {
+      setLoadingUser(false);
+    }
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    // 1. Check existing session
+    supabase.auth.getUser().then(({ data: { user: currentUser } }) => {
+      if (!mounted) return;
+      if (currentUser) {
+        loadProfileAndRole(currentUser);
+      } else {
+        // If there's an access_token in the URL hash, allow onAuthStateChange to parse it
+        const hasHashToken =
+          typeof window !== "undefined" &&
+          (window.location.hash.includes("access_token") ||
+            window.location.hash.includes("token="));
+        if (!hasHashToken) {
+          setLoadingUser(false);
+        }
       }
     });
+
+    // 2. Listen to auth changes (e.g. hash parsed)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      if (session?.user) {
+        loadProfileAndRole(session.user);
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+        setLoadingUser(false);
+      }
+    });
+
+    const timer = setTimeout(() => {
+      if (mounted) setLoadingUser(false);
+    }, 3500);
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+      clearTimeout(timer);
+    };
   }, [supabase]);
 
   // Password rules validation (SPEC_ADMIN.md B11.3 & A00e)
@@ -92,8 +155,8 @@ export default function AcceptInvitePage() {
 
     setSubmitting(true);
     try {
-      // 1. Update Auth password & metadata
-      const { data, error } = await supabase.auth.updateUser({
+      // 1. Update Auth password client-side
+      const { error: authErr } = await supabase.auth.updateUser({
         password,
         data: {
           full_name: name.trim(),
@@ -101,27 +164,29 @@ export default function AcceptInvitePage() {
         },
       });
 
-      if (error) {
-        throw error;
+      if (authErr) {
+        console.warn("Client updateUser warning:", authErr.message);
       }
 
-      // 2. Update profile staff_status to 'active'
-      if (data?.user) {
-        await supabase
-          .from("profiles")
-          .update({
-            full_name: name.trim(),
-            staff_status: "active",
-          })
-          .eq("id", data.user.id);
+      // 2. Call backend endpoint to update profiles and log audit trail
+      const res = await fetch("/api/admin/accept-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: name.trim(),
+          password,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal mengaktifkan akun staf");
       }
 
       toast.success("Akun staf kamu berhasil diaktifkan!");
 
-      // 3. Fetch permissions and redirect to first allowed route
-      const permRes = await fetch("/api/me/permissions").then((r) => r.json()).catch(() => ({}));
-      const nextRoute = getFirstAllowedRoute(permRes.permissions || [], permRes.isAdmin);
-
+      // 3. Redirect to first allowed route
+      const nextRoute = data.nextRoute || "/admin";
       router.replace(nextRoute === "/admin/no-access" ? "/admin" : nextRoute);
     } catch (err: any) {
       toast.error(err.message || "Gagal mengaktifkan akun");
@@ -132,7 +197,40 @@ export default function AcceptInvitePage() {
   if (loadingUser) {
     return (
       <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-4">
-        <div className="text-xs text-neutral-400">Memverifikasi tautan undangan...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-lavender-200 border-t-lavender-600 animate-spin" />
+          <div className="text-xs text-neutral-500 font-medium">
+            Memverifikasi tautan undangan staf BuildMate...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Already Active state
+  if (user && isAlreadyActive) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-neutral-200/80 p-8 shadow-sm text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-success-50 border border-success-200 flex items-center justify-center mx-auto text-success-600">
+            <TickCircle size={36} variant="Bulk" />
+          </div>
+
+          <div className="space-y-1.5">
+            <h2 className="font-serif text-2xl text-neutral-900">Akun Anda Sudah Aktif</h2>
+            <p className="text-xs text-neutral-500 leading-relaxed">
+              Akun staf untuk <strong>{user.email}</strong> telah aktif dan kata sandi sudah diatur sebelumnya.
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <Link href="/admin">
+              <Button variant="primary" className="w-full">
+                Buka Dashboard Staf
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -175,16 +273,36 @@ export default function AcceptInvitePage() {
           </div>
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-lavender-50 border border-lavender-200 text-xs font-semibold text-lavender-800">
-            <span>Peran: {roleName}</span>
+            <span>Peran Anda: {roleData?.name || "Staf"}</span>
           </div>
 
           <h1 className="font-serif text-2xl sm:text-3xl text-neutral-900 tracking-tight">
-            Selamat bergabung di tim <span className="italic font-serif text-lavender-700">BuildMate</span>
+            Selamat Datang di Tim <span className="italic font-serif text-lavender-700">BuildMate</span>
           </h1>
 
           <p className="text-xs text-neutral-500 leading-relaxed">
-            Lengkapi nama dan atur password baru kamu untuk mulai menggunakan dashboard staf.
+            {roleData?.description ||
+              "Lengkapi nama dan atur kata sandi baru kamu untuk mulai menggunakan dashboard staf operasional."}
           </p>
+
+          {roleData?.permissions && roleData.permissions.length > 0 && (
+            <div className="pt-1 flex items-center justify-center gap-1.5 flex-wrap">
+              <span className="text-[11px] text-neutral-400 font-medium">Hak Akses:</span>
+              {roleData.permissions.slice(0, 4).map((p) => (
+                <span
+                  key={p}
+                  className="px-2 py-0.5 rounded-md text-[10px] bg-white text-lavender-700 font-medium border border-lavender-200"
+                >
+                  {p}
+                </span>
+              ))}
+              {roleData.permissions.length > 4 && (
+                <span className="text-[10px] text-neutral-400 font-medium">
+                  +{roleData.permissions.length - 4} lainnya
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* FORM */}

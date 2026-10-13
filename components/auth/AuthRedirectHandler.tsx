@@ -56,6 +56,19 @@ export function AuthRedirectHandler() {
       return;
     }
 
+    // 4. Handle staff invite
+    const isInvite =
+      hash.includes("type=invite") ||
+      search.includes("type=invite") ||
+      hash.includes("next=%2Fadmin%2Faccept-invite") ||
+      search.includes("next=%2Fadmin%2Faccept-invite");
+    if (isInvite) {
+      if (!pathname.startsWith("/admin/accept-invite")) {
+        window.location.href = `/admin/accept-invite${hash || search}`;
+        return;
+      }
+    }
+
     // 4. If query has code or token_hash and we are on customer home '/'
     if (
       (search.includes("code=") || search.includes("token_hash=")) &&

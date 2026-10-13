@@ -60,7 +60,9 @@ export async function middleware(request: NextRequest) {
     const callbackUrl = request.nextUrl.clone();
     callbackUrl.pathname = "/auth/callback";
     if (!callbackUrl.searchParams.has("next")) {
-      if (type === "email_change" || pathname.startsWith("/admin")) {
+      if (type === "invite") {
+        callbackUrl.searchParams.set("next", "/admin/accept-invite");
+      } else if (type === "email_change" || pathname.startsWith("/admin")) {
         callbackUrl.searchParams.set("next", "/admin/settings?verified=email");
       } else {
         callbackUrl.searchParams.set("next", "/admin/settings");

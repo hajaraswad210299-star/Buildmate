@@ -92,6 +92,15 @@ export function CustomerShell({
         window.location.href = "/admin/settings?verified=email";
         return;
       }
+      if (
+        hash.includes("type=invite") ||
+        search.includes("type=invite") ||
+        hash.includes("next=%2Fadmin%2Faccept-invite") ||
+        search.includes("next=%2Fadmin%2Faccept-invite")
+      ) {
+        window.location.href = `/admin/accept-invite${hash || search}`;
+        return;
+      }
     }
 
     // Fetch customer auth state

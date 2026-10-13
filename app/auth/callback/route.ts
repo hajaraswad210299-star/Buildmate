@@ -55,13 +55,23 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL(safeNext, url.origin));
   }
 
+  // If user is accepting staff invite, route directly to accept-invite form
+  if (safeNext.includes("accept-invite") || type === "invite") {
+    return NextResponse.redirect(new URL("/admin/accept-invite", url.origin));
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (user) {
-    const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase() || "hajaraswad210299@gmail.com";
-    const isConfiguredAdmin = Boolean(user.email?.toLowerCase() === adminEmail);
+    const configuredAdmins = [
+      (process.env.ADMIN_EMAIL || "").toLowerCase(),
+      (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
+      "jonathanhuang88@proton.me",
+      "hajaraswad210299@gmail.com",
+    ].filter(Boolean);
+    const isConfiguredAdmin = Boolean(user.email && configuredAdmins.includes(user.email.toLowerCase()));
 
     let profile: any = null;
 
@@ -86,20 +96,38 @@ export async function GET(request: Request) {
         .single();
 
       if (!existingProfile) {
+        const isStaffInvite =
+          user.user_metadata?.signup_as === "staff" ||
+          user.user_metadata?.role === "staff" ||
+          type === "invite" ||
+          safeNext.includes("accept-invite");
+
+        const targetRole = isConfiguredAdmin
+          ? "admin"
+          : isStaffInvite
+          ? "staff"
+          : as === "worker"
+          ? "worker"
+          : "customer";
+
         const { data: createdProfile } = await adminSupabase
           .from("profiles")
           .insert({
             id: user.id,
             full_name: googleName,
             avatar_url: googleAvatar,
-            role: isConfiguredAdmin ? "admin" : (as === "worker" ? "worker" : "customer"),
+            role: targetRole,
+            staff_role_id: user.user_metadata?.staff_role_id || null,
+            staff_status: isStaffInvite ? "invited" : null,
             onboarding_completed: false,
           })
           .select()
           .single();
 
         profile = createdProfile;
-        await adminSupabase.from("subscriptions").insert({ user_id: user.id }).select();
+        if (!isStaffInvite && targetRole !== "admin") {
+          await adminSupabase.from("subscriptions").insert({ user_id: user.id }).select();
+        }
       } else {
         profile = existingProfile;
         // If configured admin, guarantee profile role is admin
@@ -141,6 +169,26 @@ export async function GET(request: Request) {
       } else if (target.startsWith("/admin/settings") && !target.includes("verified=")) {
         target = "/admin/settings?verified=email";
       }
+      return NextResponse.redirect(new URL(target, url.origin));
+    }
+
+    // Handle Staff (Direct to accept-invite if invited, or /admin if active)
+    if (
+      profile?.role === "staff" ||
+      user.user_metadata?.role === "staff" ||
+      user.user_metadata?.signup_as === "staff"
+    ) {
+      const status = profile?.staff_status || user.user_metadata?.staff_status || "invited";
+      if (status === "invited") {
+        return NextResponse.redirect(new URL("/admin/accept-invite", url.origin));
+      }
+      if (status === "disabled") {
+        return NextResponse.redirect(new URL("/admin/denied", url.origin));
+      }
+      const target =
+        safeNext.startsWith("/admin") && safeNext !== "/admin/accept-invite"
+          ? safeNext
+          : "/admin";
       return NextResponse.redirect(new URL(target, url.origin));
     }
 

@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRoles, getRoleById } from "./roles";
 import { logAdminAudit } from "./audit";
+import { Permission } from "@/lib/auth/permissions";
+import { randomUUID } from "crypto";
 
 export interface TeamMember {
   id: string;
@@ -146,7 +148,7 @@ export async function inviteStaffMember(params: {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const redirectUrl = `${siteUrl}/auth/callback?next=/admin/accept-invite`;
 
-  let newUserId = `staff-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  let newUserId: string = randomUUID();
 
   try {
     const supabase = createAdminClient();
@@ -402,4 +404,103 @@ export async function cancelInvite(params: {
   });
 
   return { success: true };
+}
+
+export async function acceptStaffInvite(params: {
+  userId: string;
+  fullName: string;
+  password?: string;
+}): Promise<{
+  success: boolean;
+  error?: string;
+  roleName?: string;
+  permissions?: Permission[];
+}> {
+  const supabase = createAdminClient();
+
+  let userEmail: string | undefined;
+  let roleId: string | undefined;
+
+  // 1. Try to fetch & update Auth user (if exists in auth.users)
+  try {
+    const { data: userRes } = await supabase.auth.admin.getUserById(params.userId);
+    if (userRes?.user) {
+      userEmail = userRes.user.email;
+      roleId = userRes.user.user_metadata?.staff_role_id;
+      const updatePayload: any = {
+        user_metadata: {
+          ...userRes.user.user_metadata,
+          full_name: params.fullName.trim(),
+          staff_status: "active",
+          role: "staff",
+        },
+      };
+      if (params.password) {
+        updatePayload.password = params.password;
+      }
+
+      await supabase.auth.admin.updateUserById(params.userId, updatePayload);
+    }
+  } catch (authErr: any) {
+    console.warn("Auth admin updateUserById notice:", authErr?.message);
+  }
+
+  // 2. Update profiles table
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("staff_role_id, role")
+      .eq("id", params.userId)
+      .single();
+
+    if (profile?.staff_role_id) {
+      roleId = profile.staff_role_id;
+    }
+
+    await supabase
+      .from("profiles")
+      .update({
+        full_name: params.fullName.trim(),
+        role: "staff",
+        staff_status: "active",
+      })
+      .eq("id", params.userId);
+  } catch (dbErr: any) {
+    console.warn("Profiles update notice:", dbErr?.message);
+  }
+
+  // 3. Update in-memory staff if present
+  const inMem = inMemoryStaff.find((m) => m.id === params.userId);
+  if (inMem) {
+    inMem.full_name = params.fullName.trim();
+    inMem.staff_status = "active";
+    if (inMem.role_id) roleId = inMem.role_id;
+    if (inMem.email && !userEmail) userEmail = inMem.email;
+  }
+
+  // 4. Determine role & permissions
+  let roleName = "Staf";
+  let permissions: Permission[] = [];
+  if (roleId) {
+    const role = await getRoleById(roleId);
+    if (role) {
+      roleName = role.name;
+      permissions = role.permissions;
+    }
+  }
+
+  // 5. Audit log
+  await logAdminAudit({
+    eventType: "staff_invite_accepted",
+    actorId: params.userId,
+    actorName: params.fullName.trim(),
+    details: {
+      staff_id: params.userId,
+      email: userEmail || "staff@buildmate.id",
+      role_name: roleName,
+      role_id: roleId,
+    },
+  });
+
+  return { success: true, roleName, permissions };
 }
