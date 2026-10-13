@@ -5,6 +5,7 @@ import {
   toggleStaffStatus,
   resendInvite,
   cancelInvite,
+  getStaffInviteLink,
 } from "@/lib/data/team";
 
 export async function PATCH(
@@ -56,10 +57,25 @@ export async function PATCH(
 
     if (action === "resend_invite") {
       const res = await resendInvite({ userId: id, actorId, actorName });
-      if (res.error) {
-        return NextResponse.json({ error: res.error }, { status: 400 });
+      return NextResponse.json({
+        success: true,
+        emailSent: res.emailSent,
+        inviteLink: res.inviteLink,
+        message: res.emailSent
+          ? "Undangan berhasil dikirim ulang ke email"
+          : "Batas email Supabase tercapai (rate limit). Tautan undangan langsung siap disalin.",
+      });
+    }
+
+    if (action === "get_invite_link") {
+      const res = await getStaffInviteLink({ userId: id });
+      if (!res.success) {
+        return NextResponse.json({ error: res.error || "Gagal membuat tautan" }, { status: 400 });
       }
-      return NextResponse.json({ success: true, message: "Undangan berhasil dikirim ulang" });
+      return NextResponse.json({
+        success: true,
+        inviteLink: res.inviteLink,
+      });
     }
 
     if (action === "cancel_invite") {

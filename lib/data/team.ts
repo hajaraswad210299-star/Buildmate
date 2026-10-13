@@ -118,7 +118,12 @@ export async function inviteStaffMember(params: {
   roleId: string;
   actorId?: string;
   actorName?: string;
-}): Promise<{ member?: TeamMember; error?: string }> {
+}): Promise<{
+  member?: TeamMember;
+  error?: string;
+  inviteLink?: string;
+  emailSent?: boolean;
+}> {
   const allMembers = await getTeamMembers();
   const staffOnly = allMembers.filter((m) => !m.is_super_admin);
 
@@ -149,6 +154,8 @@ export async function inviteStaffMember(params: {
   const redirectUrl = `${siteUrl}/auth/callback?next=/admin/accept-invite`;
 
   let newUserId: string = randomUUID();
+  let inviteLink: string | undefined;
+  let emailSent = false;
 
   try {
     const supabase = createAdminClient();
@@ -164,9 +171,29 @@ export async function inviteStaffMember(params: {
     });
 
     if (error) {
-      console.warn("inviteUserByEmail error (proceeding with fallback):", error.message);
+      console.warn("inviteUserByEmail notice:", error.message);
     } else if (data?.user) {
       newUserId = data.user.id;
+      emailSent = true;
+    }
+
+    // Always generate direct token link as backup/fallback (bypasses rate limits)
+    try {
+      const linkRes = await supabase.auth.admin.generateLink({
+        type: "invite",
+        email: cleanEmail,
+        options: { redirectTo: redirectUrl },
+      });
+      if (linkRes.data?.user) {
+        newUserId = linkRes.data.user.id;
+      }
+      if (linkRes.data?.properties?.hashed_token) {
+        inviteLink = `${siteUrl}/auth/callback?token_hash=${linkRes.data.properties.hashed_token}&type=invite&next=/admin/accept-invite`;
+      } else if (linkRes.data?.properties?.action_link) {
+        inviteLink = linkRes.data.properties.action_link;
+      }
+    } catch {
+      // ignore
     }
 
     // Ensure profiles record is updated or inserted
@@ -207,10 +234,12 @@ export async function inviteStaffMember(params: {
       full_name: cleanName,
       role_id: role.id,
       role_name: role.name,
+      email_sent: emailSent,
+      has_direct_link: Boolean(inviteLink),
     },
   });
 
-  return { member: newStaff };
+  return { member: newStaff, inviteLink, emailSent };
 }
 
 export async function updateStaffRole(params: {
@@ -331,7 +360,12 @@ export async function resendInvite(params: {
   userId: string;
   actorId?: string;
   actorName?: string;
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<{
+  success: boolean;
+  error?: string;
+  inviteLink?: string;
+  emailSent?: boolean;
+}> {
   const members = await getTeamMembers();
   const target = members.find((m) => m.id === params.userId);
 
@@ -342,9 +376,15 @@ export async function resendInvite(params: {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const redirectUrl = `${siteUrl}/auth/callback?next=/admin/accept-invite`;
 
+  let inviteLink: string | undefined;
+  let emailSent = false;
+  let errorMsg: string | undefined;
+
   try {
     const supabase = createAdminClient();
-    await supabase.auth.admin.inviteUserByEmail(target.email, {
+
+    // 1. Try sending email via Supabase
+    const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(target.email, {
       redirectTo: redirectUrl,
       data: {
         full_name: target.full_name,
@@ -354,8 +394,32 @@ export async function resendInvite(params: {
         staff_status: "invited",
       },
     });
-  } catch {
-    // continue
+
+    if (inviteError) {
+      console.warn("resend inviteUserByEmail notice:", inviteError.message);
+      errorMsg = inviteError.message;
+    } else {
+      emailSent = true;
+    }
+
+    // 2. Always generate direct link (bypasses rate limit and gives instant access)
+    try {
+      const linkRes = await supabase.auth.admin.generateLink({
+        type: "invite",
+        email: target.email,
+        options: { redirectTo: redirectUrl },
+      });
+
+      if (linkRes.data?.properties?.hashed_token) {
+        inviteLink = `${siteUrl}/auth/callback?token_hash=${linkRes.data.properties.hashed_token}&type=invite&next=/admin/accept-invite`;
+      } else if (linkRes.data?.properties?.action_link) {
+        inviteLink = linkRes.data.properties.action_link;
+      }
+    } catch {
+      // ignore
+    }
+  } catch (err: any) {
+    errorMsg = err.message;
   }
 
   await logAdminAudit({
@@ -365,10 +429,43 @@ export async function resendInvite(params: {
     details: {
       staff_id: target.id,
       email: target.email,
+      email_sent: emailSent,
+      has_direct_link: Boolean(inviteLink),
     },
   });
 
-  return { success: true };
+  return { success: true, emailSent, inviteLink, error: errorMsg };
+}
+
+export async function getStaffInviteLink(params: {
+  userId: string;
+}): Promise<{ success: boolean; inviteLink?: string; error?: string }> {
+  const members = await getTeamMembers();
+  const target = members.find((m) => m.id === params.userId);
+  if (!target) return { success: false, error: "Anggota tim tidak ditemukan." };
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const redirectUrl = `${siteUrl}/auth/callback?next=/admin/accept-invite`;
+
+  try {
+    const supabase = createAdminClient();
+    const linkRes = await supabase.auth.admin.generateLink({
+      type: "invite",
+      email: target.email,
+      options: { redirectTo: redirectUrl },
+    });
+
+    if (linkRes.data?.properties?.hashed_token) {
+      const inviteLink = `${siteUrl}/auth/callback?token_hash=${linkRes.data.properties.hashed_token}&type=invite&next=/admin/accept-invite`;
+      return { success: true, inviteLink };
+    }
+    if (linkRes.data?.properties?.action_link) {
+      return { success: true, inviteLink: linkRes.data.properties.action_link };
+    }
+    return { success: false, error: linkRes.error?.message || "Gagal membuat tautan undangan" };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
 }
 
 export async function cancelInvite(params: {

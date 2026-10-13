@@ -57,7 +57,11 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       member: result.member,
-      message: `Undangan staf berhasil dikirim ke ${email}`,
+      inviteLink: result.inviteLink,
+      emailSent: result.emailSent,
+      message: result.emailSent
+        ? `Undangan staf berhasil dikirim ke ${email}`
+        : `Undangan dibuat untuk ${email}. Tautan aktivasi langsung siap dibagikan.`,
     });
   } catch (err: any) {
     return NextResponse.json(

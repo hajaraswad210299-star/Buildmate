@@ -394,13 +394,20 @@ function AdminSettingsContent() {
   // Handle cancel change email
   const handleCancelChangeEmail = async () => {
     try {
+      const res = await fetch("/api/admin/cancel-email-change", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal membatalkan perubahan email");
+
       const supabase = createClient();
-      await supabase.auth.updateUser({ email });
-    } catch {
-      // ignore
+      await supabase.auth.refreshSession();
+
+      setPendingEmail(null);
+      toast.info("Permintaan perubahan email berhasil dibatalkan.");
+    } catch (err: any) {
+      toast.error(err.message || "Gagal membatalkan perubahan email");
     }
-    setPendingEmail(null);
-    toast.info("Permintaan perubahan email dibatalkan");
   };
 
   // Password strength checklist rules

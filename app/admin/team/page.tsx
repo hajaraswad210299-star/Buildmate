@@ -20,6 +20,7 @@ import {
   ShieldCross,
   Lock,
   ArrowRight,
+  Copy,
 } from "@/lib/icons";
 import {
   MODULE_PERMISSIONS,
@@ -48,6 +49,15 @@ export default function AdminTeamPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRoleId, setInviteRoleId] = useState("");
   const [submittingInvite, setSubmittingInvite] = useState(false);
+
+  // Direct Invite Link Modal
+  const [directInviteModal, setDirectInviteModal] = useState<{
+    name: string;
+    email: string;
+    url: string;
+  } | null>(null);
+  const [fetchingInviteLinkMemberId, setFetchingInviteLinkMemberId] = useState<string | null>(null);
+  const [hasCopiedDirectLink, setHasCopiedDirectLink] = useState(false);
 
   // Edit Role Drawer (Create / Edit)
   const [isRoleDrawerOpen, setIsRoleDrawerOpen] = useState(false);
@@ -135,7 +145,20 @@ export default function AdminTeamPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal mengirim undangan");
 
-      toast.success(data.message || `Undangan berhasil dikirim ke ${inviteEmail}`);
+      if (data.inviteLink) {
+        setDirectInviteModal({
+          name: inviteName.trim(),
+          email: inviteEmail.trim(),
+          url: data.inviteLink,
+        });
+      }
+
+      if (data.emailSent) {
+        toast.success(data.message || `Undangan berhasil dikirim ke ${inviteEmail}`);
+      } else {
+        toast.info("Undangan dibuat. Silakan salin tautan aktivasi langsung untuk staf.");
+      }
+
       setIsInviteOpen(false);
       setInviteName("");
       setInviteEmail("");
@@ -220,9 +243,56 @@ export default function AdminTeamPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal mengirim ulang");
-      toast.success(`Undangan berhasil dikirim ulang ke ${member.email}`);
+
+      if (data.emailSent) {
+        toast.success(`Undangan berhasil dikirim ulang ke ${member.email}`);
+      } else {
+        toast.warning(
+          "Pengiriman email dibatasi oleh penyedia (rate limit). Tautan aktivasi langsung telah dibuat."
+        );
+      }
+
+      if (data.inviteLink) {
+        setDirectInviteModal({
+          name: member.full_name,
+          email: member.email,
+          url: data.inviteLink,
+        });
+      }
     } catch (err: any) {
       toast.error(err.message || "Gagal mengirim ulang undangan");
+    }
+  };
+
+  // Handle Copy Direct Invite Link
+  const handleCopyInviteLink = async (member: TeamMember) => {
+    setFetchingInviteLinkMemberId(member.id);
+    try {
+      const res = await fetch(`/api/admin/team/${member.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "get_invite_link" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal mengambil tautan");
+
+      if (data.inviteLink) {
+        try {
+          await navigator.clipboard.writeText(data.inviteLink);
+          toast.success("Tautan aktivasi berhasil disalin ke clipboard!");
+        } catch {
+          // fallback if clipboard write fails
+        }
+        setDirectInviteModal({
+          name: member.full_name,
+          email: member.email,
+          url: data.inviteLink,
+        });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal membuat tautan undangan");
+    } finally {
+      setFetchingInviteLinkMemberId(null);
     }
   };
 
@@ -624,6 +694,15 @@ export default function AdminTeamPage() {
 
                                   {member.staff_status === "invited" && (
                                     <>
+                                      <button
+                                        type="button"
+                                        disabled={fetchingInviteLinkMemberId === member.id}
+                                        onClick={() => handleCopyInviteLink(member)}
+                                        className="px-2 py-1 rounded-lg text-lavender-700 hover:bg-lavender-50 font-medium transition-colors"
+                                        title="Salin tautan aktivasi langsung"
+                                      >
+                                        {fetchingInviteLinkMemberId === member.id ? "Membuat..." : "Salin tautan"}
+                                      </button>
                                       <button
                                         type="button"
                                         onClick={() => handleResendInvite(member)}
@@ -1165,6 +1244,101 @@ export default function AdminTeamPage() {
                   onClick={handleDeleteRole}
                 >
                   {submittingDeleteRole ? "Menghapus..." : "Ya, Hapus Peran"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* MODAL: TAUTAN AKTIVASI UNDANGAN LANGSUNG */}
+        {directInviteModal && (
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl border border-neutral-200 shadow-xl max-w-lg w-full p-6 space-y-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-lavender-50 text-lavender-600 flex items-center justify-center">
+                    <UserAdd size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-neutral-900">
+                      Tautan Aktivasi Akun Staf
+                    </h3>
+                    <p className="text-xs text-neutral-500">
+                      Untuk {directInviteModal.name} ({directInviteModal.email})
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDirectInviteModal(null);
+                    setHasCopiedDirectLink(false);
+                  }}
+                  className="text-neutral-400 hover:text-neutral-600 p-1 rounded-lg hover:bg-neutral-100 transition-colors"
+                >
+                  <CloseCircle size={20} />
+                </button>
+              </div>
+
+              <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200/80 space-y-2">
+                <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+                  Tautan Undangan Langsung
+                </span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={directInviteModal.url}
+                    className="w-full text-xs font-mono text-neutral-700 bg-white border border-neutral-200 rounded-lg px-3 py-2 outline-none select-all"
+                  />
+                  <Button
+                    type="button"
+                    variant={hasCopiedDirectLink ? "secondary" : "primary"}
+                    size="sm"
+                    className="shrink-0 flex items-center gap-1.5"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(directInviteModal.url);
+                        setHasCopiedDirectLink(true);
+                        toast.success("Tautan aktivasi berhasil disalin!");
+                        setTimeout(() => setHasCopiedDirectLink(false), 3000);
+                      } catch {
+                        toast.error("Gagal menyalin tautan.");
+                      }
+                    }}
+                  >
+                    {hasCopiedDirectLink ? (
+                      <>
+                        <TickCircle size={14} className="text-emerald-600" />
+                        <span>Tersalin</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={14} />
+                        <span>Salin</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/60 text-xs text-amber-800 leading-relaxed">
+                <p className="font-semibold mb-0.5">💡 Tips Aktivasi Cepat:</p>
+                <p>
+                  Jika kuota pengiriman email Supabase sedang penuh (rate limit), bagikan tautan ini langsung ke calon staf via WhatsApp atau email pribadi. Tautan ini mengarahkan calon staf langsung ke halaman aktivasi & pembuatan kata sandi.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setDirectInviteModal(null);
+                    setHasCopiedDirectLink(false);
+                  }}
+                >
+                  Selesai
                 </Button>
               </div>
             </div>
