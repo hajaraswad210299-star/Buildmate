@@ -20,10 +20,14 @@ import {
   HambergerMenu,
   CloseCircle,
   ArrowUp2,
+  SecurityUser,
+  DocumentText,
 } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/shared/Button";
 import { CommandPalette } from "./CommandPalette";
+import { PermissionProvider, usePermissions } from "./PermissionGate";
+import { Permission } from "@/lib/auth/permissions";
 import { toast } from "sonner";
 
 interface AdminShellProps {
@@ -197,7 +201,11 @@ function AdminShellInner({ children }: AdminShellProps) {
     exact?: boolean;
     badge?: number;
     badgeUrgent?: boolean;
+    permission?: Permission | Permission[];
+    adminOnly?: boolean;
   }
+
+  const { can, isAdmin, isStaff, roleName } = usePermissions();
 
   const navGroups: { group: string; items: NavItem[] }[] = [
     {
@@ -208,6 +216,7 @@ function AdminShellInner({ children }: AdminShellProps) {
           href: "/admin",
           icon: Element3,
           exact: true,
+          permission: "dashboard.view",
         },
         {
           label: "Pesanan",
@@ -215,6 +224,7 @@ function AdminShellInner({ children }: AdminShellProps) {
           icon: ReceiptText,
           badge: 2,
           badgeUrgent: true,
+          permission: "orders.view",
         },
       ],
     },
@@ -226,11 +236,19 @@ function AdminShellInner({ children }: AdminShellProps) {
           href: "/admin/workers",
           icon: UserOctagon,
           badge: 1,
+          permission: "workers.view",
         },
         {
           label: "Layanan",
           href: "/admin/services",
           icon: Briefcase,
+          permission: "services.view",
+        },
+        {
+          label: "Konten Situs",
+          href: "/admin/content",
+          icon: DocumentText,
+          permission: "content.manage",
         },
       ],
     },
@@ -241,12 +259,14 @@ function AdminShellInner({ children }: AdminShellProps) {
           label: "Transaksi",
           href: "/admin/transactions",
           icon: Card,
+          permission: "transactions.view",
         },
         {
           label: "Pencairan Dana",
           href: "/admin/payouts",
           icon: WalletMoney,
           badge: 1,
+          permission: "payouts.view",
         },
       ],
     },
@@ -257,6 +277,13 @@ function AdminShellInner({ children }: AdminShellProps) {
           label: "Pelanggan & Member",
           href: "/admin/customers",
           icon: Profile2User,
+          permission: "customers.view",
+        },
+        {
+          label: "Tim & Akses",
+          href: "/admin/team",
+          icon: SecurityUser,
+          adminOnly: true,
         },
       ],
     },
@@ -271,6 +298,17 @@ function AdminShellInner({ children }: AdminShellProps) {
       ],
     },
   ];
+
+  const filteredNavGroups = navGroups
+    .map((grp) => ({
+      ...grp,
+      items: grp.items.filter((item) => {
+        if (item.adminOnly) return isAdmin;
+        if (item.permission) return can(item.permission);
+        return true;
+      }),
+    }))
+    .filter((grp) => grp.items.length > 0);
 
   const handleLogout = async () => {
     setShowLogoutConfirm(false);
@@ -292,10 +330,13 @@ function AdminShellInner({ children }: AdminShellProps) {
     if (pathname === "/admin/orders") return "Pesanan";
     if (pathname === "/admin/workers") return "Tukang";
     if (pathname === "/admin/services") return "Layanan";
+    if (pathname === "/admin/content") return "Konten Situs";
     if (pathname === "/admin/transactions") return "Transaksi";
     if (pathname === "/admin/payouts") return "Pencairan Dana";
     if (pathname === "/admin/customers") return "Pelanggan & Member";
+    if (pathname === "/admin/team") return "Tim & Akses";
     if (pathname === "/admin/settings") return "Pengaturan";
+    if (pathname === "/admin/no-access") return "Tidak Punya Akses";
     return "Dashboard";
   };
 
@@ -396,7 +437,7 @@ function AdminShellInner({ children }: AdminShellProps) {
 
         {/* Layer 3: Menu navigasi — SATU-SATUNYA BAGIAN SIDEBAR YANG BISA DI-SCROLL */}
         <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2 space-y-4">
-          {navGroups.map((grp) => (
+          {filteredNavGroups.map((grp) => (
             <div key={grp.group} className="space-y-1">
               {!collapsed && (
                 <span className="px-3 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block mb-1">
@@ -505,9 +546,14 @@ function AdminShellInner({ children }: AdminShellProps) {
               )}
               {!collapsed && (
                 <div className="flex flex-col overflow-hidden leading-tight">
-                  <span className="text-sm font-semibold text-neutral-800 truncate">
-                    {adminUser.name}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-neutral-800 truncate">
+                      {adminUser.name}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-lavender-100 text-lavender-700 font-semibold border border-lavender-200/60 shrink-0">
+                      {isAdmin ? "Admin Utama" : (roleName || "Staf")}
+                    </span>
+                  </div>
                   <span className="text-xs text-neutral-500 truncate">
                     {adminUser.email}
                   </span>
@@ -679,7 +725,7 @@ function AdminShellInner({ children }: AdminShellProps) {
             </div>
 
             <nav className="flex-1 overflow-y-auto py-4 space-y-4">
-              {navGroups.map((grp) => (
+              {filteredNavGroups.map((grp) => (
                 <div key={grp.group} className="space-y-1">
                   <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block px-2">
                     {grp.group}
@@ -784,7 +830,9 @@ function AdminShellInner({ children }: AdminShellProps) {
 export function AdminShell({ children }: AdminShellProps) {
   return (
     <Suspense fallback={<div className="h-dvh w-dvw flex items-center justify-center bg-neutral-50 text-xs text-neutral-400">Memuat antarmuka admin...</div>}>
-      <AdminShellInner>{children}</AdminShellInner>
+      <PermissionProvider>
+        <AdminShellInner>{children}</AdminShellInner>
+      </PermissionProvider>
     </Suspense>
   );
 }

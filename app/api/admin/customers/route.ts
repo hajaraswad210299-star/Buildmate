@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireApiPermission, requireApiSuperAdmin } from "@/lib/supabase/auth";
 
 export interface CustomerItem {
   id: string;
@@ -71,37 +71,11 @@ const MOCK_CUSTOMERS: CustomerItem[] = [
   },
 ];
 
-async function checkAdminAuth() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  const adminEmail = (process.env.ADMIN_EMAIL || "hajaraswad210299@gmail.com").toLowerCase();
-  if (user.email?.toLowerCase() === adminEmail) {
-    return user;
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profile?.role === "admin") {
-    return user;
-  }
-
-  return null;
-}
-
 export async function GET() {
   try {
-    const adminUser = await checkAdminAuth();
-    if (!adminUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireApiPermission("customers.view");
+    if (!auth.authorized) {
+      return auth.response;
     }
 
     const adminSupabase = createAdminClient();
@@ -274,9 +248,9 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const adminUser = await checkAdminAuth();
-    if (!adminUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireApiSuperAdmin();
+    if (!auth.authorized) {
+      return auth.response;
     }
 
     const body = await request.json();
@@ -343,10 +317,11 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const adminUser = await checkAdminAuth();
-    if (!adminUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireApiSuperAdmin();
+    if (!auth.authorized) {
+      return auth.response;
     }
+    const adminUser = auth.user;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

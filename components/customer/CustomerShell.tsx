@@ -40,6 +40,15 @@ export function CustomerShell({
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [showAnnouncement, setShowAnnouncement] = useState(true);
+  const [announcementData, setAnnouncementData] = useState<{
+    active: boolean;
+    text: string;
+    link: string;
+  }>({
+    active: true,
+    text: "BuildMate Plus — bebas biaya layanan & garansi pengerjaan ulang",
+    link: "/plus",
+  });
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [profile, setProfile] = useState<{
     full_name?: string;
@@ -55,6 +64,16 @@ export function CustomerShell({
     if (dismissed === "true") {
       setShowAnnouncement(false);
     }
+
+    // Fetch CMS site content announcement
+    fetch("/api/content")
+      .then((res) => res.json())
+      .then((res) => {
+        if (res?.data?.content?.announcement) {
+          setAnnouncementData(res.data.content.announcement);
+        }
+      })
+      .catch(() => {});
 
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -133,15 +152,15 @@ export function CustomerShell({
   return (
     <div className="min-h-screen bg-cream-50 text-neutral-900 flex flex-col font-sans selection:bg-lavender-200 selection:text-lavender-900">
       {/* 1. Thin Announcement Bar (Flamingo Estate pattern A2 & A3) */}
-      {showAnnouncement && !profile?.is_plus && (
+      {showAnnouncement && announcementData.active && !profile?.is_plus && (
         <div className="bg-lavender-800 text-white text-[13px] py-2 px-6 flex items-center justify-between text-center relative z-40 transition-colors">
           <div className="flex-1 text-center font-medium">
             <Link
-              href="/plus"
+              href={announcementData.link || "/plus"}
               className="hover:underline inline-flex items-center gap-1.5 transition-opacity hover:opacity-90"
             >
               <Crown1 size={15} className="text-lavender-300" variant="Bold" />
-              <span>BuildMate Plus — bebas biaya layanan & garansi pengerjaan ulang</span>
+              <span>{announcementData.text}</span>
               <span className="text-lavender-300 ml-1">→</span>
             </Link>
           </div>

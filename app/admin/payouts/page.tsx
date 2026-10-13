@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { RequirePermission, PermissionGate } from "@/components/admin/PermissionGate";
 import { StatCard } from "@/components/shared/StatCard";
 import { getPayouts, markPayoutAsPaid, PayoutFilter } from "@/lib/data/payouts";
 import { Payout } from "@/lib/data/types";
@@ -78,7 +79,8 @@ export default function AdminPayoutsPage() {
 
   return (
     <AdminShell>
-      <div className="space-y-5">
+      <RequirePermission permission="payouts.view">
+        <div className="space-y-5">
         {/* HEADER */}
         <div>
           <h2 className="text-xl font-bold text-neutral-900 tracking-tight">
@@ -386,6 +388,7 @@ export default function AdminPayoutsPage() {
           </div>
         </div>
       )}
+      </RequirePermission>
     </AdminShell>
   );
 }

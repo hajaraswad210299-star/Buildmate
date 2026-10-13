@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useSyncExternalStore, useMemo } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { RequirePermission } from "@/components/admin/PermissionGate";
 import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ActivityTicker } from "@/components/shared/ActivityTicker";
@@ -128,7 +129,8 @@ export default function AdminDashboardPage() {
 
   return (
     <AdminShell>
-      <div className="space-y-6">
+      <RequirePermission permission="dashboard.view">
+        <div className="space-y-6">
         {/* HEADER BAR */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -672,6 +674,7 @@ export default function AdminDashboardPage() {
         period={period}
         stats={stats}
       />
+      </RequirePermission>
     </AdminShell>
   );
 }

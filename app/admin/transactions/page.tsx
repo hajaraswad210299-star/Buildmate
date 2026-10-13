@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { RequirePermission } from "@/components/admin/PermissionGate";
 import { StatCard } from "@/components/shared/StatCard";
 import { getPayments, PaymentFilter } from "@/lib/data/transactions";
 import { Payment } from "@/lib/data/types";
@@ -57,7 +58,8 @@ export default function AdminTransactionsPage() {
 
   return (
     <AdminShell>
-      <div className="space-y-5">
+      <RequirePermission permission="transactions.view">
+        <div className="space-y-5">
         {/* HEADER */}
         <div>
           <h2 className="text-xl font-bold text-neutral-900 tracking-tight">
@@ -239,6 +241,7 @@ export default function AdminTransactionsPage() {
           onClose={() => setSelectedPayment(null)}
         />
       )}
+      </RequirePermission>
     </AdminShell>
   );
 }

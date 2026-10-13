@@ -142,6 +142,10 @@ export const DirectRight = createIcon("DirectRight", Iconsax.DirectRight);
 export const Heart = createIcon("Heart", Iconsax.Heart);
 export const MessageQuestion = createIcon("MessageQuestion", Iconsax.MessageQuestion);
 export const Call = createIcon("Call", Iconsax.Call);
+export const SecurityUser = createIcon("SecurityUser", Iconsax.SecurityUser);
+export const DocumentText = createIcon("DocumentText", Iconsax.DocumentText);
+export const UserAdd = createIcon("UserAdd", Iconsax.UserAdd);
+export const TickSquare = createIcon("TickSquare", Iconsax.TickSquare);
 
 // Aliases for convenience
 export const Calendar = Calendar1;

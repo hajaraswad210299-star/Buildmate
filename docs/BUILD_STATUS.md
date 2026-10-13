@@ -1,10 +1,10 @@
 # Build Status — BuildMate
-Terakhir diperbarui: 11 Oktober 2026
+Terakhir diperbarui: 13 Oktober 2026
 Push ke GitHub: ✅ selesai (commit siap push)
 Repo: https://github.com/hajaraswad210299-star/Buildmate
 URL produksi: https://buildmate-ten.vercel.app
 Mode data: mock (USE_MOCK_DATA=true) untuk data entitas bisnis, **Auth 100% Nyata Supabase**
-Migrasi terakhir: `20261011000000_avatars_storage.sql` (Storage bucket avatars & RLS policies)
+Migrasi terakhir: `20261013000000_staff_and_permissions.sql` (Tabel roles, profiles staff columns, site_content, faq_items, admin_audit, site-content storage bucket, RLS policies, seed preset roles)
 
 Keterangan: ⬜ belum · 🟡 sebagian · ✅ selesai
 
@@ -14,11 +14,12 @@ Keterangan: ⬜ belum · 🟡 sebagian · ✅ selesai
 | Setup Next.js + Tailwind v4 + Iconsax | ✅ | Next.js 16.4 App Router, Turbopack, React 19 kompatibel dengan centralized icon HOC |
 | Design system B7 (lavender, Geist + Instrument Serif, Iconsax) | ✅ | Token lavender-50..900, `--color-primary: #7A5CE6`, Instrument Serif display (`font-serif` ≥28px), Geist Sans/Mono, Semantic Iconsax |
 | Komponen inti B7.9 UI + micro-interaction | ✅ | Standardized `Button` (primary/secondary/destructive/ghost/link), SSR-safe `RelativeTime`, StatCard, 12-month ActivityHeatmap, ActivityTicker, CountUp, OrderStepper, AuditTimeline, Lightbox, Uploader |
-| Supabase: skema + RLS + storage | ✅ | `init_schema.sql` (11 tabel, enum, RLS, functions) + `20261011000000_avatars_storage.sql` (bucket `avatars` publik & policy upload) |
+| Supabase: skema + RLS + storage | ✅ | `init_schema.sql` (11 tabel, enum, RLS, functions) + `20261011000000_avatars_storage.sql` + `20261013000000_staff_and_permissions.sql` (roles, staff_status, site_content, faq_items, admin_audit, bucket `site-content`) |
 | Auth Nyata Admin (B11 & B11.7) | ✅ | Supabase Auth sungguhan (bukan simulasi): `middleware.ts`, `lib/supabase/auth.ts` (`requireRole`), login, logout, lupa password, reset password, ubah password & email |
+| RBAC Tiga Lapis & Izin A12 (B2, B9, B10, B11) | ✅ | Katalog A12 di `lib/auth/permissions.ts`, fungsi DB `has_permission(p text)`, guard server `requireApiPermission` & `requireApiSuperAdmin`, UI `PermissionGate` & `<RequirePermission>`, redirect otomatis `/admin/no-access` |
 | Akun Admin Default & Skrip Setup | ✅ | Akun `hajaraswad210299@gmail.com` via `scripts/create-admin.ts` (idempoten, flag `--send-reset`, password aman tanpa log) |
 | State Machine transitionOrder + audit | ✅ | State machine lengkap `lib/orders/transitions.ts` (8 status, guards keras, jejak audit) |
-| Push GitHub + deploy Vercel | ✅ | Clean build 100% lulus (18/18 routes), repo: hajaraswad210299-star/Buildmate |
+| Push GitHub + deploy Vercel | ✅ | Clean build 100% lulus (54/54 static & dynamic routes) |
 
 ## Admin (Sisi Admin FINAL & Siap Pakai)
 | ID | Halaman | Status | Catatan |
@@ -27,15 +28,19 @@ Keterangan: ⬜ belum · 🟡 sebagian · ✅ selesai
 | A00b | Lupa password admin (/admin/forgot-password) | ✅ | Real `supabase.auth.resetPasswordForEmail`, hitung mundur 60s, kirim ulang otomatis |
 | A00c | Reset password admin (/admin/reset-password) | ✅ | Real `supabase.auth.updateUser({ password })`, 5 checklist validasi realtime (termasuk karakter khusus), 5-segmen bar, `signOut({ scope: 'others' })` |
 | A00d | Akses ditolak (/admin/denied) | ✅ | ShieldCross icon, serif typography, tombol navigasi kembali |
-| A01 | Dashboard (/admin) | ✅ | Shell 100dvh×100dvw, sidebar fixed dengan tombol collapse di tengah saat ciut (rotasi 180°, ⌘B toggle, aria-expanded), popover admin dinamis, bfcache buster & auth state lock saat logout |
-| A02 | Daftar pesanan (/admin/orders) | ✅ | Tab status lengkap termasuk "Mencari Tukang" dan "Komplain", toolbar pencarian, copy order ID, ekspor batch |
-| A03 | Detail pesanan (/admin/orders/[id]) | ✅ | Sticky header full-width tanpa celah menempel topbar (transisi 72→56px saat scroll), tombol guard server (disabled + tooltip jika belum ada foto hasil), tindakan darurat berakun terpisah, Panel Dispatch (B25 hybrid) dengan pencatatan penugasan manual di riwayat tawaran, lepas tukang & cari ulang berizin |
-| A04 | Tukang + Pendaftaran (/admin/workers) | ✅ | Tab aktif/menunggu/nonaktif, drawer tambah/edit 480px, drawer review verifikasi pendaftaran + portfolio lightbox, toggle status aktif |
-| A05 | Layanan (/admin/services) | ✅ | Tab kategori & paket, drawer form, formatting harga IDR, inklusi/eksklusi scope |
-| A06 | Transaksi (/admin/transactions) | ✅ | Drawer ramah manusia: header ID + copy, nama metode bayar manusiawi (BCA VA, GoPay, QRIS), copy VA, badge Fraud & Signature verified, timeline notifikasi callback, safe date-fns formatting ('WIB' escaped), accordion JSON audit tersensor (signature_key masked) |
-| A07 | Pencairan dana (/admin/payouts) | ✅ | Escrow ledger tukang, tab pending/paid, multi-select batch payout, konfirmasi transfer |
-| A08 | Pelanggan & Member (/admin/customers) | ✅ | Profil pelanggan, badge Plus aktif, hitungan transaksi & belanja, drawer detail pelanggan |
-| A09 | Pengaturan (/admin/settings) | ✅ | Dua tab ("Profil Saya" default & "Konfigurasi Sistem"): avatar bundar 80px (upload ≤2MB crop WebP ke bucket `avatars`, hapus foto), ubah nama, dialog ubah email dengan timer 60s, dialog ubah password dengan verifikasi password saat ini & link lupa password |
+| A00e | Terima undangan staf (/admin/accept-invite) | ✅ | Form aktivasi undangan staf: judul serif "Selamat bergabung di tim BuildMate", badge peran staf, nama lengkap, password strength 4-segmen, 4-aturan validasi realtime (≥8 kar, huruf besar, huruf kecil, angka), pencocokan konfirmasi realtime, aktivasi `staff_status='active'` |
+| A01 | Dashboard (/admin) | ✅ | Shell 100dvh×100dvw, sidebar fixed dengan navigasi berizin, kartu profil admin/staf dengan role badge, popover admin dinamis |
+| A02 | Daftar pesanan (/admin/orders) | ✅ | Izin `orders.view`: tab status lengkap termasuk "Mencari Tukang" dan "Komplain", toolbar pencarian, copy order ID, ekspor batch |
+| A03 | Detail pesanan (/admin/orders/[id]) | ✅ | Izin `orders.view` & `orders.manage`: sticky header, Panel Dispatch (B25 hybrid), stepper status, aksi darurat berizin |
+| A04 | Tukang + Pendaftaran (/admin/workers) | ✅ | Izin `workers.view`, `workers.manage`, `workers.review`: tab aktif/menunggu/nonaktif, drawer tambah/edit, drawer verifikasi pendaftaran mitra |
+| A05 | Layanan (/admin/services) | ✅ | Izin `services.view` & `services.manage`: tab kategori & paket, upload thumbnail 1:1, formatting harga IDR, inklusi/eksklusi scope |
+| A06 | Transaksi (/admin/transactions) | ✅ | Izin `transactions.view`: drawer ramah manusia, copy VA, badge Fraud & Signature verified, timeline callback, accordion JSON tersensor |
+| A07 | Pencairan dana (/admin/payouts) | ✅ | Izin `payouts.view` & `payouts.manage`: escrow ledger tukang, tab pending/paid, multi-select batch payout, konfirmasi transfer |
+| A08 | Pelanggan & Member (/admin/customers) | ✅ | Izin `customers.view`: profil pelanggan, badge Plus aktif, hitungan transaksi & belanja, drawer detail pelanggan |
+| A09 | Pengaturan (/admin/settings) | ✅ | Dua tab ("Profil Saya" & "Konfigurasi Sistem"): avatar crop WebP ke bucket `avatars`, ubah nama, dialog ubah email 60s, ubah password aman |
+| A10 | Tim & Akses (/admin/team) | ✅ | Khusus Admin Utama: Tab Anggota (Super Admin baris pertama dengan badge Crown1, drawer Undang Anggota via Supabase `auth.admin.inviteUserByEmail`, maksimal 10 staf, ubah peran, nonaktifkan staf dengan ban 876000h + dialog konfirmasi & undo toast 5s, kirim ulang/batalkan undangan). Tab Peran (Preset Editor Konten & Pemantau Tukang non-deletable, drawer Buat/Ubah Peran dengan checklist modul & aturan implikasi Kelola otomatis centang Lihat, ringkasan live akses). Seluruh aksi dicatat di `admin_audit` |
+| A11 | Konten Situs (CMS) (/admin/content) | ✅ | Izin `content.manage`: 5 kartu bagian (Bar Pengumuman maks 80 kar, Hero Beranda dengan format `*kata*` & unggah foto 16:9 ke bucket `site-content`, Banner Plus, FAQ accordion dengan CRUD & reorder naik/turun, Syarat Layanan & Kebijakan Privasi markdown), tombol Simpan per bagian, indikator belum disimpan, sinkronisasi realtime ke situs publik + revalidatePath |
+| A12 | Halaman Tidak Punya Akses (/admin/no-access) | ✅ | Halaman guard UI saat staf membuka rute tanpa izin: ikon ShieldCross, pesan informatif, tombol kembali ke halaman pertama yang diizinkan |
 
 ## Customer (Sisi Pelanggan — Airbnb × Flamingo Estate Hybrid)
 | ID | Halaman / Fitur | Status | Catatan |

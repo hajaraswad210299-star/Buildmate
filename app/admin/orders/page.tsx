@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { RequirePermission } from "@/components/admin/PermissionGate";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { WaButton } from "@/components/shared/WaButton";
 import { getOrders, OrderFilter } from "@/lib/data/orders";
@@ -191,7 +192,8 @@ function AdminOrdersContent() {
 
   return (
     <AdminShell>
-      <div className="space-y-5">
+      <RequirePermission permission="orders.view">
+        <div className="space-y-5">
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -548,6 +550,7 @@ function AdminOrdersContent() {
           </div>
         </div>
       </div>
+      </RequirePermission>
     </AdminShell>
   );
 }

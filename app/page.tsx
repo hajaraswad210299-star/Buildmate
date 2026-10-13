@@ -17,10 +17,36 @@ import {
   Sparkles,
   Award,
   Heart,
+  TickSquare,
+  ArrowDown2,
+  ArrowUp2,
 } from "@/lib/icons";
 import { getCategories, getPackages } from "@/lib/data/services";
 import { getWorkers } from "@/lib/data/workers";
 import { Category, ServicePackage, Worker } from "@/lib/data/types";
+import {
+  DEFAULT_SITE_CONTENT,
+  DEFAULT_FAQ_ITEMS,
+  SiteContentState,
+  FaqItem,
+} from "@/lib/data/content-types";
+
+function renderFormattedTitle(title: string) {
+  if (!title || !title.includes("*")) {
+    return title || "";
+  }
+  const parts = title.split(/\*(.*?)\*/g);
+  return parts.map((part, i) => {
+    if (i % 2 === 1) {
+      return (
+        <span key={i} className="italic text-lavender-300 font-normal">
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
 
 // Curated high aesthetic still life photo map
 const CURATED_PACKAGES_ROW_1 = [
@@ -189,13 +215,43 @@ export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [siteContent, setSiteContent] = useState<SiteContentState>(DEFAULT_SITE_CONTENT);
+  const [faqList, setFaqList] = useState<FaqItem[]>(DEFAULT_FAQ_ITEMS);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
 
   useEffect(() => {
     getCategories().then((cats) => setCategories(cats.filter((c) => c.is_active)));
     getPackages().then((pkgs) => setPackages(pkgs.filter((p) => p.is_active)));
     getWorkers({ tab: "active" }).then((wks) => setWorkers(wks.slice(0, 4)));
+
+    // Fetch CMS site content and FAQ items
+    fetch("/api/content")
+      .then((res) => res.json())
+      .then((res) => {
+        if (res?.data?.content) {
+          setSiteContent(res.data.content);
+        }
+        if (res?.data?.faq && Array.isArray(res.data.faq)) {
+          setFaqList(res.data.faq);
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  const dynamicHeroImages = useMemo(() => {
+    if (siteContent.hero.photo_url && siteContent.hero.photo_url.trim() !== "") {
+      return [
+        {
+          url: siteContent.hero.photo_url,
+          alt: siteContent.hero.photo_alt || "Hero BuildMate",
+          label: "Foto Utama",
+        },
+        ...HERO_IMAGES.slice(1),
+      ];
+    }
+    return HERO_IMAGES;
+  }, [siteContent.hero.photo_url, siteContent.hero.photo_alt]);
 
   const row1List = useMemo(() => {
     return CURATED_PACKAGES_ROW_1.map((item) => {
@@ -247,10 +303,10 @@ export default function HomePage() {
         <div className="w-full">
           {/* Hero Photography Container */}
           <div className="relative rounded-[32px] sm:rounded-[40px] overflow-hidden bg-[#242220] min-h-[560px] sm:min-h-[640px] lg:min-h-[680px] flex flex-col justify-between p-8 sm:p-14 lg:p-20 text-white shadow-md border border-neutral-800/40">
-            {/* Dynamic Background Image Carousel (4 Curated Images with Smooth Crossfade) */}
-            {HERO_IMAGES.map((img, idx) => (
+            {/* Dynamic Background Image Carousel (Curated Images with Smooth Crossfade) */}
+            {dynamicHeroImages.map((img, idx) => (
               <div
-                key={img.url}
+                key={img.url + idx}
                 className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
                   idx === currentHeroIndex ? "opacity-95" : "opacity-0 pointer-events-none"
                 }`}
@@ -279,7 +335,7 @@ export default function HomePage() {
 
               {/* Dynamic Image Indicator Dots */}
               <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15">
-                {HERO_IMAGES.map((img, idx) => (
+                {dynamicHeroImages.map((img, idx) => (
                   <button
                     key={idx}
                     onClick={() => setCurrentHeroIndex(idx)}
@@ -301,10 +357,10 @@ export default function HomePage() {
                 KUALITAS TERJAMIN · BAYAR AMAN
               </p>
               <h1 className="font-serif text-3xl sm:text-5xl lg:text-[62px] text-white leading-[1.08] tracking-tight drop-shadow-xs">
-                Tukang yang <span className="italic text-lavender-300 font-normal">tepat</span>, saat hunian membutuhkan.
+                {renderFormattedTitle(siteContent.hero.title)}
               </h1>
               <p className="text-xs sm:text-sm text-neutral-100 mt-4 sm:mt-5 leading-relaxed max-w-xl font-normal font-sans drop-shadow-xs">
-                Pilih tukang terverifikasi di kotamu dengan tarif paket pasti. Pembayaran diamankan di rekening bersama platform dan baru dicairkan setelah kamu puas dengan foto hasil kerja.
+                {siteContent.hero.subtitle}
               </p>
 
               {/* White Pill Action Button (Flamingo Estate signature) */}
@@ -513,21 +569,25 @@ export default function HomePage() {
               MEMBERSHIP EKSKLUSIF
             </p>
             <h3 className="font-serif text-3xl sm:text-5xl lg:text-[56px] text-white tracking-tight leading-tight">
-              The BuildMate Shield
+              {siteContent.plus_banner.title}
             </h3>
-            <p className="font-serif italic text-lg sm:text-2xl text-neutral-200">
-              Ketenangan Hunian Sepanjang Tahun
-            </p>
-            <p className="text-xs sm:text-sm text-neutral-300 max-w-lg mx-auto leading-relaxed font-normal font-sans">
-              Bebas biaya layanan untuk setiap pesanan perbaikan, jaminan garansi pengerjaan ulang 14 hari, dan prioritas penugasan tukang hanya Rp49.000 / bulan.
-            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 pt-1 text-xs sm:text-sm text-neutral-200 font-medium">
+              <div className="flex items-center gap-2">
+                <TickSquare size={16} className="text-lavender-300 shrink-0" variant="Bold" />
+                <span>{siteContent.plus_banner.benefit_1}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <TickSquare size={16} className="text-lavender-300 shrink-0" variant="Bold" />
+                <span>{siteContent.plus_banner.benefit_2}</span>
+              </div>
+            </div>
 
             <div className="pt-4">
               <Link
                 href="/plus"
                 className="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-white text-neutral-900 hover:bg-neutral-100 active:scale-95 text-xs font-semibold tracking-wider uppercase transition-all shadow-md font-sans"
               >
-                Bergabung ke BuildMate Plus
+                {siteContent.plus_banner.button_text}
               </Link>
             </div>
           </div>
@@ -628,6 +688,55 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* 11b. FAQ SECTION (DYNAMIC ACCORDION DRIVEN BY CMS) */}
+      {faqList && faqList.length > 0 && (
+        <section className="w-full px-6 mb-[90px]">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-10">
+              <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-[0.2em] mb-2 font-sans">
+                PERTANYAAN UMUM
+              </p>
+              <h2 className="font-serif text-3xl sm:text-4xl lg:text-[42px] text-neutral-900 tracking-tight">
+                Pertanyaan yang Sering Diajukan
+              </h2>
+              <p className="text-xs sm:text-sm text-neutral-500 mt-2.5 font-sans">
+                Segala hal yang perlu kamu ketahui tentang pemesanan, jaminan pembayaran, dan standar mitra BuildMate.
+              </p>
+            </div>
+
+            <div className="space-y-3.5">
+              {faqList.map((faq, idx) => {
+                const isOpen = openFaqIndex === idx;
+                return (
+                  <div
+                    key={faq.id || idx}
+                    className="rounded-2xl border border-[#EBE7DF] bg-[#FAF8F5] overflow-hidden transition-all duration-200 hover:border-neutral-300"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                      className="w-full text-left px-6 py-4.5 flex items-center justify-between gap-4 font-sans font-medium text-neutral-900 hover:text-lavender-700 transition-colors cursor-pointer"
+                    >
+                      <span className="text-[14px] sm:text-[15px] font-semibold text-neutral-800">
+                        {faq.question}
+                      </span>
+                      <span className="shrink-0 text-neutral-500">
+                        {isOpen ? <ArrowUp2 size={18} /> : <ArrowDown2 size={18} />}
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div className="px-6 pb-5 pt-1 text-xs sm:text-sm text-neutral-600 leading-relaxed font-sans border-t border-[#EBE7DF]/70">
+                        {faq.answer}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 12. PITA CTA MITRA (DEEP FOREST / OBSIDIAN RIBBON) */}
       <section className="w-full px-6 pb-[90px]">

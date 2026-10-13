@@ -297,13 +297,14 @@ Proyek untuk **Internal Solo SaaS Challenge: "From Zero to Live SaaS"** (solo, 3
 
 ## B2. Role, pemisahan akun & akses
 
-Satu sistem login (Supabase Auth) dengan **tiga role** di `profiles.role`. Satu akun = satu role.
+Satu sistem login (Supabase Auth) dengan **empat role** di `profiles.role`. Satu akun = satu role.
 
 | Role | Cara mendapat akun | Area aplikasi | Metode masuk |
 |---|---|---|---|
 | `customer` | Daftar di `/register` (email+password) atau Google dari halaman pelanggan | `/`, `/search`, `/workers/*`, `/order/*`, `/payment/*`, `/orders/*`, `/plus`, `/account`, `/welcome` | Email+password, Google |
 | `worker` | Daftar akun di `/mitra/register` (email+password) atau Google dari halaman mitra → isi formulir `/mitra/daftar` → `pending` → disetujui admin | `/mitra/*` | Email+password, Google |
-| `admin` | **Tidak bisa daftar sendiri.** Dibuat manual (B11.7) | `/admin/*` | Email+password saja |
+| `admin` (**Admin Utama**) | **Tidak bisa daftar sendiri.** Satu orang saja; dibuat lewat skrip (B11.7), dipindahkan lewat "Pindahkan akses admin" | `/admin/*` (semua) | Email+password saja |
+| `staff` (Staf admin) | **Diundang Admin Utama** (A10), peran & hak akses diatur di A10–A12 | `/admin/*` sesuai izin | Email+password saja |
 
 Aturan:
 - Role **tidak pernah** diambil dari input browser; selalu dari `profiles` di server.
@@ -788,7 +789,7 @@ export function useCountUp(target: number, { duration = 900 } = {}) {
 profiles(id uuid pk references auth.users on delete cascade,
          full_name text, phone text, default_address text, avatar_url text,
          onboarding_completed bool not null default false,
-         role text not null default 'customer' check (role in ('customer','worker','admin')),
+         role text not null default 'customer' check (role in ('customer','worker','admin','staff')),
          created_at timestamptz default now())
 
 categories(id uuid pk, name text, slug text unique, icon text, is_active bool default true, created_at)
@@ -863,6 +864,20 @@ Index: `orders(status, created_at desc)`, `orders(customer_id)`, `orders(worker_
 
 Storage: `order-photos` (privat, `orders/{orderId}/{type}/{uuid}.jpg`), `worker-photos` (publik, hanya untuk mitra approved / dikelola admin). Foto pesanan diakses lewat signed URL.
 
+admin_audit(id uuid pk, event_type text, actor_id uuid null, details jsonb, created_at timestamptz default now())   -- mis. admin_transferred
+-- hanya satu admin: create unique index one_admin on profiles ((role)) where role = 'admin';
+
+-- Admin Utama & staf
+roles(id uuid pk, name text unique, description text, permissions text[] not null default '{}',
+      is_preset bool default false, created_by uuid, created_at, updated_at)
+-- profiles: tambah staff_role_id uuid null references roles,
+--           staff_status text check (staff_status in ('invited','active','disabled'))
+
+site_content(key text pk, value jsonb, updated_by uuid, updated_at timestamptz)   -- announcement, hero, plus_banner, terms, privacy
+faq_items(id uuid pk, question text, answer text, sort_order int, is_active bool default true, updated_at)
+
+-- has_permission(p text): true jika my_role()='admin'; atau my_role()='staff' AND staff_status='active' AND p = any(permissions peran)
+
 Index tambahan: `job_offers(worker_id, status)`, `job_offers(order_id, status)`, `orders(dispatch_status)`.
 
 ---
@@ -902,6 +917,16 @@ Helper wajib di setiap handler: `requireRole('admin' | 'worker' | 'customer')` y
 
 Autentikasi (daftar, masuk, Google, verifikasi, reset) memakai Supabase Auth SDK langsung + `/auth/callback` (B11), bukan endpoint buatan sendiri.
 
+| Method | Endpoint | Akses |
+|---|---|---|
+| GET / POST | `/api/admin/team` | Admin Utama: daftar & undang staf |
+| PATCH | `/api/admin/team/[id]` | Admin Utama: ubah peran, nonaktifkan/aktifkan, kirim ulang/batalkan undangan |
+| GET / POST / PATCH / DELETE | `/api/admin/roles` | Admin Utama: kelola peran & hak akses |
+| GET / PUT | `/api/admin/content`, `/api/admin/faq` | Izin `content.manage` |
+| GET | `/api/me/permissions` | Admin/staf: daftar izin untuk UI |
+
+Semua endpoint `/api/admin/*` memakai `requirePermission(...)` sesuai A12 (Admin Utama selalu lolos).
+
 ---
 
 ## B11. Autentikasi (semua role)
@@ -925,6 +950,7 @@ Tidak ada login magic link. Email hanya dipakai untuk link verifikasi dan link r
 | Reset password | `/reset-password` (C02e) | `/mitra/reset-password` (W00e) | `/admin/reset-password` (A00c) |
 | Setelah daftar | `/welcome` (C02f) | `/mitra/daftar` (W01) | — |
 | Ditolak | — | — | `/admin/denied` (A00d) |
+| Terima undangan staf | — | — | `/admin/accept-invite` (A00e) |
 | Callback (bersama) | `/auth/callback` | `/auth/callback` | `/auth/callback` |
 
 ### B11.3 Pengaturan Supabase Auth (dashboard)
@@ -938,7 +964,13 @@ Tidak ada login magic link. Email hanya dipakai untuk link verifikasi dan link r
 5. **Email Templates** (bahasa Indonesia, tetap memakai `{{ .ConfirmationURL }}`):
    - *Confirm signup* — subjek "Verifikasi email BuildMate kamu".
    - *Reset password* — subjek "Atur ulang password BuildMate".
-6. **SMTP:** email bawaan Supabase dibatasi beberapa email per jam. Untuk uji coba yang lebih banyak, pasang SMTP sendiri (mis. Resend) di **Authentication → Emails → SMTP Settings**.
+6. **SMTP — wajib: Gmail dengan App Password** (cepat, gratis, bisa mengirim ke alamat mana pun). Email bawaan Supabase hanya mengirim ke anggota tim proyek, sehingga email ke pelanggan, mitra, atau admin baru tidak akan sampai tanpa SMTP sendiri.
+   - Gmail pengirim (mis. `hajaraswad210299@gmail.com`): Akun Google → **Keamanan** → aktifkan **Verifikasi 2 Langkah** → **Sandi aplikasi** → buat "BuildMate Supabase" → salin 16 karakter.
+   - Supabase → **Authentication → Emails → SMTP Settings** → aktifkan: Host `smtp.gmail.com`, Port `465`, Username = alamat Gmail, Password = sandi aplikasi, Sender email = alamat Gmail, Sender name `BuildMate`.
+   - **Authentication → Rate Limits**: naikkan batas email per jam (mis. 30) agar uji coba tidak tertahan.
+   - Sandi aplikasi tidak pernah di-commit; hanya disimpan di dashboard Supabase.
+   - Untuk produk sungguhan (di luar MVP), ganti ke layanan email transaksional dengan domain sendiri.
+7. **Secure email change: ON** (dipakai untuk "Pindahkan akses admin", A09). Template **Change Email Address** dalam bahasa Indonesia, memakai `{{ .Email }}` dan `{{ .NewEmail }}`.
 
 ### B11.4 Implementasi (klien Supabase dari `@supabase/ssr`)
 ```ts
@@ -1025,7 +1057,10 @@ begin
     coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name'),
     new.raw_user_meta_data->>'phone',
     new.raw_user_meta_data->>'avatar_url',
-    case when new.raw_user_meta_data->>'signup_as' = 'worker' then 'worker' else 'customer' end
+    case new.raw_user_meta_data->>'signup_as'
+      when 'worker' then 'worker'
+      when 'staff'  then 'staff'   -- hanya lewat inviteUserByEmail dari server (Admin Utama)
+      else 'customer' end
   );
   insert into public.subscriptions (user_id) values (new.id);
   return new;
@@ -1062,7 +1097,7 @@ end; $$;
 
 revoke execute on function public.claim_worker_role(uuid) from public, anon, authenticated;
 ```
-- Role **tidak pernah** bisa menjadi `admin` lewat pendaftaran.
+- Role **tidak pernah** bisa menjadi `admin` lewat pendaftaran. Role `staff` hanya dari undangan server; jika metadata `staff` muncul dari pendaftaran publik (`signUp`), server menolak: halaman daftar publik tidak pernah mengirim `signup_as: 'staff'`, dan `/auth/callback` menurunkan profil `staff` tanpa `staff_role_id` menjadi `customer`.
 - Akun pelanggan lama yang mencoba masuk lewat Google di area mitra ditolak dengan pesan "Email ini terdaftar sebagai akun pelanggan. Gunakan email lain untuk mendaftar sebagai mitra."
 
 ### B11.7 Akun admin default
@@ -1089,14 +1124,17 @@ Catatan:
 | worker | `pending` | `/mitra/status` |
 | worker | `approved` | `next` (jika di `/mitra`) atau `/mitra` |
 | admin | — | `next` (jika di `/admin`) atau `/admin` |
+| staff | `staff_status='invited'` | `/admin/accept-invite` |
+| staff | `active` | `next` jika diizinkan, jika tidak halaman pertama yang diizinkan |
+| staff | `disabled` | keluar → `/admin/denied` |
 | role tidak cocok dengan halaman masuk yang dipakai | — | area role-nya + toast penjelasan |
 
 ### B11.9 Middleware pemisah area
 ```ts
 // middleware.ts (sketsa)
 const AREAS = [
-  { prefix: '/admin', role: 'admin', login: '/admin/login',
-    open: ['/admin/login', '/admin/forgot-password', '/admin/reset-password', '/admin/denied'] },
+  { prefix: '/admin', role: ['admin', 'staff'], login: '/admin/login',
+    open: ['/admin/login', '/admin/forgot-password', '/admin/reset-password', '/admin/denied', '/admin/accept-invite'] },
   { prefix: '/mitra', role: 'worker', login: '/mitra/login',
     open: ['/mitra/login', '/mitra/register', '/mitra/verify-email', '/mitra/forgot-password', '/mitra/reset-password'] },
   { prefix: '/order',   role: 'customer', login: '/login' },
@@ -1111,6 +1149,7 @@ const AREAS = [
 // 3) Belum login → redirect ke area.login?next=<path>.
 // 4) Role tidak cocok → redirect ke beranda role-nya (admin→/admin, worker→/mitra, customer→/).
 // 5) Worker belum approved → hanya /mitra/daftar & /mitra/status.
+// 5b) Staff: harus active; izin per halaman dicek di layout/halaman (requirePermission) → tanpa izin tampil "Tidak punya akses".
 // 6) Customer belum onboarding → /welcome sebelum /order dan /payment.
 export const config = {
   matcher: ['/admin/:path*', '/mitra/:path*', '/order/:path*', '/payment/:path*',
@@ -1414,7 +1453,7 @@ Poles C08, C05, W05, A01; cek semua micro-interaction & reduced-motion; seed dem
 
 ### Di luar scope (JANGAN dibangun)
 
-WhatsApp API otomatis, push notification, chat in-app, peta/GPS live & tracking lokasi tukang, ketersediaan/kalender real-time, auto-matching/AI, review/rating publik, pembayaran recurring, API refund/disbursement sungguhan, tagihan tambahan, multi-tenancy, promo/voucher, verifikasi KTP/dokumen identitas, aplikasi native, login magic link/OTP, login sosial selain Google, mode gelap, autentikasi dua faktor.
+WhatsApp API otomatis, push notification, chat in-app, peta/GPS live & tracking lokasi tukang, ketersediaan/kalender real-time, auto-matching/AI, review/rating publik, pembayaran recurring, API refund/disbursement sungguhan, tagihan tambahan, multi-tenancy, promo/voucher, verifikasi KTP/dokumen identitas, aplikasi native, login magic link/OTP, login sosial selain Google, mode gelap, autentikasi dua faktor. Multi-tenancy/workspace tetap di luar scope (peran staf A10 bukan multi-tenancy).
 
 ### Keputusan terbuka
 
@@ -1454,7 +1493,7 @@ WhatsApp API otomatis, push notification, chat in-app, peta/GPS live & tracking 
    ```bash
    npx supabase gen types typescript --linked > lib/supabase/types.ts
    ```
-7. **Storage**: **Storage → New bucket** → `order-photos` (**Private**), `worker-photos` (**Public**), dan `avatars` (**Public**, path `{user_id}/avatar.webp`; policy: pengguna hanya boleh menulis ke folder `{user_id}` miliknya). Upload dilakukan dari server setelah cek role.
+7. **Storage**: **Storage → New bucket** → `order-photos` (**Private**), `worker-photos` (**Public**), `site-content` (**Public**, gambar CMS), dan `avatars` (**Public**, path `{user_id}/avatar.webp`; policy: pengguna hanya boleh menulis ke folder `{user_id}` miliknya). Upload dilakukan dari server setelah cek role.
 8. **Auth**: ikuti **B11.3** (Email + Confirm email, aturan password, Google, Email Templates bahasa Indonesia, SMTP). **Authentication → URL Configuration**: Site URL = `http://localhost:3000` (diganti domain produksi setelah deploy); Redirect URLs: `http://localhost:3000/**`. Buat akun admin (**B11.7**).
 9. **pg_cron:** Database → Extensions → aktifkan `pg_cron`, lalu jadwalkan `buildmate-tick` lewat migrasi (B25.4). Isi tabel `app_settings` dengan nilai awal.
 10. **Realtime** (untuk C08 & antrean admin): **Database → Replication/Publications** → aktifkan untuk tabel `orders`, `order_events`, `payments`, `payouts`, `workers`, dan `job_offers`.
@@ -1699,6 +1738,7 @@ Keterangan: ⬜ belum · 🟡 sebagian · ✅ selesai
 | A00b | Lupa password admin | ⬜ | |
 | A00c | Reset password admin | ⬜ | |
 | A00d | Akses ditolak | ⬜ | |
+| A00e | Terima undangan staf | ⬜ | |
 | A01 | Dashboard | ⬜ | |
 | A02 | Daftar pesanan | ⬜ | |
 | A03 | Detail pesanan | ⬜ | |
@@ -1707,7 +1747,10 @@ Keterangan: ⬜ belum · 🟡 sebagian · ✅ selesai
 | A06 | Transaksi | ⬜ | |
 | A07 | Pencairan dana | ⬜ | |
 | A08 | Pelanggan & Member (opsional) | ⬜ | |
-| A09 | Pengaturan (opsional) | ⬜ | |
+| A09 | Pengaturan | ⬜ | |
+| A10 | Tim & Akses | ⬜ | |
+| A11 | Konten Situs (CMS) | ⬜ | |
+| A12 | Hak akses (requirePermission, has_permission, PermissionGate) | ⬜ | |
 
 ## Pelanggan
 | ID | Halaman | Status | Catatan |

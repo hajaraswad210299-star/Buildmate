@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { RequirePermission, PermissionGate } from "@/components/admin/PermissionGate";
 import {
   Crown1,
   SearchNormal1,
@@ -198,7 +199,8 @@ export default function AdminCustomersPage() {
 
   return (
     <AdminShell>
-      <div className="space-y-5">
+      <RequirePermission permission="customers.view">
+        <div className="space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold text-neutral-900 tracking-tight">
@@ -703,6 +705,7 @@ export default function AdminCustomersPage() {
           </div>
         </div>
       )}
+      </RequirePermission>
     </AdminShell>
   );
 }

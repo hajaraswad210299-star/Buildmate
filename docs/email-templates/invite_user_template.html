@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Undangan Tim Admin BuildMate</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #FAF8F5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #242220;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: #FAF8F5;
+      padding: 40px 16px;
+    }
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+      background-color: #FFFFFF;
+      border-radius: 24px;
+      border: 1px solid #EBE7DF;
+      padding: 40px 32px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    }
+    .brand {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: #5B4896;
+      margin-bottom: 24px;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1A1918;
+      line-height: 1.3;
+      margin: 0 0 16px 0;
+    }
+    p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #55524E;
+      margin: 0 0 20px 0;
+    }
+    .btn-container {
+      margin: 32px 0;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #242220;
+      color: #FFFFFF !important;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 14px 28px;
+      border-radius: 9999px;
+      letter-spacing: 0.02em;
+    }
+    .footer {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid #F0ECE4;
+      font-size: 12px;
+      color: #8C8881;
+      line-height: 1.5;
+    }
+    .link-alt {
+      word-break: break-all;
+      color: #5B4896;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="brand">BUILDMATE &middot; TIM &amp; AKSES</div>
+      <h1>Selamat bergabung di tim BuildMate</h1>
+      <p>Halo{{ if .Data.full_name }} <strong>{{ .Data.full_name }}</strong>{{ end }},</p>
+      <p>Kamu telah diundang oleh Admin Utama untuk bergabung sebagai staf pengelola di portal administrasi <strong>BuildMate</strong>.</p>
+      <p>Silakan klik tombol di bawah ini untuk mengonfirmasi undangan dan membuat password akun kamu:</p>
+      
+      <div class="btn-container">
+        <a href="{{ .ConfirmationURL }}" class="btn" target="_blank" rel="noopener noreferrer">Terima Undangan &amp; Buat Password</a>
+      </div>
+
+      <p style="font-size: 13px; color: #78746D;">Jika tombol di atas tidak berfungsi, salin dan tempel tautan berikut di peramban kamu:</p>
+      <p class="link-alt" style="font-size: 12px;">{{ .ConfirmationURL }}</p>
+
+      <div class="footer">
+        <p>Tautan undangan ini bersifat rahasia dan memiliki batas waktu kedaluwarsa. Jika kamu merasa tidak pernah meminta undangan ini, silakan abaikan email ini.</p>
+        <p>&copy; 2026 BuildMate SaaS Platform &middot; Seluruh hak cipta dilindungi.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { RequirePermission, PermissionGate } from "@/components/admin/PermissionGate";
 import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import {
   getWorkers,
@@ -173,7 +174,8 @@ export default function AdminWorkersPage() {
 
   return (
     <AdminShell>
-      <div className="space-y-5">
+      <RequirePermission permission="workers.view">
+        <div className="space-y-5">
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -190,13 +192,15 @@ export default function AdminWorkersPage() {
             </p>
           </div>
 
-          <Button
-            variant="primary"
-            onClick={handleOpenAddDrawer}
-            leftIcon={<AddCircle size={16} variant="Bold" />}
-          >
-            Tambah Tukang
-          </Button>
+          <PermissionGate permission="workers.manage">
+            <Button
+              variant="primary"
+              onClick={handleOpenAddDrawer}
+              leftIcon={<AddCircle size={16} variant="Bold" />}
+            >
+              Tambah Tukang
+            </Button>
+          </PermissionGate>
         </div>
 
         {/* TABS */}
@@ -911,6 +915,7 @@ export default function AdminWorkersPage() {
           title="Pratinjau Portofolio Tukang"
         />
       )}
+      </RequirePermission>
     </AdminShell>
   );
 }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { RequirePermission, PermissionGate } from "@/components/admin/PermissionGate";
 import { Category, ServicePackage } from "@/lib/data/types";
 import { formatRupiah, slugify } from "@/lib/format";
 import { Button } from "@/components/shared/Button";
@@ -299,7 +300,8 @@ export default function AdminServicesPage() {
 
   return (
     <AdminShell>
-      <div className="space-y-5">
+      <RequirePermission permission="services.view">
+        <div className="space-y-5">
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -322,14 +324,16 @@ export default function AdminServicesPage() {
               <Refresh size={14} className={loading ? "animate-spin" : ""} />
               <span>Segarkan</span>
             </Button>
-            <button
-              type="button"
-              onClick={activeTab === "categories" ? handleOpenAddCategory : handleOpenAddPackage}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-lavender-600 hover:bg-lavender-700 text-white text-xs font-semibold shadow-xs transition-colors"
-            >
-              <AddCircle size={16} />
-              <span>{activeTab === "categories" ? "Tambah Kategori" : "Tambah Paket"}</span>
-            </button>
+            <PermissionGate permission="services.manage">
+              <button
+                type="button"
+                onClick={activeTab === "categories" ? handleOpenAddCategory : handleOpenAddPackage}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-lavender-600 hover:bg-lavender-700 text-white text-xs font-semibold shadow-xs transition-colors"
+              >
+                <AddCircle size={16} />
+                <span>{activeTab === "categories" ? "Tambah Kategori" : "Tambah Paket"}</span>
+              </button>
+            </PermissionGate>
           </div>
         </div>
 
@@ -1151,6 +1155,7 @@ export default function AdminServicesPage() {
           </div>
         </div>
       )}
+      </RequirePermission>
     </AdminShell>
   );
 }

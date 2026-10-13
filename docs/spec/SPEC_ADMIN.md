@@ -1,7 +1,7 @@
 # BuildMate — SPEC ADMIN
 
 > **File 1 dari 3:** `SPEC_ADMIN.md` · `SPEC_CUSTOMER.md` · `SPEC_MITRA.md`
-> Versi 1.4 · Bahasa UI: Indonesia · Mata uang: Rupiah (IDR) · Nama kode: English/snake_case
+> Versi 1.6 · Bahasa UI: Indonesia · Mata uang: Rupiah (IDR) · Nama kode: English/snake_case
 > **Bagian A** = khusus sisi admin. **Bagian B** = fondasi bersama, **identik di ketiga file**.
 
 ---
@@ -27,7 +27,7 @@
 
 ## A1. Peran admin
 
-Admin adalah **pengawas dan penyelesai masalah** BuildMate. Dalam alur normal pesanan berjalan sendiri: sistem mencarikan tukang lewat **dispatch otomatis** (B25), tukang mengupdate progres dari aplikasinya, dan sistem menyelesaikan pesanan otomatis jika pelanggan tidak merespons. Admin turun tangan untuk: verifikasi mitra, katalog layanan, pengecualian dispatch (tidak ada tukang yang menerima, tukang berhalangan), komplain, pembatalan + refund, pencatatan pencairan dana, serta pemantauan. Sisi admin dipakai di **desktop/laptop** (optimal ≥1280px, minimal 1024px; di bawah 1024px sidebar berubah menjadi drawer dan tabel bisa digulir horizontal).
+Admin adalah **pengawas dan penyelesai masalah** BuildMate. Dalam alur normal pesanan berjalan sendiri: sistem mencarikan tukang lewat **dispatch otomatis** (B25), tukang mengupdate progres dari aplikasinya, dan sistem menyelesaikan pesanan otomatis jika pelanggan tidak merespons. Ada dua jenis pengguna admin: **Admin Utama** (satu orang, pemilik penuh) dan **Staf** (dibuat Admin Utama dengan peran & hak akses yang bisa diatur, A10–A12). Admin turun tangan untuk: verifikasi mitra, katalog layanan, pengecualian dispatch (tidak ada tukang yang menerima, tukang berhalangan), komplain, pembatalan + refund, pencatatan pencairan dana, serta pemantauan. Sisi admin dipakai di **desktop/laptop** (optimal ≥1280px, minimal 1024px; di bawah 1024px sidebar berubah menjadi drawer dan tabel bisa digulir horizontal).
 
 Prinsip pengalaman admin:
 - **Cepat dipindai:** angka penting dan antrean tindakan langsung terlihat di Dashboard.
@@ -108,8 +108,11 @@ KEUANGAN
   WalletMoney    Pencairan Dana        (badge: menunggu)
 PENGGUNA
   Profile2User   Pelanggan & Member    (opsional)
+SISTEM
+  People         Tim & Akses           (khusus Admin Utama)
+  DocumentText   Konten Situs          (izin content.manage)
 ────────────────
-  Setting2       Pengaturan            (opsional)
+  Setting2       Pengaturan
 [Kartu admin: avatar, nama, email, ikon LogoutCurve]
 ```
 - Sidebar mengikuti kerangka di atas: hanya bagian menu yang bisa di-scroll; logo, cari cepat, dan kartu profil tetap.
@@ -149,7 +152,9 @@ Admin **hanya** masuk dengan email + password. Tidak ada daftar mandiri dan tida
 - Tautan "Lupa password?" → A00b. Tombol utama **Masuk** (lebar penuh, 44px).
 - Logika: `signInWithPassword` → baca `profiles.role`:
   - `admin` → `/admin` (atau `next`).
-  - selain admin → `signOut()` → A00d.
+  - `staff` aktif → halaman pertama yang diizinkan (Dashboard jika punya `dashboard.view`).
+  - `staff` nonaktif / undangan belum diterima → `signOut()` → A00d dengan pesan sesuai.
+  - selain itu → `signOut()` → A00d.
 - Error: "Email atau password salah." · "Email belum diverifikasi." · "Terlalu banyak percobaan. Coba lagi dalam {n} detik."
 - **Micro-interaction:** fokus otomatis ke email; ring fokus lavender muncul 150ms; peringatan Caps Lock muncul di bawah password; gagal → kartu bergetar halus (3× ±4px, 240ms) dan pesan error meluncur turun; tombol menampilkan spinner + "Memeriksa…"; sukses → ikon centang di tombol lalu fade ke dashboard.
 - **Acceptance:** non-admin tidak pernah melihat isi `/admin`; Enter mengirim form; tombol terkunci saat proses.
@@ -167,6 +172,9 @@ Admin **hanya** masuk dengan email + password. Tidak ada daftar mandiri dan tida
 - `updateUser({ password })` → toast "Password berhasil diubah" → `signOut({ scope: 'others' })` → `/admin`.
 - Error khusus: "Password baru harus berbeda dari password lama."
 - **Micro-interaction:** segmen kekuatan terisi berurutan (danger → warning → success); item checklist berubah dari titik abu ke `TickCircle` hijau dengan pop (scale 0.8 → 1); ikon centang muncul di field konfirmasi saat cocok; tombol aktif hanya jika semua aturan terpenuhi.
+
+### A00e — Terima undangan staf `/admin/accept-invite`
+Dibuka dari email undangan (sesi dibuat `/auth/callback`). Judul serif "Selamat bergabung di tim *BuildMate*", info peran yang diberikan, field **Nama** (prefill), **Password** + **Konfirmasi** dengan indikator kekuatan & checklist. Simpan → `updateUser({ password, data: { full_name } })` → `staff_status='active'` → masuk ke halaman pertama yang diizinkan. Link kedaluwarsa → "Undangan kedaluwarsa. Minta Admin Utama mengirim ulang."
 
 ### A00d — Akses ditolak `/admin/denied`
 Ikon `ShieldCross` Bulk lavender 64px, judul serif "Akses khusus admin", teks "Akun ini tidak memiliki akses ke dashboard admin.", tombol **Ke halaman utama** dan **Masuk dengan akun lain**.
@@ -355,7 +363,21 @@ Dua tab: **Profil saya** (default) · **Konfigurasi sistem**.
 **Tab Profil saya** (admin yang sedang login):
 - **Foto profil:** pratinjau bulat 80px, tombol **Ganti foto** (unggah JPEG/PNG/WebP ≤ 2MB → crop bulat dengan zoom → simpan ke bucket `avatars` di path `{user_id}/avatar.webp`) dan **Hapus foto** (kembali ke inisial). Memperbarui `profiles.avatar_url`.
 - **Nama lengkap:** field + tombol Simpan (aktif hanya jika berubah) → `profiles.full_name`.
-- **Email:** menampilkan email saat ini. **Ubah email** → dialog email baru → `supabase.auth.updateUser({ email })` → state "Menunggu verifikasi: link konfirmasi dikirim ke {email baru}" (dengan Secure email change aktif, email lama juga menerima konfirmasi). Email baru berlaku setelah dikonfirmasi; tombol **Kirim ulang** (60 detik) dan **Batalkan perubahan**.
+- **Email = pintu admin.** Hanya ada satu akun admin. Mengganti email berarti **memindahkan akses admin** ke pemilik email baru, lewat alur "Pindahkan akses admin" di bawah (tidak ada tombol ubah email biasa).
+
+#### Pindahkan akses admin (persetujuan dua email)
+Memakai fitur **Secure email change** bawaan Supabase (wajib ON) + SMTP Gmail (B11.3). Tidak ada tabel atau token buatan sendiri.
+1. Tombol **Pindahkan akses admin** → dialog berisi: **Email baru**, **Ketik ulang email baru** (harus sama persis), **Password saat ini** (diverifikasi dengan `signInWithPassword`), peringatan "Setelah selesai, akun ini tidak bisa lagi masuk sebagai admin", tombol **Batal** dan **Kirim permintaan**.
+2. `supabase.auth.updateUser({ email: newEmail }, { emailRedirectTo: SITE_URL + '/auth/callback?next=/admin/transfer-complete' })`. Supabase mengirim **dua email**: ke email utama ("Benarkah kamu ingin memindahkan akses admin BuildMate ke {email baru}?") dan ke email baru ("Kamu diundang menjadi administrator BuildMate"). **Perpindahan baru terjadi setelah link di KEDUA email diklik.**
+3. Selama menunggu, tab Profil saya menampilkan badge warning "Menunggu konfirmasi dari kedua email · {email baru}" + teks "Tidak jadi? Abaikan email konfirmasi — perpindahan tidak akan terjadi tanpa persetujuan email utama." Link kedaluwarsa otomatis (24 jam).
+4. Setelah kedua link diklik, `/admin/transfer-complete` (server) mendeteksi email akun sudah berganti lalu, berurutan:
+   - mengganti password akun dengan nilai acak 32 karakter (`auth.admin.updateUserById`, tidak disimpan/dicetak) sehingga pemilik lama tidak bisa masuk lagi;
+   - `signOut({ scope: 'global' })` untuk mengeluarkan semua sesi;
+   - `resetPasswordForEmail(newEmail)` → pemilik baru menerima email **"Buat password admin BuildMate"** dan mengatur password di A00c;
+   - mencatat event `admin_transferred` (email lama → email baru, waktu) di tabel `admin_audit`;
+   - menampilkan halaman "Akses admin telah dipindahkan ke {email baru}. Cek email tersebut untuk membuat password."
+5. Riwayat audit pesanan tetap atas nama akun yang sama; tidak ada data yang hilang.
+6. Template email Supabase **Change Email Address** ditulis dalam bahasa Indonesia dan memakai `{{ .Email }}` (email lama) serta `{{ .NewEmail }}` (email baru) agar kedua pihak tahu persis pindah ke mana.
 - **Password:** **Ubah password** → dialog berisi **Password saat ini**, **Password baru**, **Konfirmasi** dengan indikator kekuatan & checklist (sama seperti A00c). Password saat ini diverifikasi dulu dengan `signInWithPassword` (salah → "Password saat ini salah"; ini juga menyegarkan login sehingga syarat *Secure password change* Supabase terpenuhi); lalu `updateUser({ password })` → `signOut({ scope: 'others' })` → toast "Password diubah. Perangkat lain telah dikeluarkan." Di bawah field Password saat ini ada tautan **Lupa password saat ini?** yang mengirim email reset ke email admin (pesan konfirmasi + hitung mundur 60 detik). Semua field password punya tombol tampil/sembunyi; tombol Simpan aktif hanya jika password saat ini terisi, password baru memenuhi semua aturan, berbeda dari password saat ini, dan konfirmasi cocok. Footer dialog: **Batal** (menutup dialog, membuang isian, tidak mengubah apa pun; juga lewat Esc / klik di luar dialog) dan **Simpan password**.
 - Semua dialog di tab ini (ubah email, ubah password, hapus foto) punya tombol **Batal**.
 - **Semua fungsi akun nyata** lewat Supabase Auth/Storage — tidak pernah memakai mock, termasuk saat `USE_MOCK_DATA=true`.
@@ -364,7 +386,68 @@ Dua tab: **Profil saya** (default) · **Konfigurasi sistem**.
 **Tab Konfigurasi sistem** (read-only): biaya layanan, harga & durasi Plus, batas waktu tawaran (`offer_timeout_seconds`), maksimal percobaan dispatch, batas selesai otomatis, nomor WA admin, mode Midtrans (Sandbox), status penjadwal (waktu tick terakhir). Diambil dari env/`app_settings`; tidak dapat diubah dari UI di MVP.
 
 **Micro-interaction:** foto baru fade-in di pratinjau, kartu sidebar & topbar ikut berganti; tombol Simpan berubah centang + toast "Profil diperbarui"; state "Menunggu verifikasi" memakai badge warning dengan ikon `SmsTracking`.
-**Acceptance:** admin hanya bisa mengubah profilnya sendiri; email baru tidak aktif sebelum dikonfirmasi; avatar tersimpan dan tampil setelah refresh.
+**Acceptance:** admin hanya bisa mengubah profilnya sendiri; perpindahan akses tidak terjadi jika salah satu email tidak mengonfirmasi; setelah pindah, password lama tidak bisa dipakai dan semua sesi lama keluar; pemilik baru bisa membuat password dan masuk; avatar tersimpan dan tampil setelah refresh.
+
+
+### A10 — Tim & Akses `/admin/team` (khusus Admin Utama)
+**Tujuan:** Admin Utama membuat akun staf pembantu dengan peran dan hak akses yang bisa diatur sendiri.
+
+**Tab Anggota:**
+- Tabel: avatar, nama, email, peran (badge), status (`Undangan terkirim` / `Aktif` / `Nonaktif`), terakhir aktif, aksi `More` (Ubah peran, Kirim ulang undangan, Nonaktifkan / Aktifkan, Batalkan undangan).
+- Baris pertama selalu **Admin Utama** (kamu) dengan badge `Crown1` "Admin Utama" — tidak bisa diubah atau dinonaktifkan dari sini.
+- Tombol **Undang anggota** (`UserAdd`) → drawer: nama, email, pilih peran (dropdown + ringkasan hak aksesnya), tombol **Batal** / **Kirim undangan**.
+  - Server: `auth.admin.inviteUserByEmail(email, { redirectTo: SITE_URL + '/auth/callback?next=/admin/accept-invite', data: { full_name, signup_as: 'staff' } })` → profil `role='staff'`, `staff_role_id`, `staff_status='invited'`.
+  - Email undangan (template Supabase *Invite user*, bahasa Indonesia) dikirim lewat SMTP Gmail.
+- **Nonaktifkan:** `staff_status='disabled'` + `auth.admin.updateUserById(id, { ban_duration: '876000h' })` → staf langsung tidak bisa masuk dan sesinya tidak bisa diperpanjang; aksesnya juga ditolak di setiap request karena status dicek server. **Aktifkan** membalikkan keduanya.
+- Batas: maksimal 10 anggota staf (MVP).
+
+**Tab Peran:**
+- Kartu per peran: nama, deskripsi, jumlah hak akses, jumlah anggota, label "Bawaan" untuk preset.
+- Preset (bisa diedit, tidak bisa dihapus):
+  - **Editor Konten** — `dashboard.view`, `content.manage`.
+  - **Pemantau Tukang** — `dashboard.view`, `workers.view`, `workers.review`, `orders.view`.
+- Tombol **Buat peran** → drawer: nama (unik), deskripsi, **checklist hak akses** dikelompokkan per modul (tabel A12), dengan aturan otomatis: mencentang "Kelola" ikut mencentang "Lihat" pada modul yang sama. Ringkasan di bawah: "Peran ini bisa membuka: Dashboard, Tukang, …". Tombol **Batal** / **Simpan peran**.
+- Peran yang masih dipakai anggota tidak bisa dihapus (pesan: "Pindahkan 2 anggota ke peran lain dulu").
+- Mengubah hak akses suatu peran langsung berlaku untuk semua anggotanya (dicek di setiap request).
+
+**Micro-interaction:** badge status berubah dengan crossfade; baris undangan baru meluncur masuk; checklist hak akses: mencentang modul "Kelola" ikut menyalakan "Lihat" dengan animasi kecil; ringkasan akses bergulir saat checklist berubah; aksi nonaktifkan memakai dialog konfirmasi + toast "Urungkan" 5 detik.
+
+**Acceptance:** staf hanya melihat menu & tombol sesuai hak aksesnya; membuka URL tanpa izin → halaman "Tidak punya akses"; API tanpa izin → 403; staf nonaktif tidak bisa masuk; semua aksi tim & peran tercatat di `admin_audit`.
+
+### A11 — Konten Situs (CMS) `/admin/content` (izin `content.manage`)
+**Tujuan:** mengubah teks dan gambar di situs pelanggan tanpa mengubah kode.
+
+Bagian (masing-masing kartu dengan tombol **Simpan** sendiri + tautan **Lihat di situs**):
+1. **Bar pengumuman:** aktif/nonaktif, teks (maks 80 karakter), tautan tujuan.
+2. **Hero beranda:** judul (boleh menandai satu kata italic dengan `*kata*`), subjudul, foto (unggah → bucket `site-content`, dikompres, rasio 16:9), teks alternatif foto.
+3. **Banner Plus:** judul, dua poin manfaat, teks tombol.
+4. **FAQ:** daftar tanya–jawab (tambah, edit, hapus, urutkan dengan drag, aktif/nonaktif).
+5. **Halaman Syarat Layanan & Kebijakan Privasi:** editor teks sederhana (Markdown dengan pratinjau).
+
+Data disimpan di tabel `site_content` & `faq_items`; situs pelanggan membaca dari sana dengan **nilai bawaan** jika kosong, dan cache dibersihkan (`revalidatePath`) setiap kali disimpan.
+**Micro-interaction:** indikator "Perubahan belum disimpan" saat ada isian berubah; simpan → centang + toast "Konten diperbarui"; pratinjau foto fade-in; drag urutan FAQ dengan bayangan terangkat.
+**Acceptance:** perubahan tampil di situs pelanggan setelah disimpan (tanpa deploy ulang); validasi panjang teks; hanya pengguna dengan `content.manage` yang bisa menyimpan.
+
+### A12 — Katalog hak akses (permission)
+Daftar tetap di kode (`lib/auth/permissions.ts`); peran hanya memilih dari daftar ini.
+
+| Modul | Lihat | Kelola |
+|---|---|---|
+| Dashboard | `dashboard.view` | — |
+| Pesanan | `orders.view` | `orders.manage` (dispatch: tugaskan manual, cari ulang, lepas tukang; komplain; batal + refund; foto hasil) |
+| Tukang | `workers.view` | `workers.manage` (tambah/edit/nonaktifkan) · `workers.review` (setujui/tolak pendaftaran) |
+| Layanan | `services.view` | `services.manage` |
+| Transaksi | `transactions.view` | — |
+| Pencairan dana | `payouts.view` | `payouts.manage` |
+| Pelanggan & Member | `customers.view` | — |
+| Konten situs (CMS) | — | `content.manage` |
+
+**Khusus Admin Utama (tidak bisa diberikan ke staf):** Tim & Akses (A10), Pindahkan akses admin, tab Konfigurasi sistem.
+
+Penegakan (wajib di tiga lapis):
+1. **Server:** `requirePermission('orders.manage')` di setiap route handler/server action admin; Admin Utama selalu lolos.
+2. **Database:** fungsi `has_permission(p text)` (security definer) dipakai di policy RLS tabel admin.
+3. **UI:** menu sidebar, tab, tombol, dan kartu dashboard disembunyikan bila tidak ada izin; URL langsung tanpa izin → halaman `ShieldCross` "Kamu tidak punya akses ke halaman ini" + tombol ke Dashboard (atau halaman pertama yang diizinkan).
 
 ---
 
@@ -388,6 +471,9 @@ Dua tab: **Profil saya** (default) · **Konfigurasi sistem**.
 | `AdminProfileCard` | Kartu profil menempel di bawah sidebar + popover ke atas |
 | `TransactionDrawer` | Rincian transaksi terbaca manusia + accordion data teknis |
 | `AvatarUploader` | Unggah, crop bulat, hapus foto profil |
+| `PermissionGate` | Membungkus menu/tombol/halaman; tampil hanya jika `can(permission)` |
+| `PermissionChecklist` | Checklist hak akses per modul dengan aturan Kelola → Lihat |
+| `ContentSectionCard` | Kartu CMS dengan indikator belum disimpan & tombol Simpan |
 | `EntityDrawer` | Drawer form standar dengan footer sticky |
 | `ConfirmDialog` | Dialog konfirmasi dengan field alasan opsional/wajib |
 | `JsonViewer` | Viewer payload yang bisa dilipat + salin |
@@ -404,6 +490,8 @@ Dua tab: **Profil saya** (default) · **Konfigurasi sistem**.
 
 **Fase 2 — Auth & backend (M1 Rabu → M2):** auth admin A00a–A00d + middleware (B11) → skema, RLS, seed → A04/A05 tersambung → `transition_order` RPC → A02/A03 tersambung (Checkpoint Bronze Jumat M1) → dispatch otomatis + pg_cron + panel dispatch (B25) → webhook & A06 (M2) → A07 & A01 data nyata (M3).
 
+**Fase 3 — Tim, peran & CMS (setelah Silver aman, ±2 hari):** permission catalog + `has_permission` + `requirePermission` → A10 (undang, peran, nonaktifkan) + A00e → `PermissionGate` di semua menu/tombol → A11 CMS.
+
 Setiap tugas ditutup dengan alur B22 setelah push pertama.
 
 ---
@@ -414,9 +502,11 @@ Setiap tugas ditutup dengan alur B22 setelah push pertama.
 - [ ] Semua ikon tampil (menu, cari, notifikasi, tombol, kartu, ticker, empty state).
 - [ ] Sidebar collapse: logo tersembunyi, ikon tombol mengarah ke kanan, tidak ada elemen bertumpuk.
 - [ ] Header detail pesanan menempel rapi di bawah topbar saat di-scroll, tanpa konten yang mengintip atau tertimpa.
-- [ ] Pengaturan: ubah foto, nama, email (dengan verifikasi), dan password berfungsi.
+- [ ] Pengaturan: ubah foto, nama, dan password berfungsi; pindahkan akses admin berhasil end-to-end dengan dua email sungguhan.
 - [ ] Panel dispatch: riwayat tawaran realtime; tugaskan manual, cari ulang, lepas tukang berfungsi.
-- [ ] Hanya role admin yang dapat membuka `/admin/*` dan memanggil `/api/admin/*` (uji dengan akun pelanggan & tukang).
+- [ ] Tim & Akses: undang staf → email undangan → staf membuat password → masuk dan hanya melihat menu sesuai peran; nonaktifkan staf langsung memblokirnya; peran kustom bisa dibuat & diubah.
+- [ ] Konten Situs: perubahan hero, bar pengumuman, banner Plus, FAQ, dan halaman Syarat/Privasi tampil di situs pelanggan tanpa deploy ulang.
+- [ ] Hanya Admin Utama dan staf aktif yang dapat membuka `/admin/*` dan memanggil `/api/admin/*` (uji dengan akun pelanggan & tukang).
 - [ ] Lupa & reset password admin berfungsi end-to-end.
 - [ ] Dashboard: semua angka benar untuk 3 periode; count-up & reduced-motion bekerja.
 - [ ] Detail pesanan: hanya transisi valid; guard foto hasil & batas waktu ditegakkan server; audit lengkap.
@@ -497,13 +587,14 @@ Proyek untuk **Internal Solo SaaS Challenge: "From Zero to Live SaaS"** (solo, 3
 
 ## B2. Role, pemisahan akun & akses
 
-Satu sistem login (Supabase Auth) dengan **tiga role** di `profiles.role`. Satu akun = satu role.
+Satu sistem login (Supabase Auth) dengan **empat role** di `profiles.role`. Satu akun = satu role.
 
 | Role | Cara mendapat akun | Area aplikasi | Metode masuk |
 |---|---|---|---|
 | `customer` | Daftar di `/register` (email+password) atau Google dari halaman pelanggan | `/`, `/search`, `/workers/*`, `/order/*`, `/payment/*`, `/orders/*`, `/plus`, `/account`, `/welcome` | Email+password, Google |
 | `worker` | Daftar akun di `/mitra/register` (email+password) atau Google dari halaman mitra → isi formulir `/mitra/daftar` → `pending` → disetujui admin | `/mitra/*` | Email+password, Google |
-| `admin` | **Tidak bisa daftar sendiri.** Dibuat manual (B11.7) | `/admin/*` | Email+password saja |
+| `admin` (**Admin Utama**) | **Tidak bisa daftar sendiri.** Satu orang saja; dibuat lewat skrip (B11.7), dipindahkan lewat "Pindahkan akses admin" | `/admin/*` (semua) | Email+password saja |
+| `staff` (Staf admin) | **Diundang Admin Utama** (A10), peran & hak akses diatur di A10–A12 | `/admin/*` sesuai izin | Email+password saja |
 
 Aturan:
 - Role **tidak pernah** diambil dari input browser; selalu dari `profiles` di server.
@@ -988,7 +1079,7 @@ export function useCountUp(target: number, { duration = 900 } = {}) {
 profiles(id uuid pk references auth.users on delete cascade,
          full_name text, phone text, default_address text, avatar_url text,
          onboarding_completed bool not null default false,
-         role text not null default 'customer' check (role in ('customer','worker','admin')),
+         role text not null default 'customer' check (role in ('customer','worker','admin','staff')),
          created_at timestamptz default now())
 
 categories(id uuid pk, name text, slug text unique, icon text, is_active bool default true, created_at)
@@ -1063,6 +1154,20 @@ Index: `orders(status, created_at desc)`, `orders(customer_id)`, `orders(worker_
 
 Storage: `order-photos` (privat, `orders/{orderId}/{type}/{uuid}.jpg`), `worker-photos` (publik, hanya untuk mitra approved / dikelola admin). Foto pesanan diakses lewat signed URL.
 
+admin_audit(id uuid pk, event_type text, actor_id uuid null, details jsonb, created_at timestamptz default now())   -- mis. admin_transferred
+-- hanya satu admin: create unique index one_admin on profiles ((role)) where role = 'admin';
+
+-- Admin Utama & staf
+roles(id uuid pk, name text unique, description text, permissions text[] not null default '{}',
+      is_preset bool default false, created_by uuid, created_at, updated_at)
+-- profiles: tambah staff_role_id uuid null references roles,
+--           staff_status text check (staff_status in ('invited','active','disabled'))
+
+site_content(key text pk, value jsonb, updated_by uuid, updated_at timestamptz)   -- announcement, hero, plus_banner, terms, privacy
+faq_items(id uuid pk, question text, answer text, sort_order int, is_active bool default true, updated_at)
+
+-- has_permission(p text): true jika my_role()='admin'; atau my_role()='staff' AND staff_status='active' AND p = any(permissions peran)
+
 Index tambahan: `job_offers(worker_id, status)`, `job_offers(order_id, status)`, `orders(dispatch_status)`.
 
 ---
@@ -1102,6 +1207,16 @@ Helper wajib di setiap handler: `requireRole('admin' | 'worker' | 'customer')` y
 
 Autentikasi (daftar, masuk, Google, verifikasi, reset) memakai Supabase Auth SDK langsung + `/auth/callback` (B11), bukan endpoint buatan sendiri.
 
+| Method | Endpoint | Akses |
+|---|---|---|
+| GET / POST | `/api/admin/team` | Admin Utama: daftar & undang staf |
+| PATCH | `/api/admin/team/[id]` | Admin Utama: ubah peran, nonaktifkan/aktifkan, kirim ulang/batalkan undangan |
+| GET / POST / PATCH / DELETE | `/api/admin/roles` | Admin Utama: kelola peran & hak akses |
+| GET / PUT | `/api/admin/content`, `/api/admin/faq` | Izin `content.manage` |
+| GET | `/api/me/permissions` | Admin/staf: daftar izin untuk UI |
+
+Semua endpoint `/api/admin/*` memakai `requirePermission(...)` sesuai A12 (Admin Utama selalu lolos).
+
 ---
 
 ## B11. Autentikasi (semua role)
@@ -1125,6 +1240,7 @@ Tidak ada login magic link. Email hanya dipakai untuk link verifikasi dan link r
 | Reset password | `/reset-password` (C02e) | `/mitra/reset-password` (W00e) | `/admin/reset-password` (A00c) |
 | Setelah daftar | `/welcome` (C02f) | `/mitra/daftar` (W01) | — |
 | Ditolak | — | — | `/admin/denied` (A00d) |
+| Terima undangan staf | — | — | `/admin/accept-invite` (A00e) |
 | Callback (bersama) | `/auth/callback` | `/auth/callback` | `/auth/callback` |
 
 ### B11.3 Pengaturan Supabase Auth (dashboard)
@@ -1138,7 +1254,13 @@ Tidak ada login magic link. Email hanya dipakai untuk link verifikasi dan link r
 5. **Email Templates** (bahasa Indonesia, tetap memakai `{{ .ConfirmationURL }}`):
    - *Confirm signup* — subjek "Verifikasi email BuildMate kamu".
    - *Reset password* — subjek "Atur ulang password BuildMate".
-6. **SMTP:** email bawaan Supabase dibatasi beberapa email per jam. Untuk uji coba yang lebih banyak, pasang SMTP sendiri (mis. Resend) di **Authentication → Emails → SMTP Settings**.
+6. **SMTP — wajib: Gmail dengan App Password** (cepat, gratis, bisa mengirim ke alamat mana pun). Email bawaan Supabase hanya mengirim ke anggota tim proyek, sehingga email ke pelanggan, mitra, atau admin baru tidak akan sampai tanpa SMTP sendiri.
+   - Gmail pengirim (mis. `hajaraswad210299@gmail.com`): Akun Google → **Keamanan** → aktifkan **Verifikasi 2 Langkah** → **Sandi aplikasi** → buat "BuildMate Supabase" → salin 16 karakter.
+   - Supabase → **Authentication → Emails → SMTP Settings** → aktifkan: Host `smtp.gmail.com`, Port `465`, Username = alamat Gmail, Password = sandi aplikasi, Sender email = alamat Gmail, Sender name `BuildMate`.
+   - **Authentication → Rate Limits**: naikkan batas email per jam (mis. 30) agar uji coba tidak tertahan.
+   - Sandi aplikasi tidak pernah di-commit; hanya disimpan di dashboard Supabase.
+   - Untuk produk sungguhan (di luar MVP), ganti ke layanan email transaksional dengan domain sendiri.
+7. **Secure email change: ON** (dipakai untuk "Pindahkan akses admin", A09). Template **Change Email Address** dalam bahasa Indonesia, memakai `{{ .Email }}` dan `{{ .NewEmail }}`.
 
 ### B11.4 Implementasi (klien Supabase dari `@supabase/ssr`)
 ```ts
@@ -1225,7 +1347,10 @@ begin
     coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name'),
     new.raw_user_meta_data->>'phone',
     new.raw_user_meta_data->>'avatar_url',
-    case when new.raw_user_meta_data->>'signup_as' = 'worker' then 'worker' else 'customer' end
+    case new.raw_user_meta_data->>'signup_as'
+      when 'worker' then 'worker'
+      when 'staff'  then 'staff'   -- hanya lewat inviteUserByEmail dari server (Admin Utama)
+      else 'customer' end
   );
   insert into public.subscriptions (user_id) values (new.id);
   return new;
@@ -1262,7 +1387,7 @@ end; $$;
 
 revoke execute on function public.claim_worker_role(uuid) from public, anon, authenticated;
 ```
-- Role **tidak pernah** bisa menjadi `admin` lewat pendaftaran.
+- Role **tidak pernah** bisa menjadi `admin` lewat pendaftaran. Role `staff` hanya dari undangan server; jika metadata `staff` muncul dari pendaftaran publik (`signUp`), server menolak: halaman daftar publik tidak pernah mengirim `signup_as: 'staff'`, dan `/auth/callback` menurunkan profil `staff` tanpa `staff_role_id` menjadi `customer`.
 - Akun pelanggan lama yang mencoba masuk lewat Google di area mitra ditolak dengan pesan "Email ini terdaftar sebagai akun pelanggan. Gunakan email lain untuk mendaftar sebagai mitra."
 
 ### B11.7 Akun admin default
@@ -1289,14 +1414,17 @@ Catatan:
 | worker | `pending` | `/mitra/status` |
 | worker | `approved` | `next` (jika di `/mitra`) atau `/mitra` |
 | admin | — | `next` (jika di `/admin`) atau `/admin` |
+| staff | `staff_status='invited'` | `/admin/accept-invite` |
+| staff | `active` | `next` jika diizinkan, jika tidak halaman pertama yang diizinkan |
+| staff | `disabled` | keluar → `/admin/denied` |
 | role tidak cocok dengan halaman masuk yang dipakai | — | area role-nya + toast penjelasan |
 
 ### B11.9 Middleware pemisah area
 ```ts
 // middleware.ts (sketsa)
 const AREAS = [
-  { prefix: '/admin', role: 'admin', login: '/admin/login',
-    open: ['/admin/login', '/admin/forgot-password', '/admin/reset-password', '/admin/denied'] },
+  { prefix: '/admin', role: ['admin', 'staff'], login: '/admin/login',
+    open: ['/admin/login', '/admin/forgot-password', '/admin/reset-password', '/admin/denied', '/admin/accept-invite'] },
   { prefix: '/mitra', role: 'worker', login: '/mitra/login',
     open: ['/mitra/login', '/mitra/register', '/mitra/verify-email', '/mitra/forgot-password', '/mitra/reset-password'] },
   { prefix: '/order',   role: 'customer', login: '/login' },
@@ -1311,6 +1439,7 @@ const AREAS = [
 // 3) Belum login → redirect ke area.login?next=<path>.
 // 4) Role tidak cocok → redirect ke beranda role-nya (admin→/admin, worker→/mitra, customer→/).
 // 5) Worker belum approved → hanya /mitra/daftar & /mitra/status.
+// 5b) Staff: harus active; izin per halaman dicek di layout/halaman (requirePermission) → tanpa izin tampil "Tidak punya akses".
 // 6) Customer belum onboarding → /welcome sebelum /order dan /payment.
 export const config = {
   matcher: ['/admin/:path*', '/mitra/:path*', '/order/:path*', '/payment/:path*',
@@ -1614,7 +1743,7 @@ Poles C08, C05, W05, A01; cek semua micro-interaction & reduced-motion; seed dem
 
 ### Di luar scope (JANGAN dibangun)
 
-WhatsApp API otomatis, push notification, chat in-app, peta/GPS live & tracking lokasi tukang, ketersediaan/kalender real-time, auto-matching/AI, review/rating publik, pembayaran recurring, API refund/disbursement sungguhan, tagihan tambahan, multi-tenancy, promo/voucher, verifikasi KTP/dokumen identitas, aplikasi native, login magic link/OTP, login sosial selain Google, mode gelap, autentikasi dua faktor.
+WhatsApp API otomatis, push notification, chat in-app, peta/GPS live & tracking lokasi tukang, ketersediaan/kalender real-time, auto-matching/AI, review/rating publik, pembayaran recurring, API refund/disbursement sungguhan, tagihan tambahan, multi-tenancy, promo/voucher, verifikasi KTP/dokumen identitas, aplikasi native, login magic link/OTP, login sosial selain Google, mode gelap, autentikasi dua faktor. Multi-tenancy/workspace tetap di luar scope (peran staf A10 bukan multi-tenancy).
 
 ### Keputusan terbuka
 
@@ -1654,7 +1783,7 @@ WhatsApp API otomatis, push notification, chat in-app, peta/GPS live & tracking 
    ```bash
    npx supabase gen types typescript --linked > lib/supabase/types.ts
    ```
-7. **Storage**: **Storage → New bucket** → `order-photos` (**Private**), `worker-photos` (**Public**), dan `avatars` (**Public**, path `{user_id}/avatar.webp`; policy: pengguna hanya boleh menulis ke folder `{user_id}` miliknya). Upload dilakukan dari server setelah cek role.
+7. **Storage**: **Storage → New bucket** → `order-photos` (**Private**), `worker-photos` (**Public**), `site-content` (**Public**, gambar CMS), dan `avatars` (**Public**, path `{user_id}/avatar.webp`; policy: pengguna hanya boleh menulis ke folder `{user_id}` miliknya). Upload dilakukan dari server setelah cek role.
 8. **Auth**: ikuti **B11.3** (Email + Confirm email, aturan password, Google, Email Templates bahasa Indonesia, SMTP). **Authentication → URL Configuration**: Site URL = `http://localhost:3000` (diganti domain produksi setelah deploy); Redirect URLs: `http://localhost:3000/**`. Buat akun admin (**B11.7**).
 9. **pg_cron:** Database → Extensions → aktifkan `pg_cron`, lalu jadwalkan `buildmate-tick` lewat migrasi (B25.4). Isi tabel `app_settings` dengan nilai awal.
 10. **Realtime** (untuk C08 & antrean admin): **Database → Replication/Publications** → aktifkan untuk tabel `orders`, `order_events`, `payments`, `payouts`, `workers`, dan `job_offers`.
@@ -1899,6 +2028,7 @@ Keterangan: ⬜ belum · 🟡 sebagian · ✅ selesai
 | A00b | Lupa password admin | ⬜ | |
 | A00c | Reset password admin | ⬜ | |
 | A00d | Akses ditolak | ⬜ | |
+| A00e | Terima undangan staf | ⬜ | |
 | A01 | Dashboard | ⬜ | |
 | A02 | Daftar pesanan | ⬜ | |
 | A03 | Detail pesanan | ⬜ | |
@@ -1907,7 +2037,10 @@ Keterangan: ⬜ belum · 🟡 sebagian · ✅ selesai
 | A06 | Transaksi | ⬜ | |
 | A07 | Pencairan dana | ⬜ | |
 | A08 | Pelanggan & Member (opsional) | ⬜ | |
-| A09 | Pengaturan (opsional) | ⬜ | |
+| A09 | Pengaturan | ⬜ | |
+| A10 | Tim & Akses | ⬜ | |
+| A11 | Konten Situs (CMS) | ⬜ | |
+| A12 | Hak akses (requirePermission, has_permission, PermissionGate) | ⬜ | |
 
 ## Pelanggan
 | ID | Halaman | Status | Catatan |

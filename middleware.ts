@@ -6,6 +6,8 @@ const OPEN_ADMIN_PATHS = [
   "/admin/forgot-password",
   "/admin/reset-password",
   "/admin/denied",
+  "/admin/no-access",
+  "/admin/accept-invite",
 ];
 
 const CUSTOMER_PROTECTED_PATHS = [
@@ -89,7 +91,7 @@ export async function middleware(request: NextRequest) {
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select("role")
+          .select("role, staff_status")
           .eq("id", user.id)
           .single();
 
@@ -100,6 +102,24 @@ export async function middleware(request: NextRequest) {
           const redirectRes = NextResponse.redirect(dashboardUrl);
           redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
           return redirectRes;
+        }
+
+        if (profile?.role === "staff") {
+          const status = profile.staff_status || "invited";
+          if (status === "invited") {
+            const acceptUrl = request.nextUrl.clone();
+            acceptUrl.pathname = "/admin/accept-invite";
+            return NextResponse.redirect(acceptUrl);
+          }
+          if (status === "disabled") {
+            const deniedUrl = request.nextUrl.clone();
+            deniedUrl.pathname = "/admin/denied";
+            return NextResponse.redirect(deniedUrl);
+          }
+          const dashboardUrl = request.nextUrl.clone();
+          dashboardUrl.pathname = "/admin";
+          dashboardUrl.search = "";
+          return NextResponse.redirect(dashboardUrl);
         }
       }
 
@@ -140,11 +160,31 @@ export async function middleware(request: NextRequest) {
     if (!isConfiguredAdmin) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role")
+        .select("role, staff_status")
         .eq("id", user.id)
         .single();
 
-      if (!profile || profile.role !== "admin") {
+      if (!profile) {
+        const deniedUrl = request.nextUrl.clone();
+        deniedUrl.pathname = "/admin/denied";
+        const redirectRes = NextResponse.redirect(deniedUrl);
+        redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+        return redirectRes;
+      }
+
+      if (profile.role === "staff") {
+        const status = profile.staff_status || "invited";
+        if (status === "invited" && pathname !== "/admin/accept-invite") {
+          const acceptUrl = request.nextUrl.clone();
+          acceptUrl.pathname = "/admin/accept-invite";
+          return NextResponse.redirect(acceptUrl);
+        }
+        if (status === "disabled") {
+          const deniedUrl = request.nextUrl.clone();
+          deniedUrl.pathname = "/admin/denied";
+          return NextResponse.redirect(deniedUrl);
+        }
+      } else if (profile.role !== "admin") {
         const deniedUrl = request.nextUrl.clone();
         deniedUrl.pathname = "/admin/denied";
         const redirectRes = NextResponse.redirect(deniedUrl);
