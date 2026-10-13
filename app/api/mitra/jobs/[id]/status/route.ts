@@ -1,0 +1,50 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { updateMitraJobStatus } from "@/lib/data/mitra";
+import { OrderStatus } from "@/lib/orders/transitions";
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const toStatus = body.status as OrderStatus;
+    const photoPaths = body.photo_paths as string[] | undefined;
+
+    if (!toStatus) {
+      return NextResponse.json(
+        { success: false, error: "Status target wajib disertakan" },
+        { status: 400 }
+      );
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const workerId = user?.id || "w-1";
+    const result = await updateMitraJobStatus(workerId, id, toStatus, photoPaths);
+
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: result.error },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      order: result.order,
+      message: `Status berhasil diubah menjadi ${toStatus}`,
+    });
+  } catch (err: any) {
+    console.error("POST /api/mitra/jobs/[id]/status error:", err);
+    return NextResponse.json(
+      { success: false, error: err?.message || "Gagal memperbarui status pekerjaan" },
+      { status: 500 }
+    );
+  }
+}

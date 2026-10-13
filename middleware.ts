@@ -10,6 +10,14 @@ const OPEN_ADMIN_PATHS = [
   "/admin/accept-invite",
 ];
 
+const OPEN_MITRA_PATHS = [
+  "/mitra/login",
+  "/mitra/register",
+  "/mitra/verify-email",
+  "/mitra/forgot-password",
+  "/mitra/reset-password",
+];
+
 const CUSTOMER_PROTECTED_PATHS = [
   "/order",
   "/payment",
@@ -211,7 +219,101 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // 2. CUSTOMER AUTH PAGES (/login, /register)
+  // 2. MITRA / WORKER ROUTES (A3, A4, B11.8, B11.9)
+  if (pathname.startsWith("/mitra")) {
+    const isOpenMitra = OPEN_MITRA_PATHS.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`)
+    );
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (isOpenMitra) {
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.role === "admin") {
+          return NextResponse.redirect(new URL("/admin", request.url));
+        }
+
+        if (profile?.role === "worker") {
+          const { data: worker } = await supabase
+            .from("workers")
+            .select("application_status")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          const appStatus = worker?.application_status || "draft";
+          if (appStatus === "draft" || appStatus === "rejected") {
+            return NextResponse.redirect(new URL("/mitra/daftar", request.url));
+          }
+          if (appStatus === "pending") {
+            return NextResponse.redirect(new URL("/mitra/status", request.url));
+          }
+          if (appStatus === "approved") {
+            return NextResponse.redirect(new URL("/mitra", request.url));
+          }
+        }
+      }
+
+      response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+      return response;
+    }
+
+    // Protected Mitra routes
+    if (!user) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/mitra/login";
+      loginUrl.searchParams.set("next", pathname + (request.nextUrl.search || ""));
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role === "admin") {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+    if (profile?.role === "customer") {
+      return NextResponse.redirect(new URL("/mitra/login?error=email_is_customer", request.url));
+    }
+
+    // Role is worker: enforce application status gates (A4, B11.8)
+    const { data: worker } = await supabase
+      .from("workers")
+      .select("application_status")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const appStatus = worker?.application_status || "draft";
+
+    if (appStatus === "draft" || appStatus === "rejected") {
+      if (pathname !== "/mitra/daftar") {
+        return NextResponse.redirect(new URL("/mitra/daftar", request.url));
+      }
+    } else if (appStatus === "pending") {
+      if (pathname !== "/mitra/status") {
+        return NextResponse.redirect(new URL("/mitra/status", request.url));
+      }
+    } else if (appStatus === "approved") {
+      if (pathname === "/mitra/daftar" || pathname === "/mitra/status") {
+        return NextResponse.redirect(new URL("/mitra", request.url));
+      }
+    }
+
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    return response;
+  }
+
+  // 3. CUSTOMER AUTH PAGES (/login, /register)
   if (pathname === "/login" || pathname === "/register") {
     const {
       data: { user },
@@ -293,6 +395,7 @@ export const config = {
   matcher: [
     "/",
     "/admin/:path*",
+    "/mitra/:path*",
     "/auth/callback",
     "/auth/confirm",
     "/order/:path*",

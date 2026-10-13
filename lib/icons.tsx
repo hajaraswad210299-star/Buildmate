@@ -146,6 +146,7 @@ export const SecurityUser = createIcon("SecurityUser", Iconsax.SecurityUser);
 export const DocumentText = createIcon("DocumentText", Iconsax.DocumentText);
 export const UserAdd = createIcon("UserAdd", Iconsax.UserAdd);
 export const TickSquare = createIcon("TickSquare", Iconsax.TickSquare);
+export const Send2 = createIcon("Send2", Iconsax.Send2);
 
 // Aliases for convenience
 export const Calendar = Calendar1;

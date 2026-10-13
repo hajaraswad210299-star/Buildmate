@@ -4,7 +4,7 @@ Push ke GitHub: ✅ selesai (commit siap push)
 Repo: https://github.com/hajaraswad210299-star/Buildmate
 URL produksi: https://buildmate-ten.vercel.app
 Mode data: mock (USE_MOCK_DATA=true) untuk data entitas bisnis, **Auth 100% Nyata Supabase**
-Migrasi terakhir: `20261013000000_staff_and_permissions.sql` (Tabel roles, profiles staff columns, site_content, faq_items, admin_audit, site-content storage bucket, RLS policies, seed preset roles)
+Migrasi terakhir: `20261013000001_mitra_and_dispatch.sql` (Tabel job_offers, app_settings, kolom dispatch orders, worker last_offered_at, RLS policies, claim_worker_role RPC)
 
 Keterangan: ⬜ belum · 🟡 sebagian · ✅ selesai
 
@@ -63,6 +63,24 @@ Keterangan: ⬜ belum · 🟡 sebagian · ✅ selesai
 | C09 | BuildMate Plus (/plus) | ✅ | Landing page keanggotaan premium: kartu perbandingan benefit, slider kalkulator estimasi hemat, checkout langganan Midtrans Snap Rp29.000/30 hari, kartu status keanggotaan aktif |
 | C10 | Akun & Profil (/account) | ✅ | Edit profil inline (nama, nomor WhatsApp), modal ganti password aman, status langganan BuildMate Plus, bantuan WhatsApp satu klik, modal konfirmasi keluar dengan auth lock |
 | API | Endpoint Pesanan, Langganan & Webhook | ✅ | `/api/orders` (buat transaksi Midtrans Snap sungguhan via Server Key), `/api/orders/[id]` (sync data), `/api/orders/[id]/confirm`, `/api/orders/[id]/complaint`, `/api/orders/[id]/cancel`, `/api/subscriptions/checkout` (Snap order SUB-...), `/api/webhooks/midtrans` (verifikasi signature SHA-512, cocokkan gross_amount, idempoten, transisi status paid & cancel) |
+
+## Mitra (Sisi Tukang / Mitra Kerja — SPEC_MITRA Selesai & End-to-End)
+| ID | Halaman / Fitur | Status | Catatan |
+|---|---|---|---|
+| M-Shell | Mitra Shell & Navigasi Mobile-First | ✅ | Shell max 480px di tengah neutral-50, top bar 56px (status online pill & avatar), bottom nav 64px (4 tab: Beranda, Tugas, Dompet, Profil) + badge tawaran baru berdenyut |
+| W00a | Masuk Mitra (/mitra/login) | ✅ | Supabase Auth nyata (`signInWithPassword` + verifikasi `profiles.role='worker'`), Google OAuth dengan `signupAs='worker'`, CapsLock warning, toggle intip sandi, isolasi peran dengan pesan ramah bila akun pelanggan |
+| W00b | Daftar Mitra (/mitra/register) | ✅ | Pendaftaran akun baru mitra dengan Supabase Auth `signUp` metadata role `'worker'`, deteksi typo email, 4 checklist realtime password |
+| W00c | Verifikasi Email (/mitra/verify-email) | ✅ | Suspense-safe, tombol cepat buka Gmail / Webmail, hitung mundur 60s kirim ulang |
+| W00d | Lupa Password (/mitra/forgot-password) | ✅ | Suspense-safe, reset password email aman tanpa enumerasi pengguna, timer kirim ulang 60s |
+| W00e | Reset Password (/mitra/reset-password) | ✅ | Update password baru, validasi 4 aturan realtime, sign out dari perangkat lain |
+| W01 | Pendaftaran Mitra 4 Tahap (/mitra/daftar) | ✅ | 4 langkah interaktif: 1. Data Diri & Avatar (kamera/unggah WebP), 2. Kategori Keahlian (multi-select ikon Bulk & tahun pengalaman), 3. Wilayah Layanan (multi-select kecamatan Bandung & alamat domisili), 4. Rekening Bank (BCA/Mandiri/BRI/BNI/BSI + nomor & nama pemilik rekening). Dilengkapi autosave 500ms debounced, indikator "Tersimpan", dan tombol Ajukan Verifikasi |
+| W02 | Status Verifikasi (/mitra/status) | ✅ | Timeline verifikasi 3 tahap (Formulir Diterima → Tinjauan Dokumen → Keputusan), estimasi waktu 1×24 jam, status ditolak dengan alasan penolakan & tombol ajukan ulang, tombol Bantuan CS WhatsApp |
+| W03 | Beranda Mitra (/mitra) | ✅ | Header sapaan + toggle status Aktif/Istirahat dengan optimis update & toast, kartu tawaran kerja aktif (countdown timer, fee besar, tombol Tolak buka sheet & Terima), kartu pekerjaan sedang berjalan, ringkasan saldo escrow & riwayat minggu ini |
+| W04 | Pekerjaan Mitra (/mitra/jobs) | ✅ | 3 tab segment (Tawaran, Aktif, Selesai), filter bulan pada riwayat selesai, kartu pekerjaan detail dengan status badge B7, fee bersih, estimasi durasi, dan rute navigasi |
+| W05 | Detail & Aksi Pekerjaan (/mitra/jobs/[id]) | ✅ | Privasi ketat (alamat sensor & nomor HP disembunyikan sampai pekerjaan diterima), Slide-to-Confirm interaktif (threshold 85%, haptic vibration, modal konfirmasi aksesibel keyboard), integrasi Google Maps navigasi 1-klik, WhatsApp pelanggan 1-klik, upload foto bukti kerja Before/After dengan kamera guard (wajib sebelum selesai) |
+| W06 | Pendapatan & Dompet (/mitra/earnings) | ✅ | Tiga kartu metrik (Bisa Ditarik, Tertahan di Escrow Rekber, Total Didapat), tab filter periode (Bulan Ini, 3 Bulan, Semua), grafik batang pendapatan 6 bulan dengan Recharts, riwayat pencairan dan pekerjaan selesai |
+| W07 | Profil Mitra (/mitra/profile) | ✅ | Avatar & info profil terverifikasi, rating bintang & jumlah ulasan, toggle status aktif terima kerja, chip kategori keahlian & kecamatan layanan, rekening pencairan aktif, modal ganti password aman, tombol keluar akun |
+| API | Endpoint API Mitra End-to-End | ✅ | `/api/mitra/application` (GET/PUT autosave), `/api/mitra/application/submit` (POST ajukan), `/api/mitra/profile` (PATCH update status online & profil), `/api/mitra/jobs` (GET filter tab & bulan), `/api/mitra/jobs/[id]` (GET detail tersanitasi), `/api/mitra/jobs/[id]/accept` (POST terima tawaran), `/api/mitra/jobs/[id]/decline` (POST tolak tawaran), `/api/mitra/jobs/[id]/status` (POST update alur status dengan guard foto), `/api/mitra/earnings` (GET ringkasan keuangan & riwayat) |
 
 ## Verifikasi Tangkapan Layar (Screenshots)
 - `docs/screenshots/admin-1440.png`: Dashboard resolusi 1440×700 (shell penuh, sidebar fixed dengan kartu profil, ikon aktif, metrik tanpa spasi).

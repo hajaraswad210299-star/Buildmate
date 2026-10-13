@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { ShieldTick, Verify, Camera } from "@/lib/icons";
+import { ShieldTick, Verify, Camera, Briefcase, WalletMoney } from "@/lib/icons";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -44,56 +44,114 @@ export function AuthLayout({
                 {isPartner ? "Portal Mitra Tukang" : "Jasa Perbaikan Rumah"}
               </span>
               <h2 className="text-4xl xl:text-5xl font-serif text-neutral-900 leading-[1.15] mt-4">
-                Tukang yang <span className="italic text-lavender-700">tepat</span>, saat kamu butuh.
+                {isPartner ? (
+                  <>
+                    Dapat pekerjaan, <span className="italic text-lavender-700">dibayar aman</span>.
+                  </>
+                ) : (
+                  <>
+                    Tukang yang <span className="italic text-lavender-700">tepat</span>, saat kamu butuh.
+                  </>
+                )}
               </h2>
               <p className="text-sm text-neutral-600 mt-3 leading-relaxed">
-                Pilih tukang terverifikasi dengan harga paket pasti. Dana kamu aman di rekening bersama dan baru diteruskan setelah pekerjaan terbukti beres.
+                {isPartner
+                  ? "Terima pesanan pelanggan sekitar, perbarui progres dengan mudah, dan nikmati pencairan dana yang terjamin."
+                  : "Pilih tukang terverifikasi dengan harga paket pasti. Dana kamu aman di rekening bersama dan baru diteruskan setelah pekerjaan terbukti beres."}
               </p>
             </div>
 
-            {/* 3 Trust Bullets with Bulk Icons (A4) */}
+            {/* 3 Trust Bullets with Bulk Icons (A3 / A4) */}
             <div className="space-y-4 pt-2">
-              <div className="flex items-start gap-3.5 bg-white/70 backdrop-blur-sm p-3.5 rounded-2xl border border-white/80 shadow-xs">
-                <div className="w-10 h-10 rounded-xl bg-lavender-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <ShieldTick size={22} variant="Bulk" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-neutral-900">
-                    Pembayaran Aman dengan Rekber
-                  </h4>
-                  <p className="text-[11px] text-neutral-500 mt-0.5">
-                    Dana ditahan di rekening bersama sampai kamu memeriksa hasil foto & menyetujuinya.
-                  </p>
-                </div>
-              </div>
+              {isPartner ? (
+                <>
+                  <div className="flex items-start gap-3.5 bg-white/70 backdrop-blur-sm p-3.5 rounded-2xl border border-white/80 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-lavender-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Briefcase size={22} variant="Bulk" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-semibold text-neutral-900">
+                        Pekerjaan dari Pelanggan Sekitar
+                      </h4>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">
+                        Pesanan masuk langsung ke HP sesuai keahlian dan area layananmu.
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="flex items-start gap-3.5 bg-white/70 backdrop-blur-sm p-3.5 rounded-2xl border border-white/80 shadow-xs">
-                <div className="w-10 h-10 rounded-xl bg-lavender-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Verify size={22} variant="Bulk" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-neutral-900">
-                    Tukang Terverifikasi
-                  </h4>
-                  <p className="text-[11px] text-neutral-500 mt-0.5">
-                    Identitas, portofolio pekerjaan, dan keahlian telah ditinjau langsung oleh tim operator BuildMate.
-                  </p>
-                </div>
-              </div>
+                  <div className="flex items-start gap-3.5 bg-white/70 backdrop-blur-sm p-3.5 rounded-2xl border border-white/80 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-lavender-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <WalletMoney size={22} variant="Bulk" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-semibold text-neutral-900">
+                        Dana Dijamin Setelah Selesai
+                      </h4>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">
+                        Pembayaran pelanggan ditahan di muka; hakmu aman dan cair setelah pekerjaan dikonfirmasi.
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="flex items-start gap-3.5 bg-white/70 backdrop-blur-sm p-3.5 rounded-2xl border border-white/80 shadow-xs">
-                <div className="w-10 h-10 rounded-xl bg-lavender-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Camera size={22} variant="Bulk" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-neutral-900">
-                    Bukti Foto Sebelum & Sesudah
-                  </h4>
-                  <p className="text-[11px] text-neutral-500 mt-0.5">
-                    Tukang wajib mengunggah foto hasil pekerjaan sebelum menyelesaikan pesanan.
-                  </p>
-                </div>
-              </div>
+                  <div className="flex items-start gap-3.5 bg-white/70 backdrop-blur-sm p-3.5 rounded-2xl border border-white/80 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-lavender-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Verify size={22} variant="Bulk" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-semibold text-neutral-900">
+                        Profil Terverifikasi Tampil ke Pelanggan
+                      </h4>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">
+                        Tunjukkan keahlian dan portofolio terbaikmu ke ribuan pemilik rumah di sekitarmu.
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-start gap-3.5 bg-white/70 backdrop-blur-sm p-3.5 rounded-2xl border border-white/80 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-lavender-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <ShieldTick size={22} variant="Bulk" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-semibold text-neutral-900">
+                        Pembayaran Aman dengan Rekber
+                      </h4>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">
+                        Dana ditahan di rekening bersama sampai kamu memeriksa hasil foto & menyetujuinya.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3.5 bg-white/70 backdrop-blur-sm p-3.5 rounded-2xl border border-white/80 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-lavender-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Verify size={22} variant="Bulk" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-semibold text-neutral-900">
+                        Tukang Terverifikasi
+                      </h4>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">
+                        Identitas, portofolio pekerjaan, dan keahlian telah ditinjau langsung oleh tim operator BuildMate.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3.5 bg-white/70 backdrop-blur-sm p-3.5 rounded-2xl border border-white/80 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-lavender-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Camera size={22} variant="Bulk" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-semibold text-neutral-900">
+                        Bukti Foto Sebelum & Sesudah
+                      </h4>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">
+                        Tukang wajib mengunggah foto hasil pekerjaan sebelum menyelesaikan pesanan.
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -138,7 +196,7 @@ export function AuthLayout({
                   href="/login"
                   className="text-xs text-neutral-500 hover:text-lavender-700 transition-colors"
                 >
-                  Bukan mitra? Masuk sebagai pelanggan →
+                  Bukan tukang? Masuk sebagai pelanggan →
                 </Link>
               ) : (
                 <Link

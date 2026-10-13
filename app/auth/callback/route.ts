@@ -192,8 +192,41 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL(target, url.origin));
     }
 
+    if (as === "worker" && profile?.role === "customer") {
+      return NextResponse.redirect(new URL("/mitra/login?error=email_is_customer", url.origin));
+    }
+
     if (profile?.role === "worker") {
-      return NextResponse.redirect(new URL("/mitra", url.origin));
+      let status = "draft";
+      try {
+        const { createAdminClient } = await import("@/lib/supabase/admin");
+        const adminSupabase = createAdminClient();
+        const { data: worker } = await adminSupabase
+          .from("workers")
+          .select("application_status")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (worker?.application_status) {
+          status = worker.application_status;
+        }
+      } catch (err) {
+        console.warn("Error checking worker status in callback:", err);
+      }
+
+      if (status === "draft" || status === "rejected") {
+        return NextResponse.redirect(new URL("/mitra/daftar", url.origin));
+      }
+      if (status === "pending") {
+        return NextResponse.redirect(new URL("/mitra/status", url.origin));
+      }
+      const target =
+        safeNext.startsWith("/mitra") &&
+        safeNext !== "/mitra/daftar" &&
+        safeNext !== "/mitra/status" &&
+        !safeNext.startsWith("/mitra/login")
+          ? safeNext
+          : "/mitra";
+      return NextResponse.redirect(new URL(target, url.origin));
     }
 
     // Customer: if phone is missing or onboarding not done, go to welcome page
