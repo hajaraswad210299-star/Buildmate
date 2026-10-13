@@ -11,14 +11,14 @@ import { toast } from "sonner";
 function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("hajaraswad210299@gmail.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [capsLockActive, setCapsLockActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // If already logged in AS ADMIN, lock immediately to dashboard
+  // If already logged in AS ADMIN or ACTIVE STAFF, redirect immediately to dashboard
   React.useEffect(() => {
     const checkSession = async () => {
       try {
@@ -27,18 +27,27 @@ function AdminLoginForm() {
           data: { user },
         } = await supabase.auth.getUser();
         if (user) {
-          const adminEmail = "hajaraswad210299@gmail.com";
-          const isSuperAdmin = user.email?.toLowerCase() === adminEmail.toLowerCase();
-          let isAdmin = isSuperAdmin;
-          if (!isAdmin) {
+          const configuredAdmins = [
+            (process.env.ADMIN_EMAIL || "").toLowerCase(),
+            (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
+            "jonathanhuang88@proton.me",
+          ].filter(Boolean);
+          const userEmail = (user.email || "").toLowerCase();
+          const isSuperAdmin = configuredAdmins.includes(userEmail);
+          let isAdminOrStaff = isSuperAdmin;
+          if (!isAdminOrStaff) {
             const { data: profile } = await supabase
               .from("profiles")
-              .select("role")
+              .select("role, staff_status")
               .eq("id", user.id)
               .single();
-            isAdmin = profile?.role === "admin";
+            if (profile?.role === "admin") {
+              isAdminOrStaff = true;
+            } else if (profile?.role === "staff" && profile.staff_status !== "disabled") {
+              isAdminOrStaff = true;
+            }
           }
-          if (isAdmin) {
+          if (isAdminOrStaff) {
             const next = searchParams.get("next") || "/admin";
             window.location.replace(next);
           }
@@ -103,13 +112,13 @@ function AdminLoginForm() {
 
       // Pastikan akun memiliki hak akses admin atau staf
       const configuredAdmins = [
+        (process.env.ADMIN_EMAIL || "").toLowerCase(),
         (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
         "jonathanhuang88@proton.me",
-        "hajaraswad210299@gmail.com",
       ].filter(Boolean);
 
       const userEmail = (data.user.email || "").toLowerCase();
-      const isSuperAdmin = configuredAdmins.includes(userEmail) || data.user.user_metadata?.role === "admin";
+      const isSuperAdmin = configuredAdmins.includes(userEmail);
 
       if (!isSuperAdmin) {
         const { data: profile } = await supabase
@@ -123,7 +132,8 @@ function AdminLoginForm() {
         if (role !== "admin" && role !== "staff") {
           await supabase.auth.signOut();
           setIsLoading(false);
-          window.location.replace("/admin/denied");
+          setErrorMessage(`Akses ditolak. Email ${userEmail} tidak terdaftar sebagai admin atau staf BuildMate.`);
+          toast.error("Akses ditolak. Bukan akun admin atau staf.");
           return;
         }
 
@@ -132,7 +142,8 @@ function AdminLoginForm() {
           if (status === "disabled") {
             await supabase.auth.signOut();
             setIsLoading(false);
-            window.location.replace("/admin/denied");
+            setErrorMessage("Akun staf telah dinonaktifkan. Silakan hubungi Admin Utama.");
+            toast.error("Akun staf dinonaktifkan.");
             return;
           }
           if (status === "invited") {

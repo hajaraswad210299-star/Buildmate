@@ -274,11 +274,12 @@ export function CustomerShell({
               )}
 
               {user ? (
-                <div className="relative">
-                  <button
-                    onClick={() => setMenuOpen(!menuOpen)}
-                    className="flex items-center gap-2 p-1.5 rounded-full border border-neutral-200 hover:border-neutral-300 hover:shadow-xs transition-all bg-white"
-                    aria-label="Menu akun"
+                <div className="relative flex items-center gap-1.5">
+                  <Link
+                    href="/account"
+                    className="flex items-center gap-2 p-1 rounded-full border border-neutral-200 hover:border-lavender-400 hover:ring-2 hover:ring-lavender-200 hover:shadow-xs transition-all bg-white"
+                    aria-label="Profil & Akun Saya"
+                    title="Profil & Akun Saya"
                   >
                     <div className="w-8 h-8 rounded-full bg-lavender-100 text-lavender-700 font-semibold text-xs flex items-center justify-center overflow-hidden">
                       {profile?.avatar_url ? (
@@ -296,6 +297,22 @@ export function CustomerShell({
                         </span>
                       )}
                     </div>
+                  </Link>
+
+                  {/* Dropdown Menu Trigger */}
+                  <button
+                    onClick={() => setMenuOpen(!menuOpen)}
+                    className="p-1 text-neutral-400 hover:text-neutral-700 rounded-lg hover:bg-neutral-100 transition-colors"
+                    aria-label="Pilihan akun"
+                  >
+                    <svg
+                      className={`w-3.5 h-3.5 transition-transform duration-150 ${menuOpen ? "rotate-180" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
 
                   {/* Dropdown Menu */}
