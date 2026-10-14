@@ -116,8 +116,8 @@ export function CustomerShell({
       if (
         hash.includes("type=invite") ||
         search.includes("type=invite") ||
-        hash.includes("next=%2Fadmin%2Faccept-invite") ||
-        search.includes("next=%2Fadmin%2Faccept-invite")
+        hash.includes("accept-invite") ||
+        search.includes("accept-invite")
       ) {
         window.location.href = `/admin/accept-invite${hash || search}`;
         return;
@@ -128,6 +128,20 @@ export function CustomerShell({
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user) {
+        const meta = user.user_metadata || {};
+        const isStaff = meta.role === "staff" || meta.signup_as === "staff";
+        const staffStatus = meta.staff_status || "invited";
+
+        // Staff accounts must not be treated as customers
+        if (isStaff) {
+          setUser(null);
+          setProfile(null);
+          if (staffStatus === "invited") {
+            window.location.href = "/admin/accept-invite";
+          }
+          return;
+        }
+
         try {
           const { data } = await supabase
             .from("profiles")
@@ -135,8 +149,8 @@ export function CustomerShell({
             .eq("id", user.id)
             .single();
 
-          const role = data?.role || user.user_metadata?.role || user.user_metadata?.signup_as;
-          // Admin, Staff, or Worker accounts are NOT logged-in customers
+          const role = data?.role;
+          // Admin or Worker accounts are NOT logged-in customers
           if (role && role !== "customer") {
             setUser(null);
             setProfile(null);

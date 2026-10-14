@@ -65,6 +65,25 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser();
 
   if (user) {
+    const meta = user.user_metadata || {};
+    const isStaff = meta.role === "staff" || meta.signup_as === "staff";
+    const staffStatus = meta.staff_status || "invited";
+
+    // Immediate check for staff: must go to accept-invite if invited
+    if (isStaff) {
+      if (staffStatus === "invited") {
+        return NextResponse.redirect(new URL("/admin/accept-invite", url.origin));
+      }
+      if (staffStatus === "disabled") {
+        return NextResponse.redirect(new URL("/admin/denied", url.origin));
+      }
+      const target =
+        safeNext.startsWith("/admin") && safeNext !== "/admin/accept-invite"
+          ? safeNext
+          : "/admin";
+      return NextResponse.redirect(new URL(target, url.origin));
+    }
+
     const configuredAdmins = [
       (process.env.ADMIN_EMAIL || "").toLowerCase(),
       (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
@@ -115,9 +134,7 @@ export async function GET(request: Request) {
             id: user.id,
             full_name: googleName,
             avatar_url: googleAvatar,
-            role: targetRole,
-            staff_role_id: user.user_metadata?.staff_role_id || null,
-            staff_status: isStaffInvite ? "invited" : null,
+            role: targetRole === "staff" ? "customer" : targetRole,
             onboarding_completed: false,
           })
           .select()

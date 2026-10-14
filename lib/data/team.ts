@@ -158,7 +158,12 @@ export async function inviteStaffMember(params: {
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const redirectUrl = `${siteUrl}/auth/callback?next=/admin/accept-invite`;
+  // Supabase GoTrue whitelist requires production domain or whitelisted callback
+  const authRedirectBase =
+    siteUrl.includes("localhost")
+      ? "https://buildmate-ten.vercel.app"
+      : siteUrl;
+  const redirectUrl = `${authRedirectBase}/auth/callback?next=/admin/accept-invite`;
 
   let newUserId: string = randomUUID();
   let inviteLink: string | undefined;
@@ -203,14 +208,15 @@ export async function inviteStaffMember(params: {
       // ignore
     }
 
-    // Ensure profiles record is updated or inserted
-    await supabase.from("profiles").upsert({
-      id: newUserId,
-      full_name: cleanName,
-      role: "staff",
-      staff_role_id: role.id,
-      staff_status: "invited",
-    });
+    // Safely ensure profiles record has full_name without violating constraints
+    try {
+      await supabase.from("profiles").upsert({
+        id: newUserId,
+        full_name: cleanName,
+      });
+    } catch {
+      // ignore
+    }
   } catch (err: any) {
     console.warn("Supabase invite caught error:", err?.message);
   }
@@ -381,7 +387,11 @@ export async function resendInvite(params: {
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const redirectUrl = `${siteUrl}/auth/callback?next=/admin/accept-invite`;
+  const authRedirectBase =
+    siteUrl.includes("localhost")
+      ? "https://buildmate-ten.vercel.app"
+      : siteUrl;
+  const redirectUrl = `${authRedirectBase}/auth/callback?next=/admin/accept-invite`;
 
   let inviteLink: string | undefined;
   let emailSent = false;
@@ -452,7 +462,11 @@ export async function getStaffInviteLink(params: {
   if (!target) return { success: false, error: "Anggota tim tidak ditemukan." };
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const redirectUrl = `${siteUrl}/auth/callback?next=/admin/accept-invite`;
+  const authRedirectBase =
+    siteUrl.includes("localhost")
+      ? "https://buildmate-ten.vercel.app"
+      : siteUrl;
+  const redirectUrl = `${authRedirectBase}/auth/callback?next=/admin/accept-invite`;
 
   try {
     const supabase = createAdminClient();
@@ -549,24 +563,12 @@ export async function acceptStaffInvite(params: {
     console.warn("Auth admin updateUserById notice:", authErr?.message);
   }
 
-  // 2. Update profiles table
+  // 2. Safely update profiles table (only full_name to avoid check constraint on role or missing columns)
   try {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("staff_role_id, role")
-      .eq("id", params.userId)
-      .single();
-
-    if (profile?.staff_role_id) {
-      roleId = profile.staff_role_id;
-    }
-
     await supabase
       .from("profiles")
       .update({
         full_name: params.fullName.trim(),
-        role: "staff",
-        staff_status: "active",
       })
       .eq("id", params.userId);
   } catch (dbErr: any) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export function AuthRedirectHandler() {
   useEffect(() => {
@@ -30,7 +31,6 @@ export function AuthRedirectHandler() {
       search.includes("type=email_change");
 
     if (isEmailChange) {
-      // Immediately clean hash from URL to avoid re-triggering redirect loop
       window.history.replaceState(null, "", pathname + search);
 
       if (pathname.startsWith("/admin/settings")) {
@@ -56,12 +56,12 @@ export function AuthRedirectHandler() {
       return;
     }
 
-    // 4. Handle staff invite
+    // 4. Handle staff invite via URL parameters/hash
     const isInvite =
       hash.includes("type=invite") ||
       search.includes("type=invite") ||
-      hash.includes("next=%2Fadmin%2Faccept-invite") ||
-      search.includes("next=%2Fadmin%2Faccept-invite");
+      hash.includes("accept-invite") ||
+      search.includes("accept-invite");
     if (isInvite) {
       if (!pathname.startsWith("/admin/accept-invite")) {
         window.location.href = `/admin/accept-invite${hash || search}`;
@@ -69,7 +69,7 @@ export function AuthRedirectHandler() {
       }
     }
 
-    // 4. If query has code or token_hash and we are on customer home '/'
+    // 5. If query has code or token_hash and we are on customer home '/'
     if (
       (search.includes("code=") || search.includes("token_hash=")) &&
       pathname === "/"
@@ -78,9 +78,41 @@ export function AuthRedirectHandler() {
       const code = searchParams.get("code");
       const tokenHash = searchParams.get("token_hash");
       if (code || tokenHash) {
-        window.location.href = `/auth/callback?${searchParams.toString()}&next=/`;
+        if (!searchParams.has("next")) {
+          if (searchParams.get("type") === "invite") {
+            searchParams.set("next", "/admin/accept-invite");
+          }
+        }
+        window.location.href = `/auth/callback?${searchParams.toString()}`;
+        return;
       }
     }
+
+    // 6. Reactive session inspection: ensure invited staff is redirected to accept-invite
+    const supabase = createClient();
+    const checkStaffStatus = (u: any) => {
+      if (!u) return;
+      const meta = u.user_metadata || {};
+      const isStaff = meta.role === "staff" || meta.signup_as === "staff";
+      const staffStatus = meta.staff_status || "invited";
+      if (isStaff && staffStatus === "invited") {
+        if (!window.location.pathname.startsWith("/admin/accept-invite")) {
+          window.location.href = "/admin/accept-invite";
+        }
+      }
+    };
+
+    supabase.auth.getUser().then(({ data: { user } }) => checkStaffStatus(user));
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      checkStaffStatus(session?.user);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   return null;

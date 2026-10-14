@@ -68,12 +68,14 @@ export async function middleware(request: NextRequest) {
     const callbackUrl = request.nextUrl.clone();
     callbackUrl.pathname = "/auth/callback";
     if (!callbackUrl.searchParams.has("next")) {
-      if (type === "invite") {
+      if (
+        type === "invite" ||
+        pathname.startsWith("/admin/accept-invite") ||
+        request.nextUrl.search.includes("accept-invite")
+      ) {
         callbackUrl.searchParams.set("next", "/admin/accept-invite");
       } else if (type === "email_change" || pathname.startsWith("/admin")) {
         callbackUrl.searchParams.set("next", "/admin/settings?verified=email");
-      } else {
-        callbackUrl.searchParams.set("next", "/");
       }
     }
     return NextResponse.redirect(callbackUrl);
@@ -103,23 +105,10 @@ export async function middleware(request: NextRequest) {
           return redirectRes;
         }
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, staff_status")
-          .eq("id", user.id)
-          .single();
-
-        if (profile?.role === "admin") {
-          const dashboardUrl = request.nextUrl.clone();
-          dashboardUrl.pathname = "/admin";
-          dashboardUrl.search = "";
-          const redirectRes = NextResponse.redirect(dashboardUrl);
-          redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-          return redirectRes;
-        }
-
-        if (profile?.role === "staff") {
-          const status = profile.staff_status || "invited";
+        const meta = user.user_metadata || {};
+        const isStaff = meta.role === "staff" || meta.signup_as === "staff";
+        if (isStaff) {
+          const status = meta.staff_status || "invited";
           if (status === "invited") {
             const acceptUrl = request.nextUrl.clone();
             acceptUrl.pathname = "/admin/accept-invite";
@@ -134,6 +123,21 @@ export async function middleware(request: NextRequest) {
           dashboardUrl.pathname = "/admin";
           dashboardUrl.search = "";
           return NextResponse.redirect(dashboardUrl);
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.role === "admin") {
+          const dashboardUrl = request.nextUrl.clone();
+          dashboardUrl.pathname = "/admin";
+          dashboardUrl.search = "";
+          const redirectRes = NextResponse.redirect(dashboardUrl);
+          redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+          return redirectRes;
         }
       }
 
@@ -176,22 +180,10 @@ export async function middleware(request: NextRequest) {
     const isConfiguredAdmin = Boolean(user.email && configuredAdmins.includes(user.email.toLowerCase()));
 
     if (!isConfiguredAdmin) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role, staff_status")
-        .eq("id", user.id)
-        .single();
-
-      if (!profile) {
-        const deniedUrl = request.nextUrl.clone();
-        deniedUrl.pathname = "/admin/denied";
-        const redirectRes = NextResponse.redirect(deniedUrl);
-        redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-        return redirectRes;
-      }
-
-      if (profile.role === "staff") {
-        const status = profile.staff_status || "invited";
+      const meta = user.user_metadata || {};
+      const isStaff = meta.role === "staff" || meta.signup_as === "staff";
+      if (isStaff) {
+        const status = meta.staff_status || "invited";
         if (status === "invited" && pathname !== "/admin/accept-invite") {
           const acceptUrl = request.nextUrl.clone();
           acceptUrl.pathname = "/admin/accept-invite";
@@ -202,12 +194,20 @@ export async function middleware(request: NextRequest) {
           deniedUrl.pathname = "/admin/denied";
           return NextResponse.redirect(deniedUrl);
         }
-      } else if (profile.role !== "admin") {
-        const deniedUrl = request.nextUrl.clone();
-        deniedUrl.pathname = "/admin/denied";
-        const redirectRes = NextResponse.redirect(deniedUrl);
-        redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-        return redirectRes;
+      } else {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (!profile || profile.role !== "admin") {
+          const deniedUrl = request.nextUrl.clone();
+          deniedUrl.pathname = "/admin/denied";
+          const redirectRes = NextResponse.redirect(deniedUrl);
+          redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+          return redirectRes;
+        }
       }
     }
 

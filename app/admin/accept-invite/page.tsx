@@ -16,7 +16,7 @@ import {
   ArrowRight,
 } from "@/lib/icons";
 import { toast } from "sonner";
-import { getFirstAllowedRoute } from "@/lib/auth/permissions";
+import { getFirstAllowedRoute, PRESET_ROLES } from "@/lib/auth/permissions";
 
 export default function AcceptInvitePage() {
   const router = useRouter();
@@ -43,38 +43,50 @@ export default function AcceptInvitePage() {
     const meta = currentUser.user_metadata || {};
     setName(meta.full_name || meta.name || "");
 
+    if (meta.staff_status === "active") {
+      setIsAlreadyActive(true);
+    }
+
+    const roleId = meta.staff_role_id;
+    if (roleId) {
+      const preset = PRESET_ROLES.find((r) => r.id === roleId);
+      if (preset) {
+        setRoleData({
+          name: preset.name,
+          description: preset.description,
+          permissions: preset.permissions,
+        });
+      } else {
+        try {
+          const res = await fetch("/api/admin/roles");
+          if (res.ok) {
+            const data = await res.json();
+            const found = data.roles?.find((r: any) => r.id === roleId);
+            if (found) {
+              setRoleData({
+                name: found.name,
+                description: found.description,
+                permissions: found.permissions || [],
+              });
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    } else if (meta.role_name) {
+      setRoleData({ name: meta.role_name });
+    }
+
     try {
       const { data: prof } = await supabase
         .from("profiles")
-        .select("staff_role_id, role, staff_status, full_name")
+        .select("full_name")
         .eq("id", currentUser.id)
-        .single();
+        .maybeSingle();
 
       if (prof?.full_name) {
         setName(prof.full_name);
-      }
-
-      if (prof?.staff_status === "active" && !prof?.staff_status?.includes("invite")) {
-        setIsAlreadyActive(true);
-      }
-
-      const roleId = prof?.staff_role_id || meta.staff_role_id;
-      if (roleId) {
-        const { data: r } = await supabase
-          .from("roles")
-          .select("name, description, permissions")
-          .eq("id", roleId)
-          .single();
-
-        if (r) {
-          setRoleData({
-            name: r.name,
-            description: r.description,
-            permissions: r.permissions || [],
-          });
-        }
-      } else if (meta.role_name) {
-        setRoleData({ name: meta.role_name });
       }
     } catch {
       // fallback
@@ -92,12 +104,15 @@ export default function AcceptInvitePage() {
       if (currentUser) {
         loadProfileAndRole(currentUser);
       } else {
-        // If there's an access_token in the URL hash, allow onAuthStateChange to parse it
-        const hasHashToken =
+        // If there's an access_token or code in URL, allow onAuthStateChange to parse it
+        const hasAuthToken =
           typeof window !== "undefined" &&
           (window.location.hash.includes("access_token") ||
-            window.location.hash.includes("token="));
-        if (!hasHashToken) {
+            window.location.hash.includes("token=") ||
+            window.location.search.includes("code=") ||
+            window.location.search.includes("token_hash=") ||
+            window.location.search.includes("type=invite"));
+        if (!hasAuthToken) {
           setLoadingUser(false);
         }
       }
@@ -118,7 +133,7 @@ export default function AcceptInvitePage() {
 
     const timer = setTimeout(() => {
       if (mounted) setLoadingUser(false);
-    }, 3500);
+    }, 5000);
 
     return () => {
       mounted = false;
