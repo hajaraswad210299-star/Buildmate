@@ -70,12 +70,17 @@ function LoginForm() {
           return;
         }
 
+        const customerNext =
+          next && !next.startsWith("/admin") && !next.startsWith("/mitra")
+            ? next
+            : "/";
+
         if (!profile?.onboarding_completed || !profile?.phone) {
-          router.push(`/welcome?next=${encodeURIComponent(next)}`);
+          router.push(`/welcome?next=${encodeURIComponent(customerNext)}`);
           return;
         }
 
-        router.push(next);
+        router.push(customerNext);
         router.refresh();
       }
     } catch (err: any) {

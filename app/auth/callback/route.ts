@@ -229,14 +229,21 @@ export async function GET(request: Request) {
     }
 
     // Customer: if phone is missing or onboarding not done, go to welcome page
+    const customerNext =
+      safeNext &&
+      !safeNext.startsWith("/admin") &&
+      !safeNext.startsWith("/mitra")
+        ? safeNext
+        : "/";
+
     if (!profile?.onboarding_completed || !profile?.phone) {
       return NextResponse.redirect(
-        new URL(`/welcome?next=${encodeURIComponent(safeNext)}`, url.origin)
+        new URL(`/welcome?next=${encodeURIComponent(customerNext)}`, url.origin)
       );
     }
 
-    return NextResponse.redirect(new URL(safeNext, url.origin));
+    return NextResponse.redirect(new URL(customerNext, url.origin));
   }
 
-  return NextResponse.redirect(new URL(safeNext, url.origin));
+  return NextResponse.redirect(new URL("/", url.origin));
 }

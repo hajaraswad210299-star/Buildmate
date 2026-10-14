@@ -78,9 +78,7 @@ export function AuthRedirectHandler() {
       const code = searchParams.get("code");
       const tokenHash = searchParams.get("token_hash");
       if (code || tokenHash) {
-        window.location.href = `/auth/callback?${searchParams.toString()}&next=${encodeURIComponent(
-          "/admin/settings?verified=email"
-        )}`;
+        window.location.href = `/auth/callback?${searchParams.toString()}&next=/`;
       }
     }
   }, []);

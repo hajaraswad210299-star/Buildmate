@@ -56,7 +56,28 @@ export function CustomerShell({
     is_plus?: boolean;
   } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = React.useRef<HTMLDivElement>(null);
   const [activeOrdersCount, setActiveOrdersCount] = useState(1); // default active orders demo badge
+
+  // Close dropdown on route change
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     // Check announcement bar dismissed state
@@ -274,9 +295,10 @@ export function CustomerShell({
               )}
 
               {user ? (
-                <div className="relative flex items-center gap-1.5">
+                <div ref={menuRef} className="relative flex items-center gap-1.5">
                   <Link
                     href="/account"
+                    onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-2 p-1 rounded-full border border-neutral-200 hover:border-lavender-400 hover:ring-2 hover:ring-lavender-200 hover:shadow-xs transition-all bg-white"
                     aria-label="Profil & Akun Saya"
                     title="Profil & Akun Saya"
@@ -301,7 +323,8 @@ export function CustomerShell({
 
                   {/* Dropdown Menu Trigger */}
                   <button
-                    onClick={() => setMenuOpen(!menuOpen)}
+                    type="button"
+                    onClick={() => setMenuOpen((prev) => !prev)}
                     className="p-1 text-neutral-400 hover:text-neutral-700 rounded-lg hover:bg-neutral-100 transition-colors"
                     aria-label="Pilihan akun"
                   >
@@ -315,9 +338,9 @@ export function CustomerShell({
                     </svg>
                   </button>
 
-                  {/* Dropdown Menu */}
+                  {/* Dropdown Menu - strictly positioned below the avatar */}
                   {menuOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-neutral-200 shadow-md py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="absolute right-0 top-full mt-2.5 w-56 bg-white rounded-2xl border border-neutral-200 shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                       <div className="px-4 py-2 border-b border-neutral-100">
                         <p className="text-xs text-neutral-400">Masuk sebagai</p>
                         <p className="text-sm font-semibold text-neutral-900 truncate">

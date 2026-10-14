@@ -73,7 +73,7 @@ export async function middleware(request: NextRequest) {
       } else if (type === "email_change" || pathname.startsWith("/admin")) {
         callbackUrl.searchParams.set("next", "/admin/settings?verified=email");
       } else {
-        callbackUrl.searchParams.set("next", "/admin/settings");
+        callbackUrl.searchParams.set("next", "/");
       }
     }
     return NextResponse.redirect(callbackUrl);
@@ -333,7 +333,14 @@ export async function middleware(request: NextRequest) {
 
       // Customer
       const nextParam = request.nextUrl.searchParams.get("next");
-      const safeNext = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/";
+      const safeNext =
+        nextParam &&
+        nextParam.startsWith("/") &&
+        !nextParam.startsWith("//") &&
+        !nextParam.startsWith("/admin") &&
+        !nextParam.startsWith("/mitra")
+          ? nextParam
+          : "/";
 
       if (!profile?.onboarding_completed || !profile?.phone) {
         return NextResponse.redirect(new URL(`/welcome?next=${encodeURIComponent(safeNext)}`, request.url));
