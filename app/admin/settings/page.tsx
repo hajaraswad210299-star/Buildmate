@@ -32,7 +32,7 @@ function AdminSettingsContent() {
   // Profile data
   const [userId, setUserId] = useState<string>("");
   const [fullName, setFullName] = useState<string>("Super Admin");
-  const [email, setEmail] = useState<string>("hajaraswad210299@gmail.com");
+  const [email, setEmail] = useState<string>("jonathanhuang88@proton.me");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isSavingName, setIsSavingName] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -81,7 +81,7 @@ function AdminSettingsContent() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUserId(user.id);
-        setEmail(user.email || "hajaraswad210299@gmail.com");
+        setEmail(user.email || "jonathanhuang88@proton.me");
         const pending = (user as any).new_email || (user as any).email_change;
         if (pending) {
           setPendingEmail(pending);

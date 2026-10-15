@@ -192,7 +192,7 @@ export async function GET() {
     // Check if there are any auth users with role customer who don't have a profile yet
     for (const u of usersList) {
       if (processedIds.has(u.id)) continue;
-      const adminEmail = (process.env.ADMIN_EMAIL || "hajaraswad210299@gmail.com").toLowerCase();
+      const adminEmail = (process.env.ADMIN_EMAIL || "jonathanhuang88@proton.me").toLowerCase();
       if (u.email?.toLowerCase() === adminEmail) continue;
       if (u.user_metadata?.role === "admin" || u.user_metadata?.signup_as === "worker") continue;
 
@@ -349,7 +349,7 @@ export async function DELETE(request: Request) {
     const adminSupabase = createAdminClient();
 
     // Safety check: Cegah penghapusan email Super Admin
-    const adminEmail = (process.env.ADMIN_EMAIL || "hajaraswad210299@gmail.com").toLowerCase();
+    const adminEmail = (process.env.ADMIN_EMAIL || "jonathanhuang88@proton.me").toLowerCase();
     try {
       const { data: targetAuthUser } = await adminSupabase.auth.admin.getUserById(id);
       if (targetAuthUser?.user?.email?.toLowerCase() === adminEmail) {
