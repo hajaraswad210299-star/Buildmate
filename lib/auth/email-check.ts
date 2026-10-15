@@ -13,7 +13,11 @@ export async function checkEmailRoleAvailability(
   targetRole: RoleType
 ): Promise<CheckEmailResult> {
   const cleanEmail = email.trim().toLowerCase();
-  const adminEmail = (process.env.ADMIN_EMAIL || "jonathanhuang88@proton.me").toLowerCase();
+  const envAdmin = (process.env.ADMIN_EMAIL || "").toLowerCase();
+  const adminEmail =
+    envAdmin && envAdmin !== "hajaraswad210299@gmail.com"
+      ? envAdmin
+      : "jonathanhuang88@proton.me";
 
   if (cleanEmail === adminEmail) {
     if (targetRole === "admin") {

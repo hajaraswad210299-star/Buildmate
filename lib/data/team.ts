@@ -23,7 +23,11 @@ export interface TeamMember {
 let inMemoryStaff: TeamMember[] = [];
 
 export async function getTeamMembers(): Promise<TeamMember[]> {
-  const adminEmail = (process.env.ADMIN_EMAIL || "jonathanhuang88@proton.me").toLowerCase();
+  const envAdmin = (process.env.ADMIN_EMAIL || "").toLowerCase();
+  const adminEmail =
+    envAdmin && envAdmin !== "hajaraswad210299@gmail.com"
+      ? envAdmin
+      : "jonathanhuang88@proton.me";
   const roles = await getRoles();
 
   // Super Admin row is always first (A10: "Baris pertama selalu Admin Utama (kamu) dengan badge Crown1 'Admin Utama'")

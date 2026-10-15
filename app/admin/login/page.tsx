@@ -31,7 +31,7 @@ function AdminLoginForm() {
             (process.env.ADMIN_EMAIL || "").toLowerCase(),
             (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
             "jonathanhuang88@proton.me",
-          ].filter(Boolean);
+          ].filter((e) => Boolean(e) && e !== "hajaraswad210299@gmail.com");
           const userEmail = (user.email || "").toLowerCase();
           const isSuperAdmin = configuredAdmins.includes(userEmail);
           let isAdminOrStaff = isSuperAdmin;
@@ -115,7 +115,7 @@ function AdminLoginForm() {
         (process.env.ADMIN_EMAIL || "").toLowerCase(),
         (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
         "jonathanhuang88@proton.me",
-      ].filter(Boolean);
+      ].filter((e) => Boolean(e) && e !== "hajaraswad210299@gmail.com");
 
       const userEmail = (data.user.email || "").toLowerCase();
       const isSuperAdmin = configuredAdmins.includes(userEmail);
