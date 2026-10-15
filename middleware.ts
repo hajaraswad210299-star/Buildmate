@@ -89,6 +89,16 @@ export async function middleware(request: NextRequest) {
       } = await supabase.auth.getUser();
 
       if (user) {
+        const userEmail = (user.email || "").toLowerCase();
+        if (userEmail === "hajaraswad210299@gmail.com") {
+          const accountUrl = request.nextUrl.clone();
+          accountUrl.pathname = "/account";
+          accountUrl.search = "";
+          const redirectRes = NextResponse.redirect(accountUrl);
+          redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+          return redirectRes;
+        }
+
         const configuredAdmins = [
           (process.env.ADMIN_EMAIL || "").toLowerCase(),
           (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
@@ -169,6 +179,15 @@ export async function middleware(request: NextRequest) {
       redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
       redirectRes.headers.set("Pragma", "no-cache");
       redirectRes.headers.set("Expires", "0");
+      return redirectRes;
+    }
+
+    const userEmail = (user.email || "").toLowerCase();
+    if (userEmail === "hajaraswad210299@gmail.com") {
+      const deniedUrl = request.nextUrl.clone();
+      deniedUrl.pathname = "/admin/denied";
+      const redirectRes = NextResponse.redirect(deniedUrl);
+      redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
       return redirectRes;
     }
 

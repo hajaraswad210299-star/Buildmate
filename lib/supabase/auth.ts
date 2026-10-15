@@ -25,6 +25,19 @@ export async function getUserPermissions(
   user: any,
   profile: any
 ): Promise<UserPermissionContext> {
+  const userEmail = (user?.email || "").toLowerCase();
+  const isCustomerExplicit = userEmail === "hajaraswad210299@gmail.com";
+
+  if (isCustomerExplicit) {
+    return {
+      permissions: [],
+      isAdmin: false,
+      isStaff: false,
+      roleName: "customer",
+      staffStatus: null,
+    };
+  }
+
   const configuredAdmins = [
     (process.env.ADMIN_EMAIL || "").toLowerCase(),
     (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
@@ -116,6 +129,16 @@ export async function requireRole(
     .single();
 
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+  const userEmail = (user?.email || "").toLowerCase();
+  const isCustomerExplicit = userEmail === "hajaraswad210299@gmail.com";
+
+  if (isCustomerExplicit) {
+    if (roles.includes("customer")) {
+      return { user, profile: { ...profile, role: "customer" } };
+    }
+    redirect(options?.deniedUrl || "/admin/denied");
+  }
+
   const configuredAdmins = [
     (process.env.ADMIN_EMAIL || "").toLowerCase(),
     (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),

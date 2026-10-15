@@ -146,8 +146,22 @@ export async function GET(request: Request) {
         }
       } else {
         profile = existingProfile;
-        // If configured admin, guarantee profile role is admin
-        if (isConfiguredAdmin && existingProfile.role !== "admin") {
+        const userEmail = (user.email || "").toLowerCase();
+        const isCustomerExplicit = userEmail === "hajaraswad210299@gmail.com";
+
+        if (isCustomerExplicit) {
+          if (existingProfile.role !== "customer") {
+            const { data: updatedProfile } = await adminSupabase
+              .from("profiles")
+              .update({ role: "customer" })
+              .eq("id", user.id)
+              .select()
+              .single();
+            if (updatedProfile) profile = updatedProfile;
+          }
+          if (profile) profile.role = "customer";
+        } else if (isConfiguredAdmin && existingProfile.role !== "admin") {
+          // If configured admin, guarantee profile role is admin
           const { data: updatedProfile } = await adminSupabase
             .from("profiles")
             .update({ role: "admin" })
@@ -177,8 +191,11 @@ export async function GET(request: Request) {
       profile = fallbackProf;
     }
 
+    const userEmail = (user.email || "").toLowerCase();
+    const isCustomerExplicit = userEmail === "hajaraswad210299@gmail.com";
+
     // Handle Admin or Email Change
-    if (isConfiguredAdmin || profile?.role === "admin" || type === "email_change") {
+    if (!isCustomerExplicit && (isConfiguredAdmin || profile?.role === "admin" || type === "email_change")) {
       let target = safeNext.startsWith("/admin") ? safeNext : "/admin/settings";
       if (type === "email_change") {
         target = "/admin/settings?verified=email";

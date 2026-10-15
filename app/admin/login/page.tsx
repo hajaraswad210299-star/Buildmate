@@ -27,12 +27,16 @@ function AdminLoginForm() {
           data: { user },
         } = await supabase.auth.getUser();
         if (user) {
+          const userEmail = (user.email || "").toLowerCase();
+          if (userEmail === "hajaraswad210299@gmail.com") {
+            return;
+          }
+
           const configuredAdmins = [
             (process.env.ADMIN_EMAIL || "").toLowerCase(),
             (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
             "jonathanhuang88@proton.me",
           ].filter((e) => Boolean(e) && e !== "hajaraswad210299@gmail.com");
-          const userEmail = (user.email || "").toLowerCase();
           const isSuperAdmin = configuredAdmins.includes(userEmail);
           let isAdminOrStaff = isSuperAdmin;
           if (!isAdminOrStaff) {
@@ -118,6 +122,14 @@ function AdminLoginForm() {
       ].filter((e) => Boolean(e) && e !== "hajaraswad210299@gmail.com");
 
       const userEmail = (data.user.email || "").toLowerCase();
+      if (userEmail === "hajaraswad210299@gmail.com") {
+        await supabase.auth.signOut();
+        setIsLoading(false);
+        setErrorMessage(`Akses ditolak. Email ${userEmail} terdaftar sebagai Pelanggan (Customer), bukan admin BuildMate.`);
+        toast.error("Akses ditolak. Bukan akun admin.");
+        return;
+      }
+
       const isSuperAdmin = configuredAdmins.includes(userEmail);
 
       if (!isSuperAdmin) {
