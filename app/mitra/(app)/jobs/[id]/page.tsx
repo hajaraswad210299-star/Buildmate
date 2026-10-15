@@ -40,6 +40,7 @@ function MitraJobDetailContent({
   const [showPhotoUploadModal, setShowPhotoUploadModal] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   const loadJob = async () => {
     try {
@@ -83,41 +84,68 @@ function MitraJobDetailContent({
   };
 
   const handleTransitionStatus = async (toStatus: OrderStatus) => {
-    const res = await fetch(`/api/mitra/jobs/${id}/status`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: toStatus }),
-    });
-    if (res.ok) {
+    try {
+      const res = await fetch(`/api/mitra/jobs/${id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: toStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.error || "Gagal mengubah status pekerjaan.");
+        return;
+      }
       await loadJob();
+    } catch {
+      alert("Terjadi kesalahan koneksi saat mengubah status.");
     }
   };
 
-  const handleUploadResultPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadResultPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingPhoto(true);
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const url = ev.target?.result as string;
-      try {
-        // Upload photo via API
-        await fetch(`/api/mitra/jobs/${id}/status`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: order.status,
-            photo_paths: [url],
-          }),
-        });
-        await loadJob();
-        setShowPhotoUploadModal(false);
-      } finally {
-        setUploadingPhoto(false);
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("Ukuran foto maksimal 5 MB.");
+      return;
+    }
+
+    try {
+      setUploadingPhoto(true);
+      setUploadError("");
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "result");
+
+      const res = await fetch(`/api/mitra/jobs/${id}/photos`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setUploadError(data.error || "Gagal mengunggah foto hasil kerja.");
+        return;
       }
-    };
-    reader.readAsDataURL(file);
+
+      // Update state with updated photos array immediately
+      if (data.photos) {
+        setOrder((prev: any) => ({
+          ...prev,
+          photos: data.photos,
+        }));
+      } else {
+        await loadJob();
+      }
+
+      setShowPhotoUploadModal(false);
+    } catch (err: any) {
+      setUploadError(err?.message || "Gagal mengunggah foto. Periksa koneksi Anda.");
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = "";
+    }
   };
 
   if (loading) {
@@ -446,27 +474,58 @@ function MitraJobDetailContent({
               Foto hasil pekerjaan wajib diunggah untuk membuktikan perbaikan telah selesai dikerjakan dengan baik sebelum meminta konfirmasi pelanggan.
             </p>
 
-            <label className="w-full h-32 rounded-2xl border-2 border-dashed border-lavender-300 hover:border-lavender-600 bg-lavender-50/50 flex flex-col items-center justify-center text-lavender-700 cursor-pointer transition-colors">
-              <Camera size={32} />
-              <span className="text-xs font-semibold mt-2">
-                {uploadingPhoto ? "Mengunggah..." : "Pilih / Ambil Foto"}
-              </span>
-              <span className="text-[10px] text-neutral-400 mt-0.5">
-                Maksimal 5 MB (JPG, PNG, WebP)
-              </span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleUploadResultPhoto}
-                disabled={uploadingPhoto}
-                className="hidden"
-              />
+            {uploadError && (
+              <div className="p-3 rounded-xl bg-danger-50 border border-danger-200 text-danger-700 text-xs flex items-start gap-2">
+                <InfoCircle size={16} className="shrink-0 mt-0.5" />
+                <span>{uploadError}</span>
+              </div>
+            )}
+
+            <label
+              className={`w-full h-36 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-colors ${
+                uploadingPhoto
+                  ? "border-lavender-400 bg-lavender-50 cursor-wait"
+                  : "border-lavender-300 hover:border-lavender-600 bg-lavender-50/50 text-lavender-700 cursor-pointer"
+              }`}
+            >
+              {uploadingPhoto ? (
+                <div className="flex flex-col items-center justify-center space-y-2">
+                  <div className="w-8 h-8 border-3 border-lavender-600 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs font-semibold text-lavender-800">
+                    Sedang mengunggah foto...
+                  </span>
+                  <span className="text-[10px] text-neutral-400">
+                    Menyimpan bukti pekerjaan ke sistem
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <Camera size={32} />
+                  <span className="text-xs font-semibold mt-2">
+                    Pilih / Ambil Foto
+                  </span>
+                  <span className="text-[10px] text-neutral-400 mt-0.5">
+                    Maksimal 5 MB (JPG, PNG, WebP)
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleUploadResultPhoto}
+                    disabled={uploadingPhoto}
+                    className="hidden"
+                  />
+                </>
+              )}
             </label>
 
             <button
               type="button"
-              onClick={() => setShowPhotoUploadModal(false)}
-              className="w-full h-11 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+              disabled={uploadingPhoto}
+              onClick={() => {
+                setShowPhotoUploadModal(false);
+                setUploadError("");
+              }}
+              className="w-full h-11 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
             >
               Tutup
             </button>

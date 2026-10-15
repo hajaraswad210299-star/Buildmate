@@ -535,6 +535,27 @@ export async function updateMitraJobStatus(
     return { success: false, error: "Pesanan tidak ditemukan" };
   }
 
+  // If same status, allow attaching photos without transition error
+  if (toStatus === order.status) {
+    if (photoPaths && photoPaths.length > 0) {
+      photoPaths.forEach((path) => {
+        order.photos = [
+          ...(order.photos || []),
+          {
+            id: `photo-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+            order_id: order.id,
+            type: "result",
+            uploaded_by: "worker" as const,
+            source_note: "Foto hasil kerja diunggah mitra",
+            storage_path: path,
+            created_at: new Date().toISOString(),
+          },
+        ];
+      });
+    }
+    return { success: true, order };
+  }
+
   if (!canTransition(order.status, toStatus, "worker")) {
     return {
       success: false,
@@ -552,7 +573,7 @@ export async function updateMitraJobStatus(
             id: `photo-${Date.now()}-${Math.random().toString(36).substring(7)}`,
             order_id: order.id,
             type: "result",
-            uploaded_by: "worker",
+            uploaded_by: "worker" as const,
             source_note: "Foto hasil kerja diunggah mitra",
             storage_path: path,
             created_at: new Date().toISOString(),
@@ -598,6 +619,54 @@ export async function updateMitraJobStatus(
   ];
 
   return { success: true, order };
+}
+
+/**
+ * Add photo to job (W05 - Foto bukti hasil kerja)
+ */
+export async function addMitraJobPhoto(
+  workerId: string,
+  orderId: string,
+  photoUrl: string,
+  type: "problem" | "result" = "result"
+): Promise<{ success: boolean; error?: string; photo?: any; photos?: any[] }> {
+  const order = MOCK_ORDERS.find((o) => o.id === orderId || o.order_code === orderId);
+  if (!order) {
+    return { success: false, error: "Pesanan tidak ditemukan" };
+  }
+
+  const newPhoto = {
+    id: `photo-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    order_id: order.id,
+    type,
+    uploaded_by: "worker" as const,
+    source_note: "Foto hasil kerja diunggah mitra",
+    storage_path: photoUrl,
+    created_at: new Date().toISOString(),
+  };
+
+  order.photos = [...(order.photos || []), newPhoto];
+  order.updated_at = new Date().toISOString();
+
+  // Audit event for photo upload
+  order.events = [
+    {
+      id: `ev-${Date.now()}`,
+      order_id: order.id,
+      event_type: "photo_uploaded",
+      actor_type: "worker",
+      actor_name: order.worker?.name || "Mitra Tukang",
+      note: "Mitra mengunggah foto hasil pekerjaan.",
+      created_at: new Date().toISOString(),
+    },
+    ...(order.events || []),
+  ];
+
+  return {
+    success: true,
+    photo: newPhoto,
+    photos: order.photos,
+  };
 }
 
 /**
