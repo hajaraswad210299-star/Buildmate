@@ -25,7 +25,7 @@ import {
   Setting4,
 } from "@/lib/icons";
 import { formatRupiah } from "@/lib/format";
-import { getPackages } from "@/lib/data/services";
+import { getPackages, getPackageById } from "@/lib/data/services";
 import { getWorkers } from "@/lib/data/workers";
 import { ServicePackage, Worker } from "@/lib/data/types";
 
@@ -43,33 +43,40 @@ function ServiceDetailContent({ params }: PageProps) {
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    Promise.all([getPackages(), getWorkers({ tab: "active" })]).then(
-      ([pkgs, allWorkers]) => {
-        const found = pkgs.find(
+    Promise.all([
+      getPackageById(resolvedParams.id),
+      getPackages(),
+      getWorkers({ tab: "active" }),
+    ]).then(([pkgById, pkgs, allWorkers]) => {
+      const found =
+        pkgById ||
+        pkgs.find(
           (p) =>
             p.id === resolvedParams.id ||
-            p.name.toLowerCase().replace(/\s+/g, "-") === resolvedParams.id
-        );
-        const currentPkg = found || pkgs[0] || null;
-        setPkg(currentPkg);
+            p.id.toLowerCase() === resolvedParams.id.toLowerCase() ||
+            p.name.toLowerCase().replace(/\s+/g, "-") === resolvedParams.id.toLowerCase() ||
+            p.name.toLowerCase() === resolvedParams.id.toLowerCase()
+        ) ||
+        null;
 
-        if (currentPkg) {
-          // Filter workers relevant to this category or area
-          const relevant = allWorkers.filter((w) => {
-            if (!currentPkg.category_slug) return true;
-            const cat = currentPkg.category_slug.toLowerCase();
-            if (cat.includes("plumbing") && (w.bio.toLowerCase().includes("pipa") || w.bio.toLowerCase().includes("plumbing") || w.bio.toLowerCase().includes("keran"))) return true;
-            if (cat.includes("cat") && (w.bio.toLowerCase().includes("cat") || w.bio.toLowerCase().includes("dinding"))) return true;
-            if (cat.includes("ac") && (w.bio.toLowerCase().includes("ac") || w.bio.toLowerCase().includes("freon"))) return true;
-            if (cat.includes("perbaikan") && (w.bio.toLowerCase().includes("listrik") || w.bio.toLowerCase().includes("kunci") || w.bio.toLowerCase().includes("pintu"))) return true;
-            return true;
-          });
-          setAvailableWorkers(relevant.slice(0, 4));
-        }
+      setPkg(found);
 
-        setLoading(false);
+      if (found) {
+        // Filter workers relevant to this category or area
+        const relevant = allWorkers.filter((w) => {
+          if (!found.category_slug) return true;
+          const cat = found.category_slug.toLowerCase();
+          if (cat.includes("plumbing") && (w.bio.toLowerCase().includes("pipa") || w.bio.toLowerCase().includes("plumbing") || w.bio.toLowerCase().includes("keran"))) return true;
+          if (cat.includes("cat") && (w.bio.toLowerCase().includes("cat") || w.bio.toLowerCase().includes("dinding"))) return true;
+          if (cat.includes("ac") && (w.bio.toLowerCase().includes("ac") || w.bio.toLowerCase().includes("freon"))) return true;
+          if (cat.includes("perbaikan") && (w.bio.toLowerCase().includes("listrik") || w.bio.toLowerCase().includes("kunci") || w.bio.toLowerCase().includes("pintu"))) return true;
+          return true;
+        });
+        setAvailableWorkers(relevant.slice(0, 4));
       }
-    );
+
+      setLoading(false);
+    });
   }, [resolvedParams.id]);
 
   const renderCategoryIcon = () => {

@@ -253,40 +253,59 @@ export default function HomePage() {
     return HERO_IMAGES;
   }, [siteContent.hero.photo_url, siteContent.hero.photo_alt]);
 
-  const row1List = useMemo(() => {
-    return CURATED_PACKAGES_ROW_1.map((item) => {
-      const live = packages.find((p) => p.id === item.id);
-      if (!live) return item;
+  const { row1List, row2List } = useMemo(() => {
+    if (!packages || packages.length === 0) {
       return {
-        ...item,
-        name: live.name,
-        price: live.price,
-        durationMinutes: live.est_duration_minutes,
-        categoryName: live.category_name || item.categoryName,
-        categorySlug: live.category_slug || item.categorySlug,
-        description: live.description || item.description,
-        badge: live.badge || item.badge,
-        imageUrl: live.image_url || item.imageUrl,
+        row1List: CURATED_PACKAGES_ROW_1,
+        row2List: CURATED_PACKAGES_ROW_2,
       };
-    });
-  }, [packages]);
+    }
 
-  const row2List = useMemo(() => {
-    return CURATED_PACKAGES_ROW_2.map((item) => {
-      const live = packages.find((p) => p.id === item.id);
-      if (!live) return item;
+    // Standardize all packages from DB/API
+    const formattedPackages = packages.map((live) => {
+      const curatedMatch = [...CURATED_PACKAGES_ROW_1, ...CURATED_PACKAGES_ROW_2].find(
+        (c) =>
+          c.id === live.id ||
+          c.name.toLowerCase() === live.name.toLowerCase()
+      );
       return {
-        ...item,
+        id: live.id,
         name: live.name,
         price: live.price,
         durationMinutes: live.est_duration_minutes,
-        categoryName: live.category_name || item.categoryName,
-        categorySlug: live.category_slug || item.categorySlug,
-        description: live.description || item.description,
-        badge: live.badge || item.badge,
-        imageUrl: live.image_url || item.imageUrl,
+        categoryName: live.category_name || curatedMatch?.categoryName || "Layanan",
+        categorySlug: live.category_slug || curatedMatch?.categorySlug || "layanan",
+        description:
+          live.description ||
+          curatedMatch?.description ||
+          "Layanan perbaikan terverifikasi oleh mitra profesional BuildMate.",
+        badge: live.badge || curatedMatch?.badge || "LAYANAN RESMI",
+        imageUrl:
+          live.image_url ||
+          curatedMatch?.imageUrl ||
+          "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=800&auto=format&fit=crop&q=80",
+        isCurated: Boolean(curatedMatch),
       };
     });
+
+    // Custom packages created by admin come first!
+    const customPkgs = formattedPackages.filter((p) => !p.isCurated);
+    const curatedPkgs = formattedPackages.filter((p) => p.isCurated);
+
+    // Merge: custom packages first, followed by curated packages
+    const allOrdered = [...customPkgs, ...curatedPkgs];
+
+    // If we have fewer than 8 total, fill any remaining slots with curated defaults that weren't matched
+    [...CURATED_PACKAGES_ROW_1, ...CURATED_PACKAGES_ROW_2].forEach((defaultItem) => {
+      if (!allOrdered.some((p) => p.name.toLowerCase() === defaultItem.name.toLowerCase())) {
+        allOrdered.push({ ...defaultItem, isCurated: true });
+      }
+    });
+
+    return {
+      row1List: allOrdered.slice(0, 4),
+      row2List: allOrdered.slice(4, 8),
+    };
   }, [packages]);
 
   useEffect(() => {
@@ -366,7 +385,7 @@ export default function HomePage() {
               {/* White Pill Action Button (Flamingo Estate signature) */}
               <div className="pt-6 sm:pt-8 flex flex-wrap items-center gap-3.5">
                 <Link
-                  href="/search"
+                  href="/search?tab=packages"
                   className="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-white text-neutral-950 hover:bg-neutral-100 active:scale-95 text-xs font-semibold tracking-wider uppercase transition-all shadow-md font-sans"
                 >
                   Jelajahi Semua Layanan
@@ -466,7 +485,7 @@ export default function HomePage() {
             </h2>
           </div>
           <Link
-            href="/search"
+            href="/search?tab=packages"
             className="hidden sm:inline-flex items-center text-xs font-semibold text-lavender-600 hover:text-lavender-700 transition-colors uppercase tracking-wider font-sans"
           >
             Lihat Semua Paket

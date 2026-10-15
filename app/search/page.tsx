@@ -59,6 +59,22 @@ function SearchPageContent() {
     });
   }, []);
 
+  // Sync state when URL params change
+  useEffect(() => {
+    const tabParam = searchParams.get("tab") as "workers" | "packages";
+    if (tabParam && (tabParam === "workers" || tabParam === "packages")) {
+      setActiveTab(tabParam);
+    }
+    const catParam = searchParams.get("category");
+    if (catParam) {
+      setSelectedCategory(catParam);
+    }
+    const qParam = searchParams.get("q");
+    if (qParam !== null) {
+      setQuery(qParam);
+    }
+  }, [searchParams]);
+
   // Sync state to URL params
   const updateUrlParams = (updates: Record<string, string | boolean>) => {
     const params = new URLSearchParams(searchParams.toString());

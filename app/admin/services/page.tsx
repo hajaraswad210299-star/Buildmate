@@ -156,7 +156,7 @@ export default function AdminServicesPage() {
   const handleOpenAddPackage = () => {
     setEditingPackage({
       name: "",
-      category_id: categories[0]?.id || "cat-1",
+      category_id: categories[0]?.id || "a0000000-0000-0000-0000-000000000001",
       category_name: categories[0]?.name || "Plumbing",
       category_slug: categories[0]?.slug || "plumbing",
       price: 120000,
@@ -211,6 +211,21 @@ export default function AdminServicesPage() {
       return;
     }
 
+    const finalInclusions = [
+      ...(editingPackage.inclusions || []),
+      ...(inclusionsInput.trim() ? [inclusionsInput.trim()] : []),
+    ];
+    const finalExclusions = [
+      ...(editingPackage.exclusions || []),
+      ...(exclusionsInput.trim() ? [exclusionsInput.trim()] : []),
+    ];
+
+    const pkgToSave = {
+      ...editingPackage,
+      inclusions: finalInclusions,
+      exclusions: finalExclusions,
+    };
+
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/admin/services", {
@@ -218,7 +233,7 @@ export default function AdminServicesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "package",
-          data: editingPackage,
+          data: pkgToSave,
         }),
       });
 
@@ -229,6 +244,8 @@ export default function AdminServicesPage() {
 
       toast.success("Paket layanan berhasil disimpan dan disinkronkan ke web!");
       setIsPkgDrawerOpen(false);
+      setInclusionsInput("");
+      setExclusionsInput("");
       loadData();
     } catch (err: any) {
       toast.error(err.message || "Terjadi kesalahan");

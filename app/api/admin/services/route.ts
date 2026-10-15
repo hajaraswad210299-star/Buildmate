@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { revalidatePath } from "next/cache";
 import { requireApiPermission } from "@/lib/supabase/auth";
 import {
   saveCategory,
@@ -50,46 +50,26 @@ export async function POST(request: Request) {
       );
     }
 
-    const adminSupabase = createAdminClient();
-
     if (type === "category") {
       const saved = await saveCategory(data);
-
-      // Persist to Supabase if database accessible
       try {
-        await adminSupabase.from("categories").upsert({
-          name: saved.name,
-          slug: saved.slug,
-          icon: saved.icon,
-          is_active: saved.is_active,
-          order_index: saved.order_index,
-        }, { onConflict: "slug" });
-      } catch (dbErr) {
-        console.warn("Category db upsert warning:", dbErr);
-      }
-
+        revalidatePath("/");
+        revalidatePath("/search");
+        revalidatePath("/services");
+        revalidatePath("/admin/services");
+      } catch {}
       return NextResponse.json({ success: true, item: saved });
     }
 
     if (type === "package") {
       const saved = await savePackage(data);
-
-      // Persist to Supabase if database accessible
       try {
-        await adminSupabase.from("service_packages").upsert({
-          category_id: saved.category_id,
-          name: saved.name,
-          description: saved.description,
-          price: saved.price,
-          est_duration_minutes: saved.est_duration_minutes,
-          inclusions: saved.inclusions || [],
-          exclusions: saved.exclusions || [],
-          is_active: saved.is_active,
-        });
-      } catch (dbErr) {
-        console.warn("Service package db upsert warning:", dbErr);
-      }
-
+        revalidatePath("/");
+        revalidatePath("/search");
+        revalidatePath("/services");
+        revalidatePath(`/services/${saved.id}`);
+        revalidatePath("/admin/services");
+      } catch {}
       return NextResponse.json({ success: true, item: saved });
     }
 
@@ -121,12 +101,13 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const adminSupabase = createAdminClient();
-
     if (type === "package") {
       await deletePackage(id);
       try {
-        await adminSupabase.from("service_packages").delete().eq("id", id);
+        revalidatePath("/");
+        revalidatePath("/search");
+        revalidatePath("/services");
+        revalidatePath("/admin/services");
       } catch {}
       return NextResponse.json({ success: true, message: "Paket berhasil dihapus" });
     }
@@ -134,7 +115,10 @@ export async function DELETE(request: Request) {
     if (type === "category") {
       await deleteCategory(id);
       try {
-        await adminSupabase.from("categories").delete().eq("id", id);
+        revalidatePath("/");
+        revalidatePath("/search");
+        revalidatePath("/services");
+        revalidatePath("/admin/services");
       } catch {}
       return NextResponse.json({ success: true, message: "Kategori berhasil dihapus" });
     }
