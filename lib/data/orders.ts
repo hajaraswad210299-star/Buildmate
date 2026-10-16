@@ -4,6 +4,113 @@ import { Actor, canTransition, OrderStatus } from "../orders/transitions";
 
 const inMemoryOrders = [...MOCK_ORDERS];
 
+export function generateUuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+export function mapDbOrderToOrder(
+  row: any,
+  isCustomerPlus: boolean = false,
+  customerEmail?: string
+): Order {
+  const customer = row.customer || {};
+  const pkg = row.package || {};
+  const worker = row.worker;
+
+  return {
+    id: row.id,
+    order_code: row.order_code,
+    customer_id: row.customer_id,
+    customer: {
+      id: row.customer_id,
+      name: customer.full_name || "Pelanggan",
+      email: customerEmail || customer.email || "",
+      phone: customer.phone || "-",
+      is_plus: isCustomerPlus,
+    },
+    worker_id: row.worker_id || null,
+    worker: worker
+      ? {
+          id: worker.id,
+          name: worker.full_name,
+          phone: worker.phone,
+          service_area: worker.service_area,
+          is_verified: Boolean(worker.is_verified),
+          has_account: Boolean(worker.user_id),
+          avatar_url: worker.photo_path || undefined,
+        }
+      : undefined,
+    package_id: row.package_id,
+    package: {
+      id: pkg.id || row.package_id,
+      name: pkg.name || "Layanan",
+      category_name: pkg.categories?.name || "Layanan",
+      inclusions: pkg.inclusions || [],
+      exclusions: pkg.exclusions || [],
+    },
+    package_price: Number(row.package_price) || 0,
+    service_fee: Number(row.service_fee) || 0,
+    total: Number(row.total) || 0,
+    address: row.address || "",
+    scheduled_date: row.scheduled_date || "",
+    time_slot: row.time_slot || "",
+    description: row.description || "",
+    status: row.status as OrderStatus,
+    worker_response: row.worker_response || "pending",
+    admin_notes: row.admin_notes || undefined,
+    cancel_reason: row.cancel_reason || undefined,
+    paid_at: row.paid_at || undefined,
+    worker_confirmed_at: row.worker_confirmed_at || undefined,
+    on_the_way_at: row.on_the_way_at || undefined,
+    in_progress_at: row.in_progress_at || undefined,
+    awaiting_confirmation_at: row.awaiting_confirmation_at || undefined,
+    completed_at: row.completed_at || undefined,
+    cancelled_at: row.cancelled_at || undefined,
+    completed_by: row.completed_by || undefined,
+    created_at: row.created_at || new Date().toISOString(),
+    updated_at: row.updated_at || new Date().toISOString(),
+    photos: (row.photos || []).map((p: any) => ({
+      id: p.id,
+      order_id: p.order_id,
+      type: p.type,
+      uploaded_by: p.uploaded_by,
+      source_note: p.source_note,
+      storage_path: p.storage_path,
+      created_at: p.created_at,
+    })),
+    events: (row.events || []).map((e: any) => ({
+      id: e.id,
+      order_id: e.order_id,
+      event_type: e.event_type,
+      from_status: e.from_status,
+      to_status: e.to_status,
+      actor_type: e.actor_type,
+      actor_name: e.actor_name,
+      note: e.note,
+      created_at: e.created_at,
+    })),
+    complaint: row.complaints?.[0]
+      ? {
+          id: row.complaints[0].id,
+          order_id: row.complaints[0].order_id,
+          description: row.complaints[0].description,
+          status: row.complaints[0].status,
+          is_warranty: Boolean(row.complaints[0].is_warranty),
+          resolution: row.complaints[0].resolution,
+          created_at: row.complaints[0].created_at,
+          closed_at: row.complaints[0].closed_at,
+        }
+      : undefined,
+  };
+}
+
 export interface OrderFilter {
   tab?: "all" | "action_needed" | "finding_worker" | "active" | "completed" | "cancelled" | "complaint" | "complaints";
   status?: OrderStatus | "all";
@@ -13,8 +120,77 @@ export interface OrderFilter {
 }
 
 export async function getOrders(filter: OrderFilter = {}): Promise<Order[]> {
-  let list = [...inMemoryOrders];
+  // 1. If in browser, fetch through API route for live database access
+  if (typeof window !== "undefined") {
+    try {
+      const params = new URLSearchParams();
+      if (filter.tab) params.set("tab", filter.tab);
+      if (filter.status) params.set("status", filter.status);
+      if (filter.search) params.set("search", filter.search);
+      if (filter.category) params.set("category", filter.category);
+      if (filter.customerType) params.set("customerType", filter.customerType);
 
+      const res = await fetch(`/api/orders?${params.toString()}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.orders)) {
+          return data.orders;
+        }
+      }
+    } catch (err) {
+      console.warn("Client fetch /api/orders error, falling back to local:", err);
+    }
+  }
+
+  // 2. If on server, fetch directly from Supabase
+  let list = [...inMemoryOrders];
+  if (typeof window === "undefined") {
+    try {
+      const { createAdminClient } = await import("../supabase/admin");
+      const adminSupabase = createAdminClient();
+
+      const { data: dbOrders, error: dbErr } = await adminSupabase
+        .from("orders")
+        .select(`
+          *,
+          customer:profiles!customer_id (id, full_name, phone, avatar_url),
+          worker:workers!worker_id (id, full_name, phone, service_area, is_verified, user_id, photo_path),
+          package:service_packages!package_id (id, name, inclusions, exclusions, categories(name)),
+          photos:order_photos(*),
+          events:order_events(*),
+          complaints(*)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (!dbErr && dbOrders && dbOrders.length > 0) {
+        const { data: subs } = await adminSupabase
+          .from("subscriptions")
+          .select("user_id, plan, current_period_end");
+
+        const plusUserSet = new Set(
+          (subs || [])
+            .filter(
+              (s) =>
+                s.plan === "plus" &&
+                (!s.current_period_end || new Date(s.current_period_end) > new Date())
+            )
+            .map((s) => s.user_id)
+        );
+
+        const mappedDbOrders = dbOrders.map((row) =>
+          mapDbOrderToOrder(row, plusUserSet.has(row.customer_id))
+        );
+
+        const dbCodes = new Set(mappedDbOrders.map((o) => o.order_code));
+        const nonDuplicateInMem = inMemoryOrders.filter((im) => !dbCodes.has(im.order_code));
+        list = [...mappedDbOrders, ...nonDuplicateInMem];
+      }
+    } catch (serverErr) {
+      console.warn("Server getOrders DB fetch error:", serverErr);
+    }
+  }
+
+  // 3. Apply standard filters to the combined list
   if (filter.tab) {
     switch (filter.tab) {
       case "action_needed":
@@ -92,7 +268,7 @@ export async function getOrderById(id: string): Promise<Order | null> {
   const found = inMemoryOrders.find((o) => o.id === id || o.order_code === id);
   if (found) return found;
 
-  // Browser-side fallback: check sessionStorage first
+  // Browser-side fallback: check sessionStorage then check server API
   if (typeof window !== "undefined") {
     try {
       const cached = sessionStorage.getItem(`bm_order_${id}`);
@@ -105,9 +281,8 @@ export async function getOrderById(id: string): Promise<Order | null> {
       }
     } catch {}
 
-    // Then check server API
     try {
-      const res = await fetch(`/api/orders/${id}`);
+      const res = await fetch(`/api/orders/${id}`, { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.order) {
@@ -116,6 +291,45 @@ export async function getOrderById(id: string): Promise<Order | null> {
         }
       }
     } catch {}
+  }
+
+  // Server-side fallback: check Supabase directly
+  if (typeof window === "undefined") {
+    try {
+      const { createAdminClient } = await import("../supabase/admin");
+      const adminSupabase = createAdminClient();
+
+      const { data: dbOrder } = await adminSupabase
+        .from("orders")
+        .select(`
+          *,
+          customer:profiles!customer_id (id, full_name, phone, avatar_url),
+          worker:workers!worker_id (id, full_name, phone, service_area, is_verified, user_id, photo_path),
+          package:service_packages!package_id (id, name, inclusions, exclusions, categories(name)),
+          photos:order_photos(*),
+          events:order_events(*),
+          complaints(*)
+        `)
+        .or(`id.eq.${id},order_code.eq.${id}`)
+        .single();
+
+      if (dbOrder) {
+        const { data: sub } = await adminSupabase
+          .from("subscriptions")
+          .select("plan, current_period_end")
+          .eq("user_id", dbOrder.customer_id)
+          .single();
+        const isPlus = Boolean(
+          sub?.plan === "plus" &&
+            (!sub.current_period_end || new Date(sub.current_period_end) > new Date())
+        );
+        const mapped = mapDbOrderToOrder(dbOrder, isPlus);
+        registerClientOrder(mapped);
+        return mapped;
+      }
+    } catch (err) {
+      console.warn("Server getOrderById DB error:", err);
+    }
   }
 
   return null;
@@ -193,6 +407,47 @@ export async function transitionOrder(
   };
 
   order.events = [newEvent, ...(order.events || [])];
+
+  if (typeof window === "undefined") {
+    try {
+      const { createAdminClient } = await import("../supabase/admin");
+      const adminSupabase = createAdminClient();
+      const updatePayload: any = {
+        status: toStatus,
+        updated_at: nowIso,
+      };
+      if (toStatus === "paid") updatePayload.paid_at = nowIso;
+      if (toStatus === "worker_confirmed") updatePayload.worker_confirmed_at = nowIso;
+      if (toStatus === "on_the_way") updatePayload.on_the_way_at = nowIso;
+      if (toStatus === "in_progress") updatePayload.in_progress_at = nowIso;
+      if (toStatus === "awaiting_confirmation") updatePayload.awaiting_confirmation_at = nowIso;
+      if (toStatus === "completed") {
+        updatePayload.completed_at = nowIso;
+        updatePayload.completed_by = actor === "admin" ? "admin" : "customer";
+      }
+      if (toStatus === "cancelled") {
+        updatePayload.cancelled_at = nowIso;
+        updatePayload.cancel_reason = payload.cancelReason || payload.note || "Dibatalkan";
+      }
+
+      await adminSupabase
+        .from("orders")
+        .update(updatePayload)
+        .or(`id.eq.${order.id},order_code.eq.${order.order_code}`);
+
+      await adminSupabase.from("order_events").insert({
+        order_id: order.id,
+        event_type: `transition_${toStatus}`,
+        from_status: fromStatus,
+        to_status: toStatus,
+        actor_type: actor,
+        actor_name: payload.actorName || (actor === "admin" ? "Admin BuildMate" : actor),
+        note: payload.note || `Status diubah dari ${fromStatus} ke ${toStatus}`,
+      });
+    } catch (dbSyncErr) {
+      console.warn("DB transition update error:", dbSyncErr);
+    }
+  }
 
   return { success: true, order };
 }
@@ -437,7 +692,7 @@ export async function createCustomerOrder(data: {
   const nowIso = new Date().toISOString();
   const randomSuffix = Math.floor(1000 + Math.random() * 9000);
   const orderCode = `BM-${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-${randomSuffix}`;
-  const orderId = `ord-${Date.now()}`;
+  const orderId = generateUuid();
 
   const serviceFee = data.isPlus ? 0 : 5000;
   const total = pkg.price + serviceFee;
@@ -564,20 +819,151 @@ export async function createCustomerOrder(data: {
     created_at: nowIso,
   });
 
-  // Also record to Supabase payments table if configured
+  // Record to Supabase orders, photos, events, and payments tables
   try {
     const { createAdminClient } = await import("../supabase/admin");
     const adminSupabase = createAdminClient();
-    await adminSupabase.from("payments").insert({
-      provider_order_id: `ORD-${orderCode}`,
-      kind: "order",
-      ref_id: newOrder.id,
-      customer_id: data.customerId,
-      amount: total,
-      status: "pending",
-      snap_token: snapToken,
-    });
-  } catch {}
+
+    let effectiveCustomerId: string | null = null;
+    const isCustomerUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      data.customerId || ""
+    );
+
+    if (data.customerId && isCustomerUuid) {
+      const { data: profExists } = await adminSupabase
+        .from("profiles")
+        .select("id")
+        .eq("id", data.customerId)
+        .single();
+
+      if (profExists) {
+        effectiveCustomerId = profExists.id;
+      } else {
+        try {
+          const { error: insProfErr } = await adminSupabase.from("profiles").insert({
+            id: data.customerId,
+            full_name: data.customerName || "Pelanggan",
+            phone: data.customerPhone || null,
+            role: "customer",
+          });
+          if (!insProfErr) {
+            effectiveCustomerId = data.customerId;
+          }
+        } catch {}
+      }
+    }
+
+    if (!effectiveCustomerId) {
+      const { data: custProf } = await adminSupabase
+        .from("profiles")
+        .select("id")
+        .eq("role", "customer")
+        .limit(1)
+        .single();
+      effectiveCustomerId = custProf?.id || "1966b32b-76cc-4bf3-808b-59eaa88c7f13";
+    }
+
+    if (effectiveCustomerId) {
+      // Ensure package_id is a valid UUID present in service_packages
+      let validPkgId = pkg.id;
+      const isPkgUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        validPkgId
+      );
+
+      if (!isPkgUuid) {
+        const { data: dbPkg } = await adminSupabase
+          .from("service_packages")
+          .select("id")
+          .ilike("name", `%${pkg.name}%`)
+          .limit(1)
+          .single();
+        validPkgId = dbPkg?.id || "b0000000-0000-0000-0000-000000000001";
+      } else {
+        const { data: pkgCheck } = await adminSupabase
+          .from("service_packages")
+          .select("id")
+          .eq("id", validPkgId)
+          .single();
+        if (!pkgCheck) {
+          const { data: fallbackPkg } = await adminSupabase
+            .from("service_packages")
+            .select("id")
+            .limit(1)
+            .single();
+          validPkgId = fallbackPkg?.id || "b0000000-0000-0000-0000-000000000001";
+        }
+      }
+
+      let validWorkerId: string | null = null;
+      if (
+        worker &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(worker.id)
+      ) {
+        const { data: wCheck } = await adminSupabase
+          .from("workers")
+          .select("id")
+          .eq("id", worker.id)
+          .single();
+        if (wCheck) {
+          validWorkerId = wCheck.id;
+        }
+      }
+
+      const { error: dbOrderErr } = await adminSupabase.from("orders").insert({
+        id: orderId,
+        order_code: orderCode,
+        customer_id: effectiveCustomerId,
+        worker_id: validWorkerId,
+        package_id: validPkgId,
+        package_price: pkg.price,
+        service_fee: serviceFee,
+        total: total,
+        address: data.address,
+        scheduled_date: data.scheduledDate,
+        time_slot: data.timeSlot,
+        description: data.description || "Perbaikan rumah",
+        status: "pending_payment",
+      });
+
+      if (dbOrderErr) {
+        console.error("Supabase orders insert error:", dbOrderErr);
+      } else {
+        if (data.photoPaths && data.photoPaths.length > 0) {
+          await adminSupabase.from("order_photos").insert(
+            data.photoPaths.map((path) => ({
+              order_id: orderId,
+              type: "problem",
+              uploaded_by: "customer",
+              source_note: "Foto masalah saat pemesanan",
+              storage_path: path,
+            }))
+          );
+        }
+
+        await adminSupabase.from("order_events").insert({
+          order_id: orderId,
+          event_type: "order_created",
+          to_status: "pending_payment",
+          actor_type: "customer",
+          actor_id: effectiveCustomerId,
+          actor_name: data.customerName || "Pelanggan",
+          note: `Pesanan dibuat untuk ${pkg.name}. Total: Rp${total.toLocaleString("id-ID")}`,
+        });
+      }
+
+      await adminSupabase.from("payments").insert({
+        provider_order_id: `ORD-${orderCode}`,
+        kind: "order",
+        ref_id: orderId,
+        customer_id: effectiveCustomerId,
+        amount: total,
+        status: "pending",
+        snap_token: snapToken,
+      });
+    }
+  } catch (syncErr) {
+    console.error("Order Supabase synchronization error:", syncErr);
+  }
 
   return { success: true, order: newOrder, snapToken };
 }

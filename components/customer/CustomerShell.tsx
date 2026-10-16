@@ -166,15 +166,26 @@ export function CustomerShell({
             user.email?.split("@")[0] ||
             "";
 
+          let isPlusUser = false;
+          try {
+            const subRes = await fetch("/api/subscriptions/status");
+            if (subRes.ok) {
+              const subData = await subRes.json();
+              isPlusUser = Boolean(subData?.isPlus);
+            }
+          } catch {}
+
           if (data) {
             setProfile({
               full_name: data.full_name || metaName,
               avatar_url: data.avatar_url || metaAvatar,
+              is_plus: isPlusUser,
             });
           } else {
             setProfile({
               full_name: metaName,
               avatar_url: metaAvatar,
+              is_plus: isPlusUser,
             });
           }
         } catch {
@@ -333,6 +344,14 @@ export function CustomerShell({
                         </span>
                       )}
                     </div>
+                    {profile?.is_plus && (
+                      <span
+                        className="w-4 h-4 -ml-2 self-end mb-0.5 rounded-full bg-lavender-600 text-white flex items-center justify-center shadow-xs"
+                        title="Member Plus"
+                      >
+                        <Crown1 size={10} variant="Bold" />
+                      </span>
+                    )}
                   </Link>
 
                   {/* Dropdown Menu Trigger */}
@@ -356,8 +375,16 @@ export function CustomerShell({
                   {menuOpen && (
                     <div className="absolute right-0 top-full mt-2.5 w-56 bg-white rounded-2xl border border-neutral-200 shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                       <div className="px-4 py-2 border-b border-neutral-100">
-                        <p className="text-xs text-neutral-400">Masuk sebagai</p>
-                        <p className="text-sm font-semibold text-neutral-900 truncate">
+                        <div className="flex items-center justify-between gap-1">
+                          <p className="text-xs text-neutral-400">Masuk sebagai</p>
+                          {profile?.is_plus && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-lavender-100 text-lavender-800 text-[10px] font-bold">
+                              <Crown1 size={11} variant="Bold" className="text-lavender-600" />
+                              <span>Member Plus</span>
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-semibold text-neutral-900 truncate mt-0.5">
                           {profile?.full_name || user.email}
                         </p>
                       </div>

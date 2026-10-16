@@ -68,9 +68,11 @@ export async function POST(request: Request) {
       created_at: new Date().toISOString(),
     });
 
-    // Record subscription payment in payments table if database connected
+    // Record subscription payment in payments table
     try {
-      await supabase.from("payments").insert({
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const adminSupabase = createAdminClient();
+      await adminSupabase.from("payments").insert({
         provider_order_id: subOrderId,
         kind: "subscription",
         ref_id: user.id,
@@ -79,7 +81,9 @@ export async function POST(request: Request) {
         status: "pending",
         snap_token: snapToken,
       });
-    } catch {}
+    } catch (insertErr) {
+      console.warn("Failed to insert subscription payment:", insertErr);
+    }
 
     return NextResponse.json({
       success: true,

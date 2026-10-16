@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { RequirePermission } from "@/components/admin/PermissionGate";
@@ -23,6 +23,7 @@ import {
   UserTick,
   UserEdit,
   DocumentDownload,
+  Refresh,
 } from "@/lib/icons";
 import { FilterDropdown } from "@/components/shared/FilterDropdown";
 
@@ -60,19 +61,35 @@ function AdminOrdersContent() {
   const [orders, setOrders] = useState<Order[]>(() => MOCK_ORDERS);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    getOrders({
-      tab: activeTab,
-      status: selectedStatus,
-      search,
-      category: selectedCategory,
-      customerType,
-    }).then((res) => {
+  const fetchOrders = useCallback(async (isManualRefresh = false) => {
+    if (isManualRefresh) setRefreshing(true);
+    try {
+      const res = await getOrders({
+        tab: activeTab,
+        status: selectedStatus,
+        search,
+        category: selectedCategory,
+        customerType,
+      });
       setOrders(res);
       setSelectedIds([]);
-    });
+      if (isManualRefresh) {
+        toast.success("Daftar pesanan berhasil disegarkan.");
+      }
+    } catch {
+      if (isManualRefresh) {
+        toast.error("Gagal menyegarkan daftar pesanan.");
+      }
+    } finally {
+      if (isManualRefresh) setRefreshing(false);
+    }
   }, [activeTab, selectedStatus, search, selectedCategory, customerType]);
+
+  useEffect(() => {
+    fetchOrders(false);
+  }, [fetchOrders]);
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -210,16 +227,27 @@ function AdminOrdersContent() {
             </p>
           </div>
 
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            leftIcon={<DocumentDownload size={15} />}
-            onClick={handleExportAll}
-            className="self-start sm:self-auto"
-          >
-            Ekspor CSV
-          </Button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              leftIcon={<Refresh size={15} className={refreshing ? "animate-spin" : ""} />}
+              onClick={() => fetchOrders(true)}
+              disabled={refreshing}
+            >
+              Segarkan
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              leftIcon={<DocumentDownload size={15} />}
+              onClick={handleExportAll}
+            >
+              Ekspor CSV
+            </Button>
+          </div>
         </div>
 
         {/* TABS WITH BADGES */}

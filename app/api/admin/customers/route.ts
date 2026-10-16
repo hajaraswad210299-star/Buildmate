@@ -126,7 +126,7 @@ export async function GET() {
     try {
       const { data: orders } = await adminSupabase
         .from("orders")
-        .select("id, customer_id, total_price, status");
+        .select("id, customer_id, total, status");
       if (orders) {
         for (const o of orders) {
           const curr = orderStatsMap.get(o.customer_id) || { count: 0, totalSpent: 0 };
@@ -136,7 +136,7 @@ export async function GET() {
               o.status
             )
           ) {
-            curr.totalSpent += Number(o.total_price) || 0;
+            curr.totalSpent += Number(o.total) || 0;
           }
           orderStatsMap.set(o.customer_id, curr);
         }

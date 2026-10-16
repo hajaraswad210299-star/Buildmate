@@ -104,17 +104,15 @@ export default function CustomerAccountPage() {
           }
         });
 
-      supabase
-        .from("subscriptions")
-        .select("current_period_end")
-        .eq("user_id", user.id)
-        .single()
-        .then(({ data: sub }) => {
-          if (sub?.current_period_end && new Date(sub.current_period_end) > new Date()) {
+      fetch("/api/subscriptions/status")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.isPlus) {
             setIsPlus(true);
-            setPlusExpiry(sub.current_period_end);
+            setPlusExpiry(data.current_period_end);
           }
-        });
+        })
+        .catch(() => {});
 
       setLoading(false);
     });

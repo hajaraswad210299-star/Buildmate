@@ -46,53 +46,89 @@ export async function POST(request: Request) {
     // 2. Transaksi Pesanan (ORD-...)
     if (order_id && (order_id.startsWith("ORD-") || order_id.startsWith("BM-"))) {
       const cleanOrderCode = order_id.replace(/^ORD-/, "");
+      const adminSupabase = createAdminClient();
+
+      // Query database directly so stateless serverless runs never miss an order
+      const { data: dbOrder } = await adminSupabase
+        .from("orders")
+        .select("*")
+        .or(`order_code.eq.${cleanOrderCode},id.eq.${order_id},order_code.eq.${order_id}`)
+        .single();
+
       const allOrders = await getOrders();
-      const order = allOrders.find(
+      const inMemOrder = allOrders.find(
         (o) => o.order_code === cleanOrderCode || o.id === order_id || o.order_code === order_id
       );
 
-      if (order) {
-        // Cocokkan nominal jika tersedia
+      const targetOrder = dbOrder || inMemOrder;
+
+      if (targetOrder) {
         const receivedGross = parseFloat(gross_amount);
-        if (!isNaN(receivedGross) && receivedGross !== order.total) {
-          console.warn(`Nominal mismatch for order ${order.order_code}: expected ${order.total}, got ${receivedGross}`);
+        const orderTotal = Number(targetOrder.total) || Number((targetOrder as any).total_price) || 0;
+        if (!isNaN(receivedGross) && orderTotal > 0 && receivedGross !== orderTotal) {
+          console.warn(`Nominal mismatch for order ${targetOrder.order_code}: expected ${orderTotal}, got ${receivedGross}`);
         }
 
         // Idempotensi: jika status sudah final (paid atau cancelled), jangan proses ulang
-        if (order.status === "paid" && isSuccess) {
+        if (targetOrder.status === "paid" && isSuccess) {
           return NextResponse.json({ status: "OK", message: "Order already marked as paid (idempotent)" });
         }
-        if (order.status === "cancelled" && isFailed) {
+        if (targetOrder.status === "cancelled" && isFailed) {
           return NextResponse.json({ status: "OK", message: "Order already cancelled (idempotent)" });
         }
 
-        if (isSuccess && order.status === "pending_payment") {
-          await transitionOrder(order.id, "paid", "webhook", {
-            actorName: "Midtrans Webhook",
-            note: `Pembayaran sukses diverifikasi Midtrans (${payment_type || "snap"}). Gross amount: Rp${receivedGross || order.total}.`,
+        if (isSuccess && targetOrder.status === "pending_payment") {
+          // 1. Update Supabase orders table
+          await adminSupabase
+            .from("orders")
+            .update({ status: "paid", paid_at: nowIso, updated_at: nowIso })
+            .or(`id.eq.${targetOrder.id},order_code.eq.${targetOrder.order_code}`);
+
+          // 2. Insert event to order_events
+          await adminSupabase.from("order_events").insert({
+            order_id: targetOrder.id,
+            event_type: "payment_settled",
+            from_status: "pending_payment",
+            to_status: "paid",
+            actor_type: "system",
+            actor_name: "Midtrans Webhook",
+            note: `Pembayaran sukses diverifikasi Midtrans (${payment_type || "snap"}). Gross amount: Rp${receivedGross || orderTotal}.`,
           });
 
-          // Sync database status
-          try {
-            const adminSupabase = createAdminClient();
-            await adminSupabase
-              .from("orders")
-              .update({ status: "paid", paid_at: nowIso, updated_at: nowIso })
-              .or(`id.eq.${order.id},order_code.eq.${order.order_code}`);
-          } catch {}
-        } else if (isFailed && order.status === "pending_payment") {
-          await transitionOrder(order.id, "cancelled", "webhook", {
-            actorName: "Midtrans Webhook",
-            cancelReason: `Pembayaran ${transaction_status} oleh Midtrans.`,
+          // 3. Transition in-memory if present
+          if (inMemOrder) {
+            await transitionOrder(targetOrder.id, "paid", "webhook", {
+              actorName: "Midtrans Webhook",
+              note: `Pembayaran sukses diverifikasi Midtrans (${payment_type || "snap"}). Gross amount: Rp${receivedGross || orderTotal}.`,
+            });
+          }
+        } else if (isFailed && targetOrder.status === "pending_payment") {
+          await adminSupabase
+            .from("orders")
+            .update({
+              status: "cancelled",
+              cancelled_at: nowIso,
+              updated_at: nowIso,
+              cancel_reason: `Pembayaran ${transaction_status} oleh Midtrans.`,
+            })
+            .or(`id.eq.${targetOrder.id},order_code.eq.${targetOrder.order_code}`);
+
+          await adminSupabase.from("order_events").insert({
+            order_id: targetOrder.id,
+            event_type: "payment_failed",
+            from_status: "pending_payment",
+            to_status: "cancelled",
+            actor_type: "system",
+            actor_name: "Midtrans Webhook",
+            note: `Pembayaran ${transaction_status} oleh Midtrans.`,
           });
 
-          try {
-            const adminSupabase = createAdminClient();
-            await adminSupabase
-              .from("orders")
-              .update({ status: "cancelled", cancelled_at: nowIso, updated_at: nowIso })
-              .or(`id.eq.${order.id},order_code.eq.${order.order_code}`);
-          } catch {}
+          if (inMemOrder) {
+            await transitionOrder(targetOrder.id, "cancelled", "webhook", {
+              actorName: "Midtrans Webhook",
+              cancelReason: `Pembayaran ${transaction_status} oleh Midtrans.`,
+            });
+          }
         }
       }
 

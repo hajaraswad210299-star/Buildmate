@@ -32,26 +32,25 @@ export default function PlusPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [subscribing, setSubscribing] = useState(false);
 
+  const checkStatus = () => {
+    fetch("/api/subscriptions/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.isPlus) {
+          setIsSubscribed(true);
+          setExpiryDate(data.current_period_end);
+          setRemainingDays(data.remaining_days || 0);
+        }
+      })
+      .catch((err) => console.warn("Failed to check subscription status:", err));
+  };
+
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUser(user);
-        supabase
-          .from("subscriptions")
-          .select("current_period_end")
-          .eq("user_id", user.id)
-          .single()
-          .then(({ data: sub }) => {
-            if (sub?.current_period_end && new Date(sub.current_period_end) > new Date()) {
-              setIsSubscribed(true);
-              setExpiryDate(sub.current_period_end);
-
-              const diffTime = Math.abs(new Date(sub.current_period_end).getTime() - Date.now());
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              setRemainingDays(diffDays);
-            }
-          });
+        checkStatus();
       }
     });
   }, []);
@@ -77,20 +76,37 @@ export default function PlusPage() {
       }
 
       const snapToken = data.snap_token;
+      const subOrderId = data.sub_order_id;
+
       if (typeof window !== "undefined" && (window as any).snap && snapToken) {
         (window as any).snap.pay(snapToken, {
-          onSuccess: () => {
-            toast.success("Pembayaran berhasil! Mengaktifkan membership...");
-            window.location.reload();
+          onSuccess: async () => {
+            toast.success("Pembayaran berhasil! Mengaktifkan status Member Plus...");
+            try {
+              await fetch("/api/subscriptions/status", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sub_order_id: subOrderId }),
+              });
+            } catch {}
+            setIsSubscribed(true);
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            setTimeout(() => {
+              checkStatus();
+              window.location.reload();
+            }, 1200);
           },
           onPending: () => {
             toast.info("Menunggu penyelesaian pembayaran di simulator.");
+            // Poll status once after pending in case simulator already completed
+            setTimeout(checkStatus, 3000);
           },
           onError: () => {
             toast.error("Pembayaran dibatalkan atau gagal.");
           },
           onClose: () => {
-            // Pengguna menutup snap
+            // Check status in case user already paid
+            checkStatus();
           },
         });
       } else {
