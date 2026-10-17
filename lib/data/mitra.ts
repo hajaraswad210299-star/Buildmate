@@ -27,6 +27,8 @@ export interface WorkerApplication {
   slug?: string;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // In-memory applications cache for offline/mock development
 const inMemoryApplications = new Map<string, WorkerApplication>();
 
@@ -220,16 +222,37 @@ export async function saveMitraApplication(
         };
       }
 
-      if (updated.package_ids.length > 0) {
-        const inserts = updated.package_ids.map((pkgId) => ({
-          worker_id: upsertedWorker.id,
-          package_id: pkgId,
-        }));
-        await adminClient.from("worker_packages").delete().eq("worker_id", upsertedWorker.id);
-        const { error: linkError } = await adminClient.from("worker_packages").insert(inserts);
+      // Keep only ids that exist in the catalog; stale ids (old mock "pkg-1", deleted
+      // packages) would make the whole insert fail and the draft would never save.
+      const requestedIds = updated.package_ids.filter((id) => UUID_RE.test(id));
+      let validIds: string[] = [];
+      if (requestedIds.length > 0) {
+        const { data: pkgRows, error: pkgError } = await adminClient
+          .from("service_packages")
+          .select("id")
+          .in("id", requestedIds);
+        if (pkgError) {
+          return { success: false, error: `Draf gagal disimpan ke server: ${pkgError.message}` };
+        }
+        validIds = (pkgRows || []).map((p) => p.id);
+      }
+      updated.package_ids = validIds;
+      inMemoryApplications.set(userId, updated);
+
+      const { error: unlinkError } = await adminClient
+        .from("worker_packages")
+        .delete()
+        .eq("worker_id", upsertedWorker.id);
+      if (unlinkError) {
+        return { success: false, error: `Paket layanan gagal disimpan: ${unlinkError.message}` };
+      }
+      if (validIds.length > 0) {
+        const { error: linkError } = await adminClient
+          .from("worker_packages")
+          .insert(validIds.map((pkgId) => ({ worker_id: upsertedWorker.id, package_id: pkgId })));
         if (linkError) {
-          console.warn("Error saving worker packages:", linkError);
-          return { success: false, error: "Paket layanan yang dipilih tidak valid. Muat ulang halaman lalu pilih lagi." };
+          console.error("Error saving worker packages:", linkError);
+          return { success: false, error: `Paket layanan gagal disimpan: ${linkError.message}` };
         }
       }
     } catch (e: any) {
@@ -274,27 +297,32 @@ export async function submitMitraApplication(
     return { success: false, error: "Foto profil wajib diunggah" };
   }
 
+  const isMock = process.env.USE_MOCK_DATA === "true";
+  if (!isMock) {
+    const adminClient = createAdminClient();
+    const { data: submitted, error } = await adminClient
+      .from("workers")
+      .update({
+        application_status: "pending",
+        rejection_reason: null,
+        reviewed_at: null,
+      })
+      .eq("user_id", userId)
+      .eq("application_status", "draft")
+      .select("id");
+    if (error || !submitted?.length) {
+      console.error("DB submit error:", error);
+      return {
+        success: false,
+        error: `Pendaftaran gagal dikirim: ${error?.message || "draf belum tersimpan di server"}`,
+      };
+    }
+  }
+
   current.application_status = "pending";
   current.rejection_reason = null;
   current.reviewed_at = null;
   inMemoryApplications.set(userId, current);
-
-  const isMock = process.env.USE_MOCK_DATA === "true";
-  if (!isMock) {
-    try {
-      const adminClient = createAdminClient();
-      await adminClient
-        .from("workers")
-        .update({
-          application_status: "pending",
-          rejection_reason: null,
-          reviewed_at: null,
-        })
-        .eq("user_id", userId);
-    } catch (e) {
-      console.warn("DB submit error, mock updated:", e);
-    }
-  }
 
   return { success: true, application: current };
 }

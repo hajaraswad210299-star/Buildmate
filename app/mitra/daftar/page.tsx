@@ -9,6 +9,7 @@ import { SERVICE_AREAS } from "@/lib/constants/areas";
 import { getCategories, getPackages } from "@/lib/data/services";
 import type { Category, ServicePackage } from "@/lib/data/types";
 import { formatRupiah } from "@/lib/format";
+import { fileToResizedDataUrl } from "@/lib/image";
 import {
   TickCircle,
   Warning2,
@@ -25,7 +26,7 @@ export default function MitraDaftarPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved">("saved");
+  const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("saved");
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
 
   // Catalog (real categories & packages, so saved package ids exist in the DB)
@@ -47,8 +48,8 @@ export default function MitraDaftarPage() {
   const [serviceArea, setServiceArea] = useState("Jakarta Selatan");
   const [experienceYears, setExperienceYears] = useState(3);
   const [bio, setBio] = useState("");
-  const [categoryIds, setCategoryIds] = useState<string[]>(["cat-1"]);
-  const [packageIds, setPackageIds] = useState<string[]>(["pkg-1"]);
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [packageIds, setPackageIds] = useState<string[]>([]);
   const [photoPath, setPhotoPath] = useState("");
   const [portfolioPaths, setPortfolioPaths] = useState<string[]>([]);
   const [agreePublic, setAgreePublic] = useState(false);
@@ -121,14 +122,20 @@ export default function MitraDaftarPage() {
             ...overrides,
           };
 
-          await fetch("/api/mitra/application", {
+          const res = await fetch("/api/mitra/application", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || json.success === false) {
+            setAutosaveStatus("error");
+            setFormError(json.error || "Draf gagal disimpan. Periksa koneksi lalu coba lagi.");
+            return;
+          }
           setAutosaveStatus("saved");
         } catch {
-          setAutosaveStatus("idle");
+          setAutosaveStatus("error");
         }
       }, 1000);
     },
@@ -160,19 +167,23 @@ export default function MitraDaftarPage() {
   const toggleCategory = (catId: string) => {
     let nextCats: string[];
     if (categoryIds.includes(catId)) {
-      if (categoryIds.length === 1) return; // Keep at least one
       nextCats = categoryIds.filter((c) => c !== catId);
     } else {
       nextCats = [...categoryIds, catId];
     }
+    // Packages of a deselected category are hidden, so drop them from the selection too
+    const nextPkgs = packageIds.filter((pid) => {
+      const pkg = catalogPackages.find((p) => p.id === pid);
+      return pkg ? nextCats.includes(pkg.category_id) : false;
+    });
     setCategoryIds(nextCats);
-    triggerAutosave({ category_ids: nextCats });
+    setPackageIds(nextPkgs);
+    triggerAutosave({ category_ids: nextCats, package_ids: nextPkgs });
   };
 
   const togglePackage = (pkgId: string) => {
     let nextPkgs: string[];
     if (packageIds.includes(pkgId)) {
-      if (packageIds.length === 1) return; // Keep at least one
       nextPkgs = packageIds.filter((p) => p !== pkgId);
     } else {
       nextPkgs = [...packageIds, pkgId];
@@ -185,14 +196,13 @@ export default function MitraDaftarPage() {
     const file = e.target.files?.[0];
     if (!file || portfolioPaths.length >= 3) return;
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const url = ev.target?.result as string;
-      const next = [...portfolioPaths, url];
-      setPortfolioPaths(next);
-      triggerAutosave({ portfolio_paths: next });
-    };
-    reader.readAsDataURL(file);
+    fileToResizedDataUrl(file, 1024)
+      .then((url) => {
+        const next = [...portfolioPaths, url];
+        setPortfolioPaths(next);
+        triggerAutosave({ portfolio_paths: next });
+      })
+      .catch((err) => setFormError(err.message));
   };
 
   const handleRemovePortfolio = (index: number) => {

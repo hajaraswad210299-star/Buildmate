@@ -90,13 +90,8 @@ export async function getCategories(): Promise<Category[]> {
           created_at: c.created_at,
         }));
 
-        // Merge with any in-memory categories
-        inMemoryCategories.forEach((im) => {
-          if (!mapped.some((m) => m.id === im.id || m.slug === im.slug)) {
-            mapped.push(im);
-          }
-        });
-
+        // The DB is the source of truth once it answers: mock categories must not leak in,
+        // otherwise users can pick ids that do not exist in public.categories.
         return mapped.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
       }
     }
@@ -180,13 +175,8 @@ export async function getPackages(categoryId?: string): Promise<ServicePackage[]
           };
         });
 
-        // Merge with in-memory packages not in DB
-        inMemoryPackages.forEach((im) => {
-          if (!mapped.some((m) => m.id === im.id || m.name.toLowerCase() === im.name.toLowerCase())) {
-            mapped.push(im);
-          }
-        });
-
+        // No mock packages here: their ids (pkg-1, ...) are not in service_packages, so
+        // orders and worker_packages rows referencing them would fail.
         if (categoryId) {
           const catUuid = CATEGORY_UUID_MAP[categoryId] || categoryId;
           return mapped.filter(
