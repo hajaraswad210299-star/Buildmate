@@ -49,11 +49,14 @@ export async function POST(request: Request) {
       const adminSupabase = createAdminClient();
 
       // Query database directly so stateless serverless runs never miss an order
-      const { data: dbOrder } = await adminSupabase
-        .from("orders")
-        .select("*")
-        .or(`order_code.eq.${cleanOrderCode},id.eq.${order_id},order_code.eq.${order_id}`)
-        .single();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order_id);
+      let query = adminSupabase.from("orders").select("*");
+      if (isUuid) {
+        query = query.or(`order_code.eq.${cleanOrderCode},id.eq.${order_id},order_code.eq.${order_id}`);
+      } else {
+        query = query.or(`order_code.eq.${cleanOrderCode},order_code.eq.${order_id}`);
+      }
+      const { data: dbOrder } = await query.maybeSingle();
 
       const allOrders = await getOrders();
       const inMemOrder = allOrders.find(
@@ -82,7 +85,7 @@ export async function POST(request: Request) {
           await adminSupabase
             .from("orders")
             .update({ status: "paid", paid_at: nowIso, updated_at: nowIso })
-            .or(`id.eq.${targetOrder.id},order_code.eq.${targetOrder.order_code}`);
+            .eq("id", targetOrder.id);
 
           // 2. Insert event to order_events
           await adminSupabase.from("order_events").insert({
@@ -111,7 +114,7 @@ export async function POST(request: Request) {
               updated_at: nowIso,
               cancel_reason: `Pembayaran ${transaction_status} oleh Midtrans.`,
             })
-            .or(`id.eq.${targetOrder.id},order_code.eq.${targetOrder.order_code}`);
+            .eq("id", targetOrder.id);
 
           await adminSupabase.from("order_events").insert({
             order_id: targetOrder.id,

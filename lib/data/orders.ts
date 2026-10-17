@@ -265,11 +265,22 @@ export function registerClientOrder(order: Order) {
 }
 
 export async function getOrderById(id: string): Promise<Order | null> {
-  const found = inMemoryOrders.find((o) => o.id === id || o.order_code === id);
-  if (found) return found;
-
-  // Browser-side fallback: check sessionStorage then check server API
+  // Browser-side: always fetch fresh from server API first for live DB & Midtrans status
   if (typeof window !== "undefined") {
+    try {
+      const res = await fetch(`/api/orders/${id}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.order) {
+          registerClientOrder(data.order);
+          try {
+            sessionStorage.setItem(`bm_order_${id}`, JSON.stringify(data.order));
+          } catch {}
+          return data.order;
+        }
+      }
+    } catch {}
+
     try {
       const cached = sessionStorage.getItem(`bm_order_${id}`);
       if (cached) {
@@ -280,18 +291,10 @@ export async function getOrderById(id: string): Promise<Order | null> {
         }
       }
     } catch {}
-
-    try {
-      const res = await fetch(`/api/orders/${id}`, { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.order) {
-          registerClientOrder(data.order);
-          return data.order;
-        }
-      }
-    } catch {}
   }
+
+  const found = inMemoryOrders.find((o) => o.id === id || o.order_code === id);
+  if (found) return found;
 
   // Server-side fallback: check Supabase directly
   if (typeof window === "undefined") {
@@ -299,7 +302,8 @@ export async function getOrderById(id: string): Promise<Order | null> {
       const { createAdminClient } = await import("../supabase/admin");
       const adminSupabase = createAdminClient();
 
-      const { data: dbOrder } = await adminSupabase
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      let query = adminSupabase
         .from("orders")
         .select(`
           *,
@@ -309,9 +313,15 @@ export async function getOrderById(id: string): Promise<Order | null> {
           photos:order_photos(*),
           events:order_events(*),
           complaints(*)
-        `)
-        .or(`id.eq.${id},order_code.eq.${id}`)
-        .single();
+        `);
+
+      if (isUuid) {
+        query = query.or(`id.eq.${id},order_code.eq.${id}`);
+      } else {
+        query = query.eq("order_code", id);
+      }
+
+      const { data: dbOrder } = await query.maybeSingle();
 
       if (dbOrder) {
         const { data: sub } = await adminSupabase

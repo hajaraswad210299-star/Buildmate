@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOrderById } from "@/lib/data/orders";
+import { getOrderById, registerClientOrder } from "@/lib/data/orders";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(
@@ -37,7 +37,7 @@ export async function GET(
             await adminSupabase
               .from("orders")
               .update({ status: "paid", paid_at: nowIso, updated_at: nowIso })
-              .or(`id.eq.${order.id},order_code.eq.${order.order_code}`);
+              .eq("id", order.id);
 
             await adminSupabase.from("order_events").insert({
               order_id: order.id,
@@ -63,6 +63,7 @@ export async function GET(
               status: "paid",
               paid_at: nowIso,
             };
+            registerClientOrder(order);
           }
         }
       } catch (syncErr) {

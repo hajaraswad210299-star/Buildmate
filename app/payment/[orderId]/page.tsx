@@ -15,7 +15,7 @@ import {
   InfoCircle,
 } from "@/lib/icons";
 import { formatRupiah, formatDateId } from "@/lib/format";
-import { getOrderById } from "@/lib/data/orders";
+import { getOrderById, registerClientOrder } from "@/lib/data/orders";
 import { Order } from "@/lib/data/types";
 import { createClient } from "@/lib/supabase/client";
 import confetti from "canvas-confetti";
@@ -35,7 +35,9 @@ function PaymentStatusContent({ params }: PageProps) {
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
-  const [uiState, setUiState] = useState<PaymentUiState>("processing");
+  const [uiState, setUiState] = useState<PaymentUiState>(
+    explicitStatus === "success" ? "processing" : "processing"
+  );
   const [hasConfettiTriggered, setHasConfettiTriggered] = useState(false);
 
   // 15-Minute Countdown Timer for Waiting State
@@ -84,10 +86,9 @@ function PaymentStatusContent({ params }: PageProps) {
 
     // Menunggu (pending_payment)
     if (ord.status === "pending_payment") {
-      if (explicitStatus === "pending") {
-        setUiState("waiting");
+      if (explicitStatus === "success") {
+        setUiState("processing");
       } else {
-        // Awal muat bisa processing sebentar atau waiting
         setUiState("waiting");
       }
     }
@@ -96,26 +97,37 @@ function PaymentStatusContent({ params }: PageProps) {
   // Fetch Order logic (Reads from DB and Server API)
   const fetchLatestOrder = async () => {
     try {
-      let ord = await getOrderById(resolvedParams.orderId);
+      let ord: Order | null = null;
 
-      // Fallback check from sessionStorage
+      // 1. Always check API first for live database & Midtrans status sync
+      if (typeof window !== "undefined") {
+        try {
+          const res = await fetch(`/api/orders/${resolvedParams.orderId}`, {
+            cache: "no-store",
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.order) {
+              ord = data.order;
+              registerClientOrder(ord);
+              sessionStorage.setItem(`bm_order_${resolvedParams.orderId}`, JSON.stringify(ord));
+            }
+          }
+        } catch {}
+      }
+
+      // 2. Fallback check from local getOrderById
+      if (!ord) {
+        ord = await getOrderById(resolvedParams.orderId);
+      }
+
+      // 3. Fallback check from sessionStorage
       if (!ord && typeof window !== "undefined") {
         try {
           const cached = sessionStorage.getItem(`bm_order_${resolvedParams.orderId}`);
           if (cached) {
             const parsed = JSON.parse(cached);
             if (parsed?.id) ord = parsed;
-          }
-        } catch {}
-      }
-
-      // Fallback check from API
-      if (!ord && typeof window !== "undefined") {
-        try {
-          const res = await fetch(`/api/orders/${resolvedParams.orderId}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && data.order) ord = data.order;
           }
         } catch {}
       }
