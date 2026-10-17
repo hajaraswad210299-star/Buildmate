@@ -64,15 +64,55 @@ function VerifyEmailContent() {
 
       {/* Action Buttons */}
       <div className="space-y-3 pt-2">
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              setToastMsg("Mengaktifkan akun...");
+              if (email && email !== "emailmu") {
+                await fetch("/api/auth/verify-email", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ email: email.trim() }),
+                });
+              }
+
+              const supabase = createClient();
+              const { data: { user } } = await supabase.auth.getUser();
+
+              if (user) {
+                const { data: profile } = await supabase
+                  .from("profiles")
+                  .select("onboarding_completed, phone")
+                  .eq("id", user.id)
+                  .maybeSingle();
+
+                if (!profile?.onboarding_completed || !profile?.phone) {
+                  window.location.href = `/welcome?next=${encodeURIComponent(searchParams.get("next") || "/")}`;
+                  return;
+                }
+                window.location.href = searchParams.get("next") || "/";
+              } else {
+                window.location.href = `/login?email=${encodeURIComponent(email)}&verified=true`;
+              }
+            } catch {
+              window.location.href = `/login?email=${encodeURIComponent(email)}&verified=true`;
+            }
+          }}
+          className="w-full h-12 rounded-xl bg-lavender-600 hover:bg-lavender-700 active:scale-[0.98] text-white text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2"
+        >
+          <span>Aktifkan Akun & Lanjutkan</span>
+          <ArrowRight size={14} />
+        </button>
+
         {isGmail && (
           <a
             href="https://mail.google.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full h-12 rounded-xl bg-lavender-600 hover:bg-lavender-700 active:scale-[0.98] text-white text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2"
+            className="w-full h-11 rounded-xl border border-neutral-200 text-neutral-700 hover:bg-neutral-50 active:scale-[0.98] text-xs font-semibold transition-all flex items-center justify-center gap-2"
           >
             <span>Buka Gmail</span>
-            <ArrowRight size={14} />
           </a>
         )}
 

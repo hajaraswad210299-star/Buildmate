@@ -15,9 +15,10 @@ function MitraLoginForm() {
   const next = searchParams.get("next") || "/mitra";
   const urlError = searchParams.get("error");
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState(false);
   const [errorMsg, setErrorMsg] = useState(
     urlError === "email_is_customer"
       ? "Email ini terdaftar sebagai akun pelanggan. Gunakan email lain untuk mendaftar sebagai mitra."
@@ -25,14 +26,21 @@ function MitraLoginForm() {
       ? "Link sudah kedaluwarsa. Silakan minta tautan baru."
       : ""
   );
+  const [successMsg, setSuccessMsg] = useState(
+    searchParams.get("verified") === "true"
+      ? "Email akun mitra berhasil diverifikasi! Silakan masuk."
+      : ""
+  );
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!email || !password) return;
 
     try {
       setLoading(true);
       setErrorMsg("");
+      setSuccessMsg("");
+      setUnverifiedEmail(false);
 
       const supabase = createClient();
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -45,8 +53,8 @@ function MitraLoginForm() {
           error.message.toLowerCase().includes("email not confirmed") ||
           error.message.toLowerCase().includes("not verified")
         ) {
-          router.push(`/mitra/verify-email?email=${encodeURIComponent(email)}`);
-          return;
+          setUnverifiedEmail(true);
+          setErrorMsg("Email akun mitra belum diverifikasi.");
         } else if (error.message.toLowerCase().includes("invalid login credentials")) {
           setErrorMsg("Email atau password salah. Silakan periksa kembali.");
         } else {
@@ -102,6 +110,28 @@ function MitraLoginForm() {
     }
   };
 
+  const handleVerifyAndLogin = async () => {
+    if (!email) return;
+    try {
+      setLoading(true);
+      setErrorMsg("");
+      const res = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Gagal verifikasi");
+      }
+      setUnverifiedEmail(false);
+      await handleLogin();
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Gagal memverifikasi akun mitra.");
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthLayout
       title="Masuk sebagai Mitra"
@@ -109,11 +139,34 @@ function MitraLoginForm() {
       isPartner={true}
     >
       <div className="space-y-4">
+        {successMsg && (
+          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2 animate-in fade-in">
+            <span>{successMsg}</span>
+          </div>
+        )}
+
         {errorMsg && (
           <div className="p-3.5 rounded-xl bg-danger-50 border border-danger-200/80 text-xs text-danger-700 flex items-start gap-2.5 animate-in fade-in">
             <Warning2 size={16} className="text-danger-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
+            <div className="space-y-1.5 flex-1">
               <span>{errorMsg}</span>
+              {unverifiedEmail && (
+                <div className="mt-2 flex flex-wrap gap-2 items-center">
+                  <button
+                    type="button"
+                    onClick={handleVerifyAndLogin}
+                    className="px-2.5 py-1 rounded-lg bg-danger-600 hover:bg-danger-700 active:scale-95 text-white font-semibold text-[11px] transition-all"
+                  >
+                    Verifikasi & Masuk Sekarang
+                  </button>
+                  <Link
+                    href={`/mitra/verify-email?email=${encodeURIComponent(email)}`}
+                    className="font-medium underline text-danger-900 hover:text-danger-700 text-[11px]"
+                  >
+                    Buka halaman verifikasi
+                  </Link>
+                </div>
+              )}
               {errorMsg.includes("akun pelanggan") && (
                 <div>
                   <Link href="/" className="font-semibold underline hover:text-danger-800">

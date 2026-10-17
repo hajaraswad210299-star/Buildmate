@@ -83,51 +83,34 @@ function RegisterForm() {
       setLoading(true);
       setErrorMsg("");
 
-      // Validate email cross-role availability
-      const checkRes = await fetch("/api/auth/check-email", {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), role: "customer" }),
-      }).then((r) => r.json());
-
-      if (checkRes && checkRes.available === false) {
-        setErrorMsg(checkRes.message || "Email ini sudah terdaftar dan tidak dapat digunakan untuk peran lain.");
-        return;
-      }
-
-      const supabase = createClient();
-      const siteUrl =
-        typeof window !== "undefined" && window.location.origin
-          ? window.location.origin
-          : (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
-      const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`;
-
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          emailRedirectTo: redirectTo,
-          data: {
-            full_name: fullName.trim(),
-            phone: phone.trim(),
-            signup_as: "customer",
-          },
-        },
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          password,
+          role: "customer",
+        }),
       });
 
-      if (error) {
-        if (error.message.toLowerCase().includes("already registered")) {
-          setErrorMsg(
-            "Email ini sudah terdaftar. Silakan masuk atau gunakan fitur reset password."
-          );
-        } else {
-          setErrorMsg(error.message || "Gagal membuat akun.");
-        }
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setErrorMsg(data.error || "Gagal membuat akun.");
         return;
       }
 
-      // If user is created, redirect to verify-email
-      router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+      // Automatically sign in client session so user transitions seamlessly
+      const supabase = createClient();
+      await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      // Redirect to verify-email according to C02c spec
+      router.push(`/verify-email?email=${encodeURIComponent(email.trim())}&next=${encodeURIComponent(next)}`);
     } catch (err: any) {
       setErrorMsg(err?.message || "Terjadi kesalahan saat pendaftaran.");
     } finally {

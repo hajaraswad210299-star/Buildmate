@@ -49,49 +49,34 @@ function MitraRegisterForm() {
       setLoading(true);
       setErrorMsg("");
 
-      // Validate email cross-role availability
-      const checkRes = await fetch("/api/auth/check-email", {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), role: "worker" }),
-      }).then((r) => r.json());
-
-      if (checkRes && checkRes.available === false) {
-        setErrorMsg(checkRes.message || "Email ini sudah terdaftar dan tidak dapat digunakan untuk peran lain.");
-        return;
-      }
-
-      const supabase = createClient();
-      const siteUrl =
-        typeof window !== "undefined" && window.location.origin
-          ? window.location.origin
-          : (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
-
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          emailRedirectTo: `${siteUrl}/auth/callback?next=/mitra/daftar`,
-          data: {
-            full_name: fullName.trim(),
-            phone: phone.trim(),
-            signup_as: "worker",
-          },
-        },
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          password,
+          role: "worker",
+        }),
       });
 
-      if (error) {
-        if (error.message.toLowerCase().includes("already registered")) {
-          setErrorMsg("Email sudah terdaftar. Silakan masuk atau reset password.");
-        } else {
-          setErrorMsg(error.message || "Gagal mendaftar. Silakan coba lagi.");
-        }
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setErrorMsg(data.error || "Gagal membuat akun mitra.");
         return;
       }
 
-      if (data?.user) {
-        router.push(`/mitra/verify-email?email=${encodeURIComponent(email.trim())}`);
-      }
+      // Automatically sign in client session so user transitions seamlessly
+      const supabase = createClient();
+      await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      // Redirect to mitra verify-email according to W00c spec
+      router.push(`/mitra/verify-email?email=${encodeURIComponent(email.trim())}`);
     } catch (err: any) {
       setErrorMsg(err?.message || "Terjadi kesalahan saat pendaftaran.");
     } finally {

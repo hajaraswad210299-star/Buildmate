@@ -10,14 +10,20 @@ export async function GET(request: Request) {
   const as = url.searchParams.get("as");
   const error = url.searchParams.get("error");
 
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
+  const baseOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : url.origin;
+
   // Prevent open redirect: only local paths allowed
   const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
 
   if (error) {
     const errorRedirect = safeNext.startsWith("/admin")
       ? `/admin/login?error=${encodeURIComponent(error)}`
+      : safeNext.startsWith("/mitra")
+      ? `/mitra/login?error=${encodeURIComponent(error)}`
       : `/login?error=${encodeURIComponent(error)}`;
-    return NextResponse.redirect(new URL(errorRedirect, url.origin));
+    return NextResponse.redirect(new URL(errorRedirect, baseOrigin));
   }
 
   const supabase = await createClient();
@@ -31,8 +37,10 @@ export async function GET(request: Request) {
       console.error("verifyOtp error:", verifyError);
       const errorRedirect = safeNext.startsWith("/admin")
         ? "/admin/login?error=link_expired"
+        : safeNext.startsWith("/mitra")
+        ? "/mitra/login?error=link_expired"
         : "/login?error=link_expired";
-      return NextResponse.redirect(new URL(errorRedirect, url.origin));
+      return NextResponse.redirect(new URL(errorRedirect, baseOrigin));
     }
   } else if (code) {
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
@@ -40,24 +48,28 @@ export async function GET(request: Request) {
       console.error("exchangeCodeForSession error:", exchangeError);
       const errorRedirect = safeNext.startsWith("/admin")
         ? "/admin/login?error=link_expired"
+        : safeNext.startsWith("/mitra")
+        ? "/mitra/login?error=link_expired"
         : "/login?error=link_expired";
-      return NextResponse.redirect(new URL(errorRedirect, url.origin));
+      return NextResponse.redirect(new URL(errorRedirect, baseOrigin));
     }
   } else {
     const errorRedirect = safeNext.startsWith("/admin")
       ? "/admin/login?error=invalid_link"
+      : safeNext.startsWith("/mitra")
+      ? "/mitra/login?error=invalid_link"
       : "/login?error=invalid_link";
-    return NextResponse.redirect(new URL(errorRedirect, url.origin));
+    return NextResponse.redirect(new URL(errorRedirect, baseOrigin));
   }
 
   // If user is resetting password, allow them directly to their reset form
   if (safeNext.includes("reset-password")) {
-    return NextResponse.redirect(new URL(safeNext, url.origin));
+    return NextResponse.redirect(new URL(safeNext, baseOrigin));
   }
 
   // If user is accepting staff invite, route directly to accept-invite form
   if (safeNext.includes("accept-invite") || type === "invite") {
-    return NextResponse.redirect(new URL("/admin/accept-invite", url.origin));
+    return NextResponse.redirect(new URL("/admin/accept-invite", baseOrigin));
   }
 
   const {
@@ -72,16 +84,16 @@ export async function GET(request: Request) {
     // Immediate check for staff: must go to accept-invite if invited
     if (isStaff) {
       if (staffStatus === "invited") {
-        return NextResponse.redirect(new URL("/admin/accept-invite", url.origin));
+        return NextResponse.redirect(new URL("/admin/accept-invite", baseOrigin));
       }
       if (staffStatus === "disabled") {
-        return NextResponse.redirect(new URL("/admin/denied", url.origin));
+        return NextResponse.redirect(new URL("/admin/denied", baseOrigin));
       }
       const target =
         safeNext.startsWith("/admin") && safeNext !== "/admin/accept-invite"
           ? safeNext
           : "/admin";
-      return NextResponse.redirect(new URL(target, url.origin));
+      return NextResponse.redirect(new URL(target, baseOrigin));
     }
 
     const configuredAdmins = [
@@ -202,7 +214,7 @@ export async function GET(request: Request) {
       } else if (target.startsWith("/admin/settings") && !target.includes("verified=")) {
         target = "/admin/settings?verified=email";
       }
-      return NextResponse.redirect(new URL(target, url.origin));
+      return NextResponse.redirect(new URL(target, baseOrigin));
     }
 
     // Handle Staff (Direct to accept-invite if invited, or /admin if active)
@@ -213,20 +225,20 @@ export async function GET(request: Request) {
     ) {
       const status = profile?.staff_status || user.user_metadata?.staff_status || "invited";
       if (status === "invited") {
-        return NextResponse.redirect(new URL("/admin/accept-invite", url.origin));
+        return NextResponse.redirect(new URL("/admin/accept-invite", baseOrigin));
       }
       if (status === "disabled") {
-        return NextResponse.redirect(new URL("/admin/denied", url.origin));
+        return NextResponse.redirect(new URL("/admin/denied", baseOrigin));
       }
       const target =
         safeNext.startsWith("/admin") && safeNext !== "/admin/accept-invite"
           ? safeNext
           : "/admin";
-      return NextResponse.redirect(new URL(target, url.origin));
+      return NextResponse.redirect(new URL(target, baseOrigin));
     }
 
     if (as === "worker" && profile?.role === "customer") {
-      return NextResponse.redirect(new URL("/mitra/login?error=email_is_customer", url.origin));
+      return NextResponse.redirect(new URL("/mitra/login?error=email_is_customer", baseOrigin));
     }
 
     if (profile?.role === "worker") {
@@ -247,10 +259,10 @@ export async function GET(request: Request) {
       }
 
       if (status === "draft" || status === "rejected") {
-        return NextResponse.redirect(new URL("/mitra/daftar", url.origin));
+        return NextResponse.redirect(new URL("/mitra/daftar", baseOrigin));
       }
       if (status === "pending") {
-        return NextResponse.redirect(new URL("/mitra/status", url.origin));
+        return NextResponse.redirect(new URL("/mitra/status", baseOrigin));
       }
       const target =
         safeNext.startsWith("/mitra") &&
@@ -259,7 +271,7 @@ export async function GET(request: Request) {
         !safeNext.startsWith("/mitra/login")
           ? safeNext
           : "/mitra";
-      return NextResponse.redirect(new URL(target, url.origin));
+      return NextResponse.redirect(new URL(target, baseOrigin));
     }
 
     // Customer: if phone is missing or onboarding not done, go to welcome page
@@ -272,12 +284,12 @@ export async function GET(request: Request) {
 
     if (!profile?.onboarding_completed || !profile?.phone) {
       return NextResponse.redirect(
-        new URL(`/welcome?next=${encodeURIComponent(customerNext)}`, url.origin)
+        new URL(`/welcome?next=${encodeURIComponent(customerNext)}`, baseOrigin)
       );
     }
 
-    return NextResponse.redirect(new URL(customerNext, url.origin));
+    return NextResponse.redirect(new URL(customerNext, baseOrigin));
   }
 
-  return NextResponse.redirect(new URL("/", url.origin));
+  return NextResponse.redirect(new URL("/", baseOrigin));
 }

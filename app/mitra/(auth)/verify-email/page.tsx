@@ -84,14 +84,44 @@ function MitraVerifyEmailContent() {
         )}
 
         <div className="space-y-2.5 pt-2">
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                setResendStatus("Mengaktifkan akun mitra...");
+                if (email && email !== "emailmu") {
+                  await fetch("/api/auth/verify-email", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: email.trim() }),
+                  });
+                }
+
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+
+                if (user) {
+                  window.location.href = "/mitra/daftar";
+                } else {
+                  window.location.href = `/mitra/login?email=${encodeURIComponent(email)}&verified=true`;
+                }
+              } catch {
+                window.location.href = `/mitra/login?email=${encodeURIComponent(email)}&verified=true`;
+              }
+            }}
+            className="w-full h-12 rounded-xl bg-lavender-600 hover:bg-lavender-700 active:scale-[0.98] text-white text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2"
+          >
+            <span>Aktifkan & Lanjut ke Formulir Mitra</span>
+            <ArrowRight size={16} />
+          </button>
+
           <a
             href="https://mail.google.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full h-12 rounded-xl bg-lavender-600 hover:bg-lavender-700 active:bg-lavender-800 text-xs font-semibold text-white shadow-xs transition-colors flex items-center justify-center gap-1.5"
+            className="w-full h-11 rounded-xl border border-neutral-200 text-neutral-700 hover:bg-neutral-50 active:scale-[0.98] text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
           >
             <span>Buka Gmail</span>
-            <ArrowRight size={16} />
           </a>
 
           <button

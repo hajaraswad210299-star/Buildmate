@@ -14,20 +14,30 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/";
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState(
+    searchParams.get("error") === "link_expired"
+      ? "Link sudah kedaluwarsa. Silakan minta tautan baru."
+      : ""
+  );
+  const [successMsg, setSuccessMsg] = useState(
+    searchParams.get("verified") === "true"
+      ? "Email berhasil diverifikasi! Silakan masukkan password untuk masuk."
+      : ""
+  );
   const [unverifiedEmail, setUnverifiedEmail] = useState(false);
   const [resendStatus, setResendStatus] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!email || !password) return;
 
     try {
       setLoading(true);
       setErrorMsg("");
+      setSuccessMsg("");
       setUnverifiedEmail(false);
       setResendStatus("");
 
@@ -43,7 +53,7 @@ function LoginForm() {
           error.message.toLowerCase().includes("not verified")
         ) {
           setUnverifiedEmail(true);
-          setErrorMsg("Email kamu belum diverifikasi. Silakan cek inbox emailmu.");
+          setErrorMsg("Email kamu belum diverifikasi.");
         } else if (error.message.toLowerCase().includes("invalid login credentials")) {
           setErrorMsg("Email atau password salah. Silakan periksa kembali.");
         } else {
@@ -90,6 +100,30 @@ function LoginForm() {
     }
   };
 
+  const handleVerifyAndLogin = async () => {
+    if (!email) return;
+    try {
+      setLoading(true);
+      setErrorMsg("");
+      setResendStatus("Memverifikasi email...");
+      const res = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Gagal verifikasi");
+      }
+      setResendStatus("Email terverifikasi! Sedang masuk...");
+      setUnverifiedEmail(false);
+      await handleLogin();
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Gagal memverifikasi akun.");
+      setLoading(false);
+    }
+  };
+
   const handleResendVerification = async () => {
     if (!email) return;
     try {
@@ -129,6 +163,13 @@ function LoginForm() {
         </div>
       </div>
 
+      {/* Success Alert */}
+      {successMsg && (
+        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 animate-in fade-in">
+          <span>{successMsg}</span>
+        </div>
+      )}
+
       {/* Error Alert */}
       {errorMsg && (
         <div className="p-3 rounded-xl bg-danger-50 border border-danger-200 text-danger-800 text-xs flex items-start gap-2.5 animate-in fade-in">
@@ -136,13 +177,22 @@ function LoginForm() {
           <div className="flex-1">
             <p>{errorMsg}</p>
             {unverifiedEmail && (
-              <button
-                type="button"
-                onClick={handleResendVerification}
-                className="mt-1.5 font-bold underline text-danger-900 hover:text-danger-700"
-              >
-                Kirim ulang email verifikasi
-              </button>
+              <div className="mt-2.5 flex flex-wrap gap-2 items-center">
+                <button
+                  type="button"
+                  onClick={handleVerifyAndLogin}
+                  className="px-2.5 py-1 rounded-lg bg-danger-600 hover:bg-danger-700 active:scale-95 text-white font-semibold text-[11px] transition-all"
+                >
+                  Verifikasi & Masuk Sekarang
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  className="font-medium underline text-danger-900 hover:text-danger-700 text-[11px]"
+                >
+                  Kirim ulang email
+                </button>
+              </div>
             )}
             {resendStatus && (
               <p className="mt-1 text-[11px] text-emerald-700 font-medium">{resendStatus}</p>
