@@ -249,7 +249,7 @@ export async function reviewWorkerApplication(
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { error } = await supabase
+    const { data: updatedRows, error } = await supabase
       .from("workers")
       .update({
         application_status: approved ? "approved" : "rejected",
@@ -259,11 +259,16 @@ export async function reviewWorkerApplication(
         reviewed_at: now,
         reviewed_by: user?.id || null,
       })
-      .eq("id", workerId);
+      .eq("id", workerId)
+      .select("id");
 
     if (error) {
       console.error("Supabase review worker error:", error.message);
       throw new Error(error.message);
+    }
+    // RLS turns an unauthorized update into "0 rows" without an error
+    if (!updatedRows?.length) {
+      throw new Error("Pendaftaran tidak tersimpan: akun ini tidak punya izin meninjau mitra");
     }
   } catch (err: any) {
     if (err?.message) throw err;

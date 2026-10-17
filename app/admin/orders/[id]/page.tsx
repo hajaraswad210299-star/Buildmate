@@ -759,7 +759,9 @@ function OrderDetailContent({
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="text-sm font-bold text-warning-800">
-                          Komplain Terbuka dari Pelanggan
+                          {order.complaint.status === "open"
+                            ? "Komplain Terbuka dari Pelanggan"
+                            : "Komplain Pelanggan (Ditutup)"}
                         </h4>
                         {order.complaint.is_warranty && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] bg-warning-200 text-warning-800 font-bold">
