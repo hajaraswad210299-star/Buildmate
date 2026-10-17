@@ -117,12 +117,21 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
   }
 }
 
+/**
+ * Base URL for direct invite links. Without NEXT_PUBLIC_SITE_URL the links pointed at
+ * localhost even on Vercel, so fall back to the origin of the admin's request.
+ */
+function resolveSiteUrl(origin?: string): string {
+  return (process.env.NEXT_PUBLIC_SITE_URL || origin || "http://localhost:3000").replace(/\/+$/, "");
+}
+
 export async function inviteStaffMember(params: {
   email: string;
   fullName: string;
   roleId: string;
   actorId?: string;
   actorName?: string;
+  origin?: string;
 }): Promise<{
   member?: TeamMember;
   error?: string;
@@ -161,7 +170,7 @@ export async function inviteStaffMember(params: {
     return { error: "Peran yang dipilih tidak valid." };
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const siteUrl = resolveSiteUrl(params.origin);
   // Supabase GoTrue whitelist requires production domain or whitelisted callback
   const authRedirectBase =
     siteUrl.includes("localhost")
@@ -228,6 +237,12 @@ export async function inviteStaffMember(params: {
     }
   } catch (err: any) {
     console.warn("Supabase invite caught error:", err?.message);
+  }
+
+  if (process.env.USE_MOCK_DATA !== "true" && !emailSent && !inviteLink) {
+    return {
+      error: "Undangan gagal dibuat: email tidak terkirim dan tautan aktivasi tidak bisa dibuat. Coba lagi.",
+    };
   }
 
   const newStaff: TeamMember = {
@@ -382,6 +397,7 @@ export async function resendInvite(params: {
   userId: string;
   actorId?: string;
   actorName?: string;
+  origin?: string;
 }): Promise<{
   success: boolean;
   error?: string;
@@ -395,7 +411,7 @@ export async function resendInvite(params: {
     return { success: false, error: "Anggota tim tidak ditemukan." };
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const siteUrl = resolveSiteUrl(params.origin);
   const authRedirectBase =
     siteUrl.includes("localhost")
       ? "https://buildmate-ten.vercel.app"
@@ -465,12 +481,13 @@ export async function resendInvite(params: {
 
 export async function getStaffInviteLink(params: {
   userId: string;
+  origin?: string;
 }): Promise<{ success: boolean; inviteLink?: string; error?: string }> {
   const members = await getTeamMembers();
   const target = members.find((m) => m.id === params.userId);
   if (!target) return { success: false, error: "Anggota tim tidak ditemukan." };
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const siteUrl = resolveSiteUrl(params.origin);
   const authRedirectBase =
     siteUrl.includes("localhost")
       ? "https://buildmate-ten.vercel.app"

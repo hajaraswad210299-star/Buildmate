@@ -45,6 +45,7 @@ export async function POST(request: Request) {
       roleId,
       actorId: auth.user.id,
       actorName: auth.profile?.full_name || auth.user.email || "Admin Utama",
+      origin: new URL(request.url).origin,
     });
 
     if (result.error) {
