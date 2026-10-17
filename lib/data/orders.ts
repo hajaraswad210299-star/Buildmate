@@ -1025,153 +1025,136 @@ export async function createCustomerOrder(data: {
     created_at: nowIso,
   });
 
-  // Record to Supabase orders, photos, events, and payments tables
-  try {
-    const { createAdminClient } = await import("../supabase/admin");
-    const adminSupabase = createAdminClient();
-
-    let effectiveCustomerId: string | null = null;
-    const isCustomerUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      data.customerId || ""
-    );
-
-    if (data.customerId && isCustomerUuid) {
-      const { data: profExists } = await adminSupabase
-        .from("profiles")
-        .select("id")
-        .eq("id", data.customerId)
-        .single();
-
-      if (profExists) {
-        effectiveCustomerId = profExists.id;
-      } else {
-        try {
-          const { error: insProfErr } = await adminSupabase.from("profiles").insert({
-            id: data.customerId,
-            full_name: data.customerName || "Pelanggan",
-            phone: data.customerPhone || null,
-            role: "customer",
-          });
-          if (!insProfErr) {
-            effectiveCustomerId = data.customerId;
-          }
-        } catch {}
-      }
+  // Record to Supabase orders, photos, events, and payments tables. The order only
+  // counts as created once it is in the database: an in-memory order is lost on the
+  // next serverless instance, and the Midtrans webhook could never find it.
+  if (process.env.USE_MOCK_DATA !== "true") {
+    const persisted = await persistCustomerOrder({
+      orderId,
+      orderCode,
+      pkg,
+      worker,
+      serviceFee,
+      total,
+      snapToken,
+      data,
+    });
+    if (!persisted.success) {
+      const idx = inMemoryOrders.findIndex((o) => o.id === orderId);
+      if (idx >= 0) inMemoryOrders.splice(idx, 1);
+      return { success: false, error: persisted.error };
     }
-
-    if (!effectiveCustomerId) {
-      const { data: custProf } = await adminSupabase
-        .from("profiles")
-        .select("id")
-        .eq("role", "customer")
-        .limit(1)
-        .single();
-      effectiveCustomerId = custProf?.id || "1966b32b-76cc-4bf3-808b-59eaa88c7f13";
-    }
-
-    if (effectiveCustomerId) {
-      // Ensure package_id is a valid UUID present in service_packages
-      let validPkgId = pkg.id;
-      const isPkgUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        validPkgId
-      );
-
-      if (!isPkgUuid) {
-        const { data: dbPkg } = await adminSupabase
-          .from("service_packages")
-          .select("id")
-          .ilike("name", `%${pkg.name}%`)
-          .limit(1)
-          .single();
-        validPkgId = dbPkg?.id || "b0000000-0000-0000-0000-000000000001";
-      } else {
-        const { data: pkgCheck } = await adminSupabase
-          .from("service_packages")
-          .select("id")
-          .eq("id", validPkgId)
-          .single();
-        if (!pkgCheck) {
-          const { data: fallbackPkg } = await adminSupabase
-            .from("service_packages")
-            .select("id")
-            .limit(1)
-            .single();
-          validPkgId = fallbackPkg?.id || "b0000000-0000-0000-0000-000000000001";
-        }
-      }
-
-      let validWorkerId: string | null = null;
-      if (
-        worker &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(worker.id)
-      ) {
-        const { data: wCheck } = await adminSupabase
-          .from("workers")
-          .select("id")
-          .eq("id", worker.id)
-          .single();
-        if (wCheck) {
-          validWorkerId = wCheck.id;
-        }
-      }
-
-      const { error: dbOrderErr } = await adminSupabase.from("orders").insert({
-        id: orderId,
-        order_code: orderCode,
-        customer_id: effectiveCustomerId,
-        worker_id: validWorkerId,
-        package_id: validPkgId,
-        package_price: pkg.price,
-        service_fee: serviceFee,
-        total: total,
-        address: data.address,
-        scheduled_date: data.scheduledDate,
-        time_slot: data.timeSlot,
-        description: data.description || "Perbaikan rumah",
-        status: "pending_payment",
-      });
-
-      if (dbOrderErr) {
-        console.error("Supabase orders insert error:", dbOrderErr);
-      } else {
-        if (data.photoPaths && data.photoPaths.length > 0) {
-          await adminSupabase.from("order_photos").insert(
-            data.photoPaths.map((path) => ({
-              order_id: orderId,
-              type: "problem",
-              uploaded_by: "customer",
-              source_note: "Foto masalah saat pemesanan",
-              storage_path: path,
-            }))
-          );
-        }
-
-        await adminSupabase.from("order_events").insert({
-          order_id: orderId,
-          event_type: "order_created",
-          to_status: "pending_payment",
-          actor_type: "customer",
-          actor_id: effectiveCustomerId,
-          actor_name: data.customerName || "Pelanggan",
-          note: `Pesanan dibuat untuk ${pkg.name}. Total: Rp${total.toLocaleString("id-ID")}`,
-        });
-      }
-
-      await adminSupabase.from("payments").insert({
-        provider_order_id: `ORD-${orderCode}`,
-        kind: "order",
-        ref_id: orderId,
-        customer_id: effectiveCustomerId,
-        amount: total,
-        status: "pending",
-        snap_token: snapToken,
-      });
-    }
-  } catch (syncErr) {
-    console.error("Order Supabase synchronization error:", syncErr);
   }
 
   return { success: true, order: newOrder, snapToken };
+}
+
+const UUID_LIKE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function persistCustomerOrder(p: {
+  orderId: string;
+  orderCode: string;
+  pkg: { id: string; name: string; price: number };
+  worker?: { id: string } | null;
+  serviceFee: number;
+  total: number;
+  snapToken: string;
+  data: {
+    customerId?: string;
+    customerName?: string;
+    address: string;
+    scheduledDate: string;
+    timeSlot: string;
+    description?: string;
+    photoPaths?: string[];
+  };
+}): Promise<{ success: boolean; error?: string }> {
+  const { data, orderId, orderCode, pkg, total } = p;
+  // Never fall back to another customer or package: the order must belong to the caller
+  if (!data.customerId || !UUID_LIKE.test(data.customerId)) {
+    return { success: false, error: "Akun pelanggan tidak valid. Silakan masuk ulang." };
+  }
+  if (!UUID_LIKE.test(pkg.id)) {
+    return { success: false, error: "Paket layanan tidak ditemukan atau sudah tidak aktif" };
+  }
+
+  try {
+    const { createAdminClient } = await import("../supabase/admin");
+    const db = createAdminClient();
+
+    const { data: prof } = await db.from("profiles").select("id").eq("id", data.customerId).maybeSingle();
+    if (!prof) {
+      return { success: false, error: "Profil pelanggan tidak ditemukan. Lengkapi profil lalu coba lagi." };
+    }
+
+    let validWorkerId: string | null = null;
+    if (p.worker && UUID_LIKE.test(p.worker.id)) {
+      const { data: wCheck } = await db.from("workers").select("id").eq("id", p.worker.id).maybeSingle();
+      validWorkerId = wCheck?.id || null;
+    }
+
+    const { error: dbOrderErr } = await db.from("orders").insert({
+      id: orderId,
+      order_code: orderCode,
+      customer_id: data.customerId,
+      worker_id: validWorkerId,
+      package_id: pkg.id,
+      package_price: pkg.price,
+      service_fee: p.serviceFee,
+      total,
+      address: data.address,
+      scheduled_date: data.scheduledDate,
+      time_slot: data.timeSlot,
+      description: data.description || "Perbaikan rumah",
+      status: "pending_payment",
+    });
+    if (dbOrderErr) {
+      console.error("Supabase orders insert error:", dbOrderErr);
+      return { success: false, error: "Pesanan gagal disimpan. Coba lagi." };
+    }
+
+    const { error: payErr } = await db.from("payments").insert({
+      provider_order_id: `ORD-${orderCode}`,
+      kind: "order",
+      ref_id: orderId,
+      customer_id: data.customerId,
+      amount: total,
+      status: "pending",
+      snap_token: p.snapToken,
+    });
+    if (payErr) {
+      console.error("Supabase payments insert error:", payErr);
+      await db.from("orders").delete().eq("id", orderId);
+      return { success: false, error: "Pembayaran gagal dicatat. Coba lagi." };
+    }
+
+    if (data.photoPaths && data.photoPaths.length > 0) {
+      await db.from("order_photos").insert(
+        data.photoPaths.map((path) => ({
+          order_id: orderId,
+          type: "problem",
+          uploaded_by: "customer",
+          source_note: "Foto masalah saat pemesanan",
+          storage_path: path,
+        }))
+      );
+    }
+
+    await db.from("order_events").insert({
+      order_id: orderId,
+      event_type: "order_created",
+      to_status: "pending_payment",
+      actor_type: "customer",
+      actor_id: data.customerId,
+      actor_name: data.customerName || "Pelanggan",
+      note: `Pesanan dibuat untuk ${pkg.name}. Total: Rp${total.toLocaleString("id-ID")}`,
+    });
+
+    return { success: true };
+  } catch (err) {
+    console.error("Order Supabase synchronization error:", err);
+    return { success: false, error: "Pesanan gagal disimpan. Coba lagi." };
+  }
 }
 
 export async function confirmCustomerOrder(
