@@ -108,9 +108,10 @@ function PaymentStatusContent({ params }: PageProps) {
           if (res.ok) {
             const data = await res.json();
             if (data.success && data.order) {
-              ord = data.order;
-              registerClientOrder(ord);
-              sessionStorage.setItem(`bm_order_${resolvedParams.orderId}`, JSON.stringify(ord));
+              const fetchedOrder: Order = data.order;
+              ord = fetchedOrder;
+              registerClientOrder(fetchedOrder);
+              sessionStorage.setItem(`bm_order_${resolvedParams.orderId}`, JSON.stringify(fetchedOrder));
             }
           }
         } catch {}
