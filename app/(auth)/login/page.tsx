@@ -8,11 +8,12 @@ import { GoogleButton } from "@/components/auth/GoogleButton";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { Sms, Warning2 } from "@/lib/icons";
 import { createClient } from "@/lib/supabase/client";
+import { safeNext } from "@/lib/auth/safe-redirect";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/";
+  const next = safeNext(searchParams.get("next"), "/");
 
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
@@ -100,29 +101,6 @@ function LoginForm() {
     }
   };
 
-  const handleVerifyAndLogin = async () => {
-    if (!email) return;
-    try {
-      setLoading(true);
-      setErrorMsg("");
-      setResendStatus("Memverifikasi email...");
-      const res = await fetch("/api/auth/verify-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.error || "Gagal verifikasi");
-      }
-      setResendStatus("Email terverifikasi! Sedang masuk...");
-      setUnverifiedEmail(false);
-      await handleLogin();
-    } catch (err: any) {
-      setErrorMsg(err?.message || "Gagal memverifikasi akun.");
-      setLoading(false);
-    }
-  };
 
   const handleResendVerification = async () => {
     if (!email) return;
@@ -178,13 +156,6 @@ function LoginForm() {
             <p>{errorMsg}</p>
             {unverifiedEmail && (
               <div className="mt-2.5 flex flex-wrap gap-2 items-center">
-                <button
-                  type="button"
-                  onClick={handleVerifyAndLogin}
-                  className="px-2.5 py-1 rounded-lg bg-danger-600 hover:bg-danger-700 active:scale-95 text-white font-semibold text-[11px] transition-all"
-                >
-                  Verifikasi & Masuk Sekarang
-                </button>
                 <button
                   type="button"
                   onClick={handleResendVerification}

@@ -95,7 +95,7 @@ export async function createRole(data: {
 
   const normalized = normalizePermissions(data.permissions);
   const now = new Date().toISOString();
-  const id = `role-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const id = crypto.randomUUID();
 
   const newRole: Role = {
     id,

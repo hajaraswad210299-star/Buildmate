@@ -127,7 +127,7 @@ export async function saveFaqItem(item: Partial<FaqItem> & { question: string; a
     inMemoryFaq[existingIdx] = savedItem;
   } else {
     savedItem = {
-      id: item.id || `faq-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+      id: item.id || crypto.randomUUID(),
       question: item.question.trim(),
       answer: item.answer.trim(),
       sort_order: item.sort_order ?? inMemoryFaq.length + 1,

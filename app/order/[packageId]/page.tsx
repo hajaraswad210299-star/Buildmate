@@ -29,6 +29,8 @@ import { registerClientOrder } from "@/lib/data/orders";
 import { ServicePackage, Worker } from "@/lib/data/types";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { getSnapScriptUrl } from "@/lib/payments/snap-url";
+import { toWibDateString } from "@/lib/date/wib";
 
 interface PageProps {
   params: Promise<{ packageId: string }>;
@@ -69,7 +71,7 @@ function OrderFormContent({ params }: PageProps) {
   const dateOptions = Array.from({ length: 14 }).map((_, idx) => {
     const d = new Date();
     d.setDate(d.getDate() + idx + 1); // starting tomorrow
-    const iso = d.toISOString().split("T")[0];
+    const iso = toWibDateString(d);
     const dayName = d.toLocaleDateString("id-ID", { weekday: "short" });
     const dayDate = d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
     return { iso, dayName, dayDate };
@@ -810,7 +812,7 @@ function OrderFormContent({ params }: PageProps) {
 
         {/* Script Snap Midtrans Sandbox */}
         <Script
-          src="https://app.sandbox.midtrans.com/snap/snap.js"
+          src={getSnapScriptUrl()}
           data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
           strategy="afterInteractive"
         />

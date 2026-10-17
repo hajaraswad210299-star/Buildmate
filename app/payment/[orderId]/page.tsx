@@ -20,6 +20,7 @@ import { Order } from "@/lib/data/types";
 import { createClient } from "@/lib/supabase/client";
 import confetti from "canvas-confetti";
 import { toast } from "sonner";
+import { getSnapScriptUrl } from "@/lib/payments/snap-url";
 
 interface PageProps {
   params: Promise<{ orderId: string }>;
@@ -223,9 +224,9 @@ function PaymentStatusContent({ params }: PageProps) {
 
   return (
     <CustomerShell title="Status Pembayaran" hideBottomNav={true}>
-      {/* Script Snap Midtrans Sandbox */}
+      {/* Script Snap Midtrans */}
       <Script
-        src="https://app.sandbox.midtrans.com/snap/snap.js"
+        src={getSnapScriptUrl()}
         data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
         strategy="afterInteractive"
       />

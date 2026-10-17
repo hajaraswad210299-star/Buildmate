@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { reportCustomerProblem, getOrderById } from "@/lib/data/orders";
+import { reportCustomerProblem } from "@/lib/data/orders";
+import { authorizeOrderAccess } from "@/lib/orders/access";
 
 export async function POST(
   request: Request,
@@ -8,22 +8,22 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Akses tidak diizinkan." }, { status: 401 });
+    const access = await authorizeOrderAccess(id, "owner_action");
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
+    const order = access.order;
 
-    const order = await getOrderById(id);
-    if (!order) {
-      return NextResponse.json({ error: "Pesanan tidak ditemukan." }, { status: 404 });
+    if (order.status === "pending_payment" || order.status === "cancelled") {
+      return NextResponse.json(
+        { error: "Komplain tidak dapat diajukan untuk pesanan dengan status ini." },
+        { status: 400 }
+      );
     }
 
     const body = await request.json();
-    const { problem_type, description, photo_path, is_warranty = false } = body;
+    const { problem_type, description, photo_path } = body;
+    const is_warranty = body?.is_warranty === true && order.customer?.is_plus === true;
 
     if (!problem_type || !description) {
       return NextResponse.json(

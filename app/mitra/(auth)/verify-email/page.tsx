@@ -89,13 +89,6 @@ function MitraVerifyEmailContent() {
             onClick={async () => {
               try {
                 setResendStatus("Mengaktifkan akun mitra...");
-                if (email && email !== "emailmu") {
-                  await fetch("/api/auth/verify-email", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email: email.trim() }),
-                  });
-                }
 
                 const supabase = createClient();
                 const { data: { user } } = await supabase.auth.getUser();

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { confirmCustomerOrder, getOrderById } from "@/lib/data/orders";
+import { confirmCustomerOrder } from "@/lib/data/orders";
+import { authorizeOrderAccess } from "@/lib/orders/access";
 
 export async function POST(
   request: Request,
@@ -8,19 +8,11 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Akses tidak diizinkan." }, { status: 401 });
+    const access = await authorizeOrderAccess(id, "owner_action");
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
-
-    const order = await getOrderById(id);
-    if (!order) {
-      return NextResponse.json({ error: "Pesanan tidak ditemukan." }, { status: 404 });
-    }
+    void access.order;
 
     const body = await request.json().catch(() => ({}));
     const { note, photo_path } = body;

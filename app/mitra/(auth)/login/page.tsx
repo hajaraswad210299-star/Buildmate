@@ -110,27 +110,6 @@ function MitraLoginForm() {
     }
   };
 
-  const handleVerifyAndLogin = async () => {
-    if (!email) return;
-    try {
-      setLoading(true);
-      setErrorMsg("");
-      const res = await fetch("/api/auth/verify-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.error || "Gagal verifikasi");
-      }
-      setUnverifiedEmail(false);
-      await handleLogin();
-    } catch (err: any) {
-      setErrorMsg(err?.message || "Gagal memverifikasi akun mitra.");
-      setLoading(false);
-    }
-  };
 
   return (
     <AuthLayout
@@ -152,13 +131,6 @@ function MitraLoginForm() {
               <span>{errorMsg}</span>
               {unverifiedEmail && (
                 <div className="mt-2 flex flex-wrap gap-2 items-center">
-                  <button
-                    type="button"
-                    onClick={handleVerifyAndLogin}
-                    className="px-2.5 py-1 rounded-lg bg-danger-600 hover:bg-danger-700 active:scale-95 text-white font-semibold text-[11px] transition-all"
-                  >
-                    Verifikasi & Masuk Sekarang
-                  </button>
                   <Link
                     href={`/mitra/verify-email?email=${encodeURIComponent(email)}`}
                     className="font-medium underline text-danger-900 hover:text-danger-700 text-[11px]"

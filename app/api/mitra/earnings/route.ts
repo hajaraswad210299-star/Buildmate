@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { getMitraEarnings } from "@/lib/data/mitra";
+import { requireWorker } from "@/lib/auth/require-worker";
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const range = (searchParams.get("range") || "all") as "month" | "3months" | "all";
 
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const workerId = user?.id || "w-1";
+    const auth = await requireWorker({ requireApproved: true });
+    if (!auth.ok) return auth.response;
+    const workerId = auth.userId;
     const earnings = await getMitraEarnings(workerId, range);
 
     return NextResponse.json({

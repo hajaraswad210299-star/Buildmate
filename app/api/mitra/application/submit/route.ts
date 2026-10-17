@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { submitMitraApplication } from "@/lib/data/mitra";
+import { requireWorker } from "@/lib/auth/require-worker";
 
 export async function POST() {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const userId = user?.id || "usr-w-1";
+    const auth = await requireWorker({ requireApproved: false });
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
     const result = await submitMitraApplication(userId);
 
     if (!result.success) {

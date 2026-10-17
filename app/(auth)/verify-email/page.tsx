@@ -7,6 +7,7 @@ import { AuthLayout } from "@/components/auth/AuthLayout";
 import { ResendButton } from "@/components/auth/ResendButton";
 import { SmsTracking, ArrowRight } from "@/lib/icons";
 import { createClient } from "@/lib/supabase/client";
+import { safeNext } from "@/lib/auth/safe-redirect";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -69,13 +70,6 @@ function VerifyEmailContent() {
           onClick={async () => {
             try {
               setToastMsg("Mengaktifkan akun...");
-              if (email && email !== "emailmu") {
-                await fetch("/api/auth/verify-email", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ email: email.trim() }),
-                });
-              }
 
               const supabase = createClient();
               const { data: { user } } = await supabase.auth.getUser();
@@ -88,10 +82,10 @@ function VerifyEmailContent() {
                   .maybeSingle();
 
                 if (!profile?.onboarding_completed || !profile?.phone) {
-                  window.location.href = `/welcome?next=${encodeURIComponent(searchParams.get("next") || "/")}`;
+                  window.location.href = `/welcome?next=${encodeURIComponent(safeNext(searchParams.get("next"), "/"))}`;
                   return;
                 }
-                window.location.href = searchParams.get("next") || "/";
+                window.location.href = safeNext(searchParams.get("next"), "/");
               } else {
                 window.location.href = `/login?email=${encodeURIComponent(email)}&verified=true`;
               }

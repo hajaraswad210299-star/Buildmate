@@ -56,9 +56,10 @@ export async function POST(request: Request) {
     });
 
     if (!result.success) {
+      const status = result.error?.includes("Undangan tidak ditemukan") ? 403 : 400;
       return NextResponse.json(
         { error: result.error || "Gagal mengaktifkan akun staf" },
-        { status: 400 }
+        { status }
       );
     }
 

@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { safeNext } from "@/lib/auth/safe-redirect";
 
 const OPEN_ADMIN_PATHS = [
   "/admin/login",
@@ -25,6 +27,24 @@ const CUSTOMER_PROTECTED_PATHS = [
   "/account",
   "/welcome",
 ];
+
+type AdminAccess = "admin" | "staff_active" | "staff_invited" | "staff_disabled" | "none";
+
+async function getAdminAccess(userId: string): Promise<AdminAccess> {
+  const { data: profile, error } = await createAdminClient()
+    .from("profiles")
+    .select("role, staff_status")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error || !profile) return "none";
+  if (profile.role === "admin") return "admin";
+  if (profile.role === "staff") {
+    if (profile.staff_status === "active") return "staff_active";
+    if (profile.staff_status === "disabled") return "staff_disabled";
+    return "staff_invited";
+  }
+  return "none";
+}
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -81,159 +101,49 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(callbackUrl);
   }
 
-  // 1. ADMIN ROUTES
+  // 1. ADMIN ROUTES (akses ditentukan HANYA dari tabel profiles)
   if (pathname.startsWith("/admin")) {
-    if (pathname === "/admin/login") {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user) {
-        const userEmail = (user.email || "").toLowerCase();
-        if (userEmail === "hajaraswad210299@gmail.com") {
-          const accountUrl = request.nextUrl.clone();
-          accountUrl.pathname = "/account";
-          accountUrl.search = "";
-          const redirectRes = NextResponse.redirect(accountUrl);
-          redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-          return redirectRes;
-        }
-
-        const configuredAdmins = [
-          (process.env.ADMIN_EMAIL || "").toLowerCase(),
-          (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
-          "jonathanhuang88@proton.me",
-        ].filter((e) => Boolean(e) && e !== "hajaraswad210299@gmail.com");
-        const isConfiguredAdmin = Boolean(user.email && configuredAdmins.includes(user.email.toLowerCase()));
-
-        if (isConfiguredAdmin) {
-          const dashboardUrl = request.nextUrl.clone();
-          dashboardUrl.pathname = "/admin";
-          dashboardUrl.search = "";
-          const redirectRes = NextResponse.redirect(dashboardUrl);
-          redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-          return redirectRes;
-        }
-
-        const meta = user.user_metadata || {};
-        const isStaff = meta.role === "staff" || meta.signup_as === "staff";
-        if (isStaff) {
-          const status = meta.staff_status || "invited";
-          if (status === "invited") {
-            const acceptUrl = request.nextUrl.clone();
-            acceptUrl.pathname = "/admin/accept-invite";
-            return NextResponse.redirect(acceptUrl);
-          }
-          if (status === "disabled") {
-            const deniedUrl = request.nextUrl.clone();
-            deniedUrl.pathname = "/admin/denied";
-            return NextResponse.redirect(deniedUrl);
-          }
-          const dashboardUrl = request.nextUrl.clone();
-          dashboardUrl.pathname = "/admin";
-          dashboardUrl.search = "";
-          return NextResponse.redirect(dashboardUrl);
-        }
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-
-        if (profile?.role === "admin") {
-          const dashboardUrl = request.nextUrl.clone();
-          dashboardUrl.pathname = "/admin";
-          dashboardUrl.search = "";
-          const redirectRes = NextResponse.redirect(dashboardUrl);
-          redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-          return redirectRes;
-        }
-      }
-
-      response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-      response.headers.set("Pragma", "no-cache");
-      response.headers.set("Expires", "0");
-      return response;
-    }
+    const noStore = (res: NextResponse) => {
+      res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+      res.headers.set("Pragma", "no-cache");
+      res.headers.set("Expires", "0");
+      return res;
+    };
+    const redirectTo = (path: string, withNext = false) => {
+      const url = request.nextUrl.clone();
+      url.pathname = path;
+      url.search = "";
+      if (withNext) url.searchParams.set("next", pathname);
+      return noStore(NextResponse.redirect(url));
+    };
 
     const isOpen = OPEN_ADMIN_PATHS.some(
       (path) => pathname === path || pathname.startsWith(`${path}/`)
     );
 
-    if (isOpen) {
-      response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-      return response;
-    }
-
     const {
       data: { user },
-      error: userError,
     } = await supabase.auth.getUser();
 
-    if (!user || userError) {
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = "/admin/login";
-      loginUrl.searchParams.set("next", pathname);
-      const redirectRes = NextResponse.redirect(loginUrl);
-      redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-      redirectRes.headers.set("Pragma", "no-cache");
-      redirectRes.headers.set("Expires", "0");
-      return redirectRes;
+    if (!user) {
+      if (isOpen) return noStore(response);
+      return redirectTo("/admin/login", true);
     }
 
-    const userEmail = (user.email || "").toLowerCase();
-    if (userEmail === "hajaraswad210299@gmail.com") {
-      const deniedUrl = request.nextUrl.clone();
-      deniedUrl.pathname = "/admin/denied";
-      const redirectRes = NextResponse.redirect(deniedUrl);
-      redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-      return redirectRes;
+    const access = await getAdminAccess(user.id);
+
+    if (pathname === "/admin/login") {
+      if (access === "admin" || access === "staff_active") return redirectTo("/admin");
+      if (access === "staff_invited") return redirectTo("/admin/accept-invite");
+      if (access === "staff_disabled") return redirectTo("/admin/denied");
+      return noStore(response);
     }
 
-    const configuredAdmins = [
-      (process.env.ADMIN_EMAIL || "").toLowerCase(),
-      (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
-      "jonathanhuang88@proton.me",
-    ].filter((e) => Boolean(e) && e !== "hajaraswad210299@gmail.com");
-    const isConfiguredAdmin = Boolean(user.email && configuredAdmins.includes(user.email.toLowerCase()));
+    if (isOpen) return noStore(response);
 
-    if (!isConfiguredAdmin) {
-      const meta = user.user_metadata || {};
-      const isStaff = meta.role === "staff" || meta.signup_as === "staff";
-      if (isStaff) {
-        const status = meta.staff_status || "invited";
-        if (status === "invited" && pathname !== "/admin/accept-invite") {
-          const acceptUrl = request.nextUrl.clone();
-          acceptUrl.pathname = "/admin/accept-invite";
-          return NextResponse.redirect(acceptUrl);
-        }
-        if (status === "disabled") {
-          const deniedUrl = request.nextUrl.clone();
-          deniedUrl.pathname = "/admin/denied";
-          return NextResponse.redirect(deniedUrl);
-        }
-      } else {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-
-        if (!profile || profile.role !== "admin") {
-          const deniedUrl = request.nextUrl.clone();
-          deniedUrl.pathname = "/admin/denied";
-          const redirectRes = NextResponse.redirect(deniedUrl);
-          redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-          return redirectRes;
-        }
-      }
-    }
-
-    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-    response.headers.set("Pragma", "no-cache");
-    response.headers.set("Expires", "0");
-    return response;
+    if (access === "admin" || access === "staff_active") return noStore(response);
+    if (access === "staff_invited") return redirectTo("/admin/accept-invite");
+    return redirectTo("/admin/denied");
   }
 
   // 2. MITRA / WORKER ROUTES (A3, A4, B11.8, B11.9)
@@ -248,7 +158,7 @@ export async function middleware(request: NextRequest) {
 
     if (isOpenMitra) {
       if (user) {
-        const { data: profile } = await supabase
+        const { data: profile } = await createAdminClient()
           .from("profiles")
           .select("role")
           .eq("id", user.id)
@@ -259,7 +169,7 @@ export async function middleware(request: NextRequest) {
         }
 
         if (profile?.role === "worker") {
-          const { data: worker } = await supabase
+          const { data: worker } = await createAdminClient()
             .from("workers")
             .select("application_status")
             .eq("user_id", user.id)
@@ -290,7 +200,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await createAdminClient()
       .from("profiles")
       .select("role")
       .eq("id", user.id)
@@ -304,7 +214,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Role is worker: enforce application status gates (A4, B11.8)
-    const { data: worker } = await supabase
+    const { data: worker } = await createAdminClient()
       .from("workers")
       .select("application_status")
       .eq("user_id", user.id)
@@ -337,7 +247,7 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (user) {
-      const { data: profile } = await supabase
+      const { data: profile } = await createAdminClient()
         .from("profiles")
         .select("role, onboarding_completed, phone")
         .eq("id", user.id)
@@ -351,21 +261,15 @@ export async function middleware(request: NextRequest) {
       }
 
       // Customer
-      const nextParam = request.nextUrl.searchParams.get("next");
-      const safeNext =
-        nextParam &&
-        nextParam.startsWith("/") &&
-        !nextParam.startsWith("//") &&
-        !nextParam.startsWith("/admin") &&
-        !nextParam.startsWith("/mitra")
-          ? nextParam
-          : "/";
+      const candidate = safeNext(request.nextUrl.searchParams.get("next"), "/");
+      const safeNextValue =
+        candidate.startsWith("/admin") || candidate.startsWith("/mitra") ? "/" : candidate;
 
       if (!profile?.onboarding_completed || !profile?.phone) {
-        return NextResponse.redirect(new URL(`/welcome?next=${encodeURIComponent(safeNext)}`, request.url));
+        return NextResponse.redirect(new URL(`/welcome?next=${encodeURIComponent(safeNextValue)}`, request.url));
       }
 
-      return NextResponse.redirect(new URL(safeNext, request.url));
+      return NextResponse.redirect(new URL(safeNextValue, request.url));
     }
 
     return response;
@@ -388,7 +292,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await createAdminClient()
       .from("profiles")
       .select("role, onboarding_completed, phone")
       .eq("id", user.id)

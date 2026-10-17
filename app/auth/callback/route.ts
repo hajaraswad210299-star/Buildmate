@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/auth/safe-redirect";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -10,17 +11,17 @@ export async function GET(request: Request) {
   const as = url.searchParams.get("as");
   const error = url.searchParams.get("error");
 
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
-  const baseOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : url.origin;
+  const baseOrigin = process.env.NEXT_PUBLIC_SITE_URL
+    ? new URL(process.env.NEXT_PUBLIC_SITE_URL).origin
+    : url.origin;
 
   // Prevent open redirect: only local paths allowed
-  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
+  const safeNextPath = safeNext(next, "/");
 
   if (error) {
-    const errorRedirect = safeNext.startsWith("/admin")
+    const errorRedirect = safeNextPath.startsWith("/admin")
       ? `/admin/login?error=${encodeURIComponent(error)}`
-      : safeNext.startsWith("/mitra")
+      : safeNextPath.startsWith("/mitra")
       ? `/mitra/login?error=${encodeURIComponent(error)}`
       : `/login?error=${encodeURIComponent(error)}`;
     return NextResponse.redirect(new URL(errorRedirect, baseOrigin));
@@ -35,9 +36,9 @@ export async function GET(request: Request) {
     });
     if (verifyError) {
       console.error("verifyOtp error:", verifyError);
-      const errorRedirect = safeNext.startsWith("/admin")
+      const errorRedirect = safeNextPath.startsWith("/admin")
         ? "/admin/login?error=link_expired"
-        : safeNext.startsWith("/mitra")
+        : safeNextPath.startsWith("/mitra")
         ? "/mitra/login?error=link_expired"
         : "/login?error=link_expired";
       return NextResponse.redirect(new URL(errorRedirect, baseOrigin));
@@ -46,29 +47,29 @@ export async function GET(request: Request) {
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
     if (exchangeError) {
       console.error("exchangeCodeForSession error:", exchangeError);
-      const errorRedirect = safeNext.startsWith("/admin")
+      const errorRedirect = safeNextPath.startsWith("/admin")
         ? "/admin/login?error=link_expired"
-        : safeNext.startsWith("/mitra")
+        : safeNextPath.startsWith("/mitra")
         ? "/mitra/login?error=link_expired"
         : "/login?error=link_expired";
       return NextResponse.redirect(new URL(errorRedirect, baseOrigin));
     }
   } else {
-    const errorRedirect = safeNext.startsWith("/admin")
+    const errorRedirect = safeNextPath.startsWith("/admin")
       ? "/admin/login?error=invalid_link"
-      : safeNext.startsWith("/mitra")
+      : safeNextPath.startsWith("/mitra")
       ? "/mitra/login?error=invalid_link"
       : "/login?error=invalid_link";
     return NextResponse.redirect(new URL(errorRedirect, baseOrigin));
   }
 
   // If user is resetting password, allow them directly to their reset form
-  if (safeNext.includes("reset-password")) {
-    return NextResponse.redirect(new URL(safeNext, baseOrigin));
+  if (safeNextPath.includes("reset-password")) {
+    return NextResponse.redirect(new URL(safeNextPath, baseOrigin));
   }
 
   // If user is accepting staff invite, route directly to accept-invite form
-  if (safeNext.includes("accept-invite") || type === "invite") {
+  if (safeNextPath.includes("accept-invite") || type === "invite") {
     return NextResponse.redirect(new URL("/admin/accept-invite", baseOrigin));
   }
 
@@ -77,32 +78,6 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser();
 
   if (user) {
-    const meta = user.user_metadata || {};
-    const isStaff = meta.role === "staff" || meta.signup_as === "staff";
-    const staffStatus = meta.staff_status || "invited";
-
-    // Immediate check for staff: must go to accept-invite if invited
-    if (isStaff) {
-      if (staffStatus === "invited") {
-        return NextResponse.redirect(new URL("/admin/accept-invite", baseOrigin));
-      }
-      if (staffStatus === "disabled") {
-        return NextResponse.redirect(new URL("/admin/denied", baseOrigin));
-      }
-      const target =
-        safeNext.startsWith("/admin") && safeNext !== "/admin/accept-invite"
-          ? safeNext
-          : "/admin";
-      return NextResponse.redirect(new URL(target, baseOrigin));
-    }
-
-    const configuredAdmins = [
-      (process.env.ADMIN_EMAIL || "").toLowerCase(),
-      (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
-      "jonathanhuang88@proton.me",
-    ].filter((e) => Boolean(e) && e !== "hajaraswad210299@gmail.com");
-    const isConfiguredAdmin = Boolean(user.email && configuredAdmins.includes(user.email.toLowerCase()));
-
     let profile: any = null;
 
     try {
@@ -126,19 +101,7 @@ export async function GET(request: Request) {
         .single();
 
       if (!existingProfile) {
-        const isStaffInvite =
-          user.user_metadata?.signup_as === "staff" ||
-          user.user_metadata?.role === "staff" ||
-          type === "invite" ||
-          safeNext.includes("accept-invite");
-
-        const targetRole = isConfiguredAdmin
-          ? "admin"
-          : isStaffInvite
-          ? "staff"
-          : as === "worker"
-          ? "worker"
-          : "customer";
+        const targetRole = as === "worker" ? "worker" : "customer";
 
         const { data: createdProfile } = await adminSupabase
           .from("profiles")
@@ -146,42 +109,16 @@ export async function GET(request: Request) {
             id: user.id,
             full_name: googleName,
             avatar_url: googleAvatar,
-            role: targetRole === "staff" ? "customer" : targetRole,
+            role: targetRole,
             onboarding_completed: false,
           })
           .select()
           .single();
 
         profile = createdProfile;
-        if (!isStaffInvite && targetRole !== "admin") {
-          await adminSupabase.from("subscriptions").insert({ user_id: user.id }).select();
-        }
+        await adminSupabase.from("subscriptions").insert({ user_id: user.id }).select();
       } else {
         profile = existingProfile;
-        const userEmail = (user.email || "").toLowerCase();
-        const isCustomerExplicit = userEmail === "hajaraswad210299@gmail.com";
-
-        if (isCustomerExplicit) {
-          if (existingProfile.role !== "customer") {
-            const { data: updatedProfile } = await adminSupabase
-              .from("profiles")
-              .update({ role: "customer" })
-              .eq("id", user.id)
-              .select()
-              .single();
-            if (updatedProfile) profile = updatedProfile;
-          }
-          if (profile) profile.role = "customer";
-        } else if (isConfiguredAdmin && existingProfile.role !== "admin") {
-          // If configured admin, guarantee profile role is admin
-          const { data: updatedProfile } = await adminSupabase
-            .from("profiles")
-            .update({ role: "admin" })
-            .eq("id", user.id)
-            .select()
-            .single();
-          if (updatedProfile) profile = updatedProfile;
-        }
         // Sync avatar if existing is empty
         if (!existingProfile.avatar_url && googleAvatar) {
           const { data: updatedProfile } = await adminSupabase
@@ -203,12 +140,9 @@ export async function GET(request: Request) {
       profile = fallbackProf;
     }
 
-    const userEmail = (user.email || "").toLowerCase();
-    const isCustomerExplicit = userEmail === "hajaraswad210299@gmail.com";
-
     // Handle Admin or Email Change
-    if (!isCustomerExplicit && (isConfiguredAdmin || profile?.role === "admin" || type === "email_change")) {
-      let target = safeNext.startsWith("/admin") ? safeNext : "/admin/settings";
+    if (profile?.role === "admin" || type === "email_change") {
+      let target = safeNextPath.startsWith("/admin") ? safeNextPath : "/admin/settings";
       if (type === "email_change") {
         target = "/admin/settings?verified=email";
       } else if (target.startsWith("/admin/settings") && !target.includes("verified=")) {
@@ -218,12 +152,8 @@ export async function GET(request: Request) {
     }
 
     // Handle Staff (Direct to accept-invite if invited, or /admin if active)
-    if (
-      profile?.role === "staff" ||
-      user.user_metadata?.role === "staff" ||
-      user.user_metadata?.signup_as === "staff"
-    ) {
-      const status = profile?.staff_status || user.user_metadata?.staff_status || "invited";
+    if (profile?.role === "staff") {
+      const status = profile?.staff_status || "invited";
       if (status === "invited") {
         return NextResponse.redirect(new URL("/admin/accept-invite", baseOrigin));
       }
@@ -231,8 +161,8 @@ export async function GET(request: Request) {
         return NextResponse.redirect(new URL("/admin/denied", baseOrigin));
       }
       const target =
-        safeNext.startsWith("/admin") && safeNext !== "/admin/accept-invite"
-          ? safeNext
+        safeNextPath.startsWith("/admin") && safeNextPath !== "/admin/accept-invite"
+          ? safeNextPath
           : "/admin";
       return NextResponse.redirect(new URL(target, baseOrigin));
     }
@@ -265,21 +195,21 @@ export async function GET(request: Request) {
         return NextResponse.redirect(new URL("/mitra/status", baseOrigin));
       }
       const target =
-        safeNext.startsWith("/mitra") &&
-        safeNext !== "/mitra/daftar" &&
-        safeNext !== "/mitra/status" &&
-        !safeNext.startsWith("/mitra/login")
-          ? safeNext
+        safeNextPath.startsWith("/mitra") &&
+        safeNextPath !== "/mitra/daftar" &&
+        safeNextPath !== "/mitra/status" &&
+        !safeNextPath.startsWith("/mitra/login")
+          ? safeNextPath
           : "/mitra";
       return NextResponse.redirect(new URL(target, baseOrigin));
     }
 
     // Customer: if phone is missing or onboarding not done, go to welcome page
     const customerNext =
-      safeNext &&
-      !safeNext.startsWith("/admin") &&
-      !safeNext.startsWith("/mitra")
-        ? safeNext
+      safeNextPath &&
+      !safeNextPath.startsWith("/admin") &&
+      !safeNextPath.startsWith("/mitra")
+        ? safeNextPath
         : "/";
 
     if (!profile?.onboarding_completed || !profile?.phone) {

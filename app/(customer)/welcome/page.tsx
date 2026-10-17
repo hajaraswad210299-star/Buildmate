@@ -6,11 +6,12 @@ import { PhoneField } from "@/components/auth/PhoneField";
 import { User, Location, TickCircle, Warning2, ArrowRight } from "@/lib/icons";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { safeNext } from "@/lib/auth/safe-redirect";
 
 function WelcomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/";
+  const next = safeNext(searchParams.get("next"), "/");
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");

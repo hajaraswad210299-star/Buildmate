@@ -18,6 +18,7 @@ import { formatRupiah, formatDateId } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
+import { getSnapScriptUrl } from "@/lib/payments/snap-url";
 
 export default function PlusPage() {
   const [user, setUser] = useState<any>(null);
@@ -83,11 +84,7 @@ export default function PlusPage() {
           onSuccess: async () => {
             toast.success("Pembayaran berhasil! Mengaktifkan status Member Plus...");
             try {
-              await fetch("/api/subscriptions/status", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sub_order_id: subOrderId }),
-              });
+              await fetch("/api/subscriptions/status", { cache: "no-store" });
             } catch {}
             setIsSubscribed(true);
             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
@@ -351,9 +348,9 @@ export default function PlusPage() {
         </div>
       </div>
 
-      {/* Script Snap Midtrans Sandbox */}
+      {/* Script Snap Midtrans */}
       <Script
-        src="https://app.sandbox.midtrans.com/snap/snap.js"
+        src={getSnapScriptUrl()}
         data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
         strategy="afterInteractive"
       />

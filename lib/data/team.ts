@@ -212,14 +212,17 @@ export async function inviteStaffMember(params: {
       // ignore
     }
 
-    // Safely ensure profiles record has full_name without violating constraints
-    try {
-      await supabase.from("profiles").upsert({
-        id: newUserId,
-        full_name: cleanName,
-      });
-    } catch {
-      // ignore
+    // Profil staf ditulis oleh server (service role). Ini satu-satunya sumber izin.
+    const { error: profErr } = await supabase.from("profiles").upsert({
+      id: newUserId,
+      full_name: cleanName,
+      role: "staff",
+      staff_role_id: role.id,
+      staff_status: "invited",
+    });
+    if (profErr) {
+      console.error("Invite: gagal menulis profil staf:", profErr.message);
+      return { error: "Gagal menyimpan profil staf. Undangan dibatalkan." };
     }
   } catch (err: any) {
     console.warn("Supabase invite caught error:", err?.message);
@@ -289,9 +292,12 @@ export async function updateStaffRole(params: {
       },
     });
 
-    await supabase.from("profiles").update({
+    const { error: profErr } = await supabase.from("profiles").update({
       staff_role_id: role.id,
     }).eq("id", params.userId);
+    if (profErr) {
+      console.error("updateStaffRole: gagal update profiles.staff_role_id:", profErr.message);
+    }
   } catch {
     // continue
   }
@@ -423,6 +429,18 @@ export async function resendInvite(params: {
       emailSent = true;
     }
 
+    const { error: profErr } = await supabase
+      .from("profiles")
+      .update({
+        role: "staff",
+        staff_role_id: target.role_id,
+        staff_status: "invited",
+      })
+      .eq("id", target.id);
+    if (profErr) {
+      console.error("resendInvite: gagal update profil staf:", profErr.message);
+    }
+
     // 2. Always generate direct link (bypasses rate limit and gives instant access)
     try {
       const linkRes = await supabase.auth.admin.generateLink({
@@ -540,6 +558,19 @@ export async function acceptStaffInvite(params: {
 }> {
   const supabase = createAdminClient();
 
+  const supabaseCheck = createAdminClient();
+  const { data: invitedProfile, error: invErr } = await supabaseCheck
+    .from("profiles")
+    .select("role, staff_status, staff_role_id")
+    .eq("id", params.userId)
+    .maybeSingle();
+  if (invErr) {
+    return { success: false, error: "Gagal memeriksa undangan." };
+  }
+  if (!invitedProfile || invitedProfile.role !== "staff" || invitedProfile.staff_status !== "invited") {
+    return { success: false, error: "Undangan tidak ditemukan atau sudah dipakai." };
+  }
+
   let userEmail: string | undefined;
   let roleId: string | undefined;
 
@@ -548,7 +579,7 @@ export async function acceptStaffInvite(params: {
     const { data: userRes } = await supabase.auth.admin.getUserById(params.userId);
     if (userRes?.user) {
       userEmail = userRes.user.email;
-      roleId = userRes.user.user_metadata?.staff_role_id;
+      roleId = invitedProfile.staff_role_id ?? undefined;
       const updatePayload: any = {
         user_metadata: {
           ...userRes.user.user_metadata,
@@ -567,16 +598,14 @@ export async function acceptStaffInvite(params: {
     console.warn("Auth admin updateUserById notice:", authErr?.message);
   }
 
-  // 2. Safely update profiles table (only full_name to avoid check constraint on role or missing columns)
-  try {
-    await supabase
-      .from("profiles")
-      .update({
-        full_name: params.fullName.trim(),
-      })
-      .eq("id", params.userId);
-  } catch (dbErr: any) {
-    console.warn("Profiles update notice:", dbErr?.message);
+  const { error: updErr } = await supabase
+    .from("profiles")
+    .update({ full_name: params.fullName.trim(), staff_status: "active" })
+    .eq("id", params.userId)
+    .eq("role", "staff")
+    .eq("staff_status", "invited");
+  if (updErr) {
+    return { success: false, error: "Gagal mengaktifkan akun staf." };
   }
 
   // 3. Update in-memory staff if present

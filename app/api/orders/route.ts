@@ -4,6 +4,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createCustomerOrder, mapDbOrderToOrder } from "@/lib/data/orders";
 import { MOCK_ORDERS } from "@/lib/mock/data";
 import { Order, OrderStatus } from "@/lib/data/types";
+import { isPlusActive } from "@/lib/subscriptions/is-plus-active";
+import { getUserPermissions } from "@/lib/supabase/auth";
+import { hasPermission } from "@/lib/auth/permissions";
+import { isValidScheduledDate } from "@/lib/date/wib";
 
 export async function GET(request: Request) {
   try {
@@ -21,30 +25,18 @@ export async function GET(request: Request) {
 
     const adminSupabase = createAdminClient();
 
-    // Check user role
-    let role = "customer";
+    // Tentukan apakah boleh melihat SEMUA pesanan (admin, atau staf aktif dengan izin orders.view)
+    let canViewAll = false;
     if (user) {
-      const userEmail = (user.email || "").toLowerCase();
-      const configuredAdmins = [
-        (process.env.ADMIN_EMAIL || "").toLowerCase(),
-        (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
-        "jonathanhuang88@proton.me",
-      ].filter((e) => Boolean(e) && e !== "hajaraswad210299@gmail.com");
-
-      if (configuredAdmins.includes(userEmail)) {
-        role = "admin";
-      } else {
-        const { data: prof } = await adminSupabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-        if (prof?.role) {
-          role = prof.role;
-        } else if (user.user_metadata?.role) {
-          role = user.user_metadata.role;
-        }
-      }
+      const { data: prof } = await adminSupabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+      const perms = await getUserPermissions(user, prof);
+      canViewAll =
+        perms.isAdmin ||
+        (perms.isStaff && perms.staffStatus === "active" && hasPermission(perms.permissions, "orders.view", false));
     }
 
     // Query orders from Supabase with joins
@@ -62,7 +54,7 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false });
 
     // Non-admin users can ONLY see their own orders
-    if (role !== "admin" && role !== "staff") {
+    if (!canViewAll) {
       if (!user) {
         return NextResponse.json({ success: true, orders: [] });
       }
@@ -92,11 +84,7 @@ export async function GET(request: Request) {
 
     const plusUserSet = new Set(
       (subs || [])
-        .filter(
-          (s) =>
-            s.plan === "plus" &&
-            (!s.current_period_end || new Date(s.current_period_end) > new Date())
-        )
+        .filter((s) => isPlusActive(s))
         .map((s) => s.user_id)
     );
 
@@ -111,7 +99,7 @@ export async function GET(request: Request) {
 
     // If admin, merge with mock orders (putting real DB orders first)
     let combined: Order[] = [...mappedDbOrders];
-    if (role === "admin" || role === "staff") {
+    if (canViewAll) {
       const existingCodes = new Set(mappedDbOrders.map((o) => o.order_code));
       for (const m of MOCK_ORDERS) {
         if (!existingCodes.has(m.order_code)) {
@@ -229,6 +217,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!isValidScheduledDate(scheduled_date)) {
+      return NextResponse.json(
+        { error: "Tanggal jadwal tidak valid. Pilih tanggal mulai besok hingga 14 hari ke depan." },
+        { status: 400 }
+      );
+    }
+
     const adminSupabase = createAdminClient();
 
     // Fetch user profile
@@ -245,11 +240,7 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .single();
 
-    const isPlus = Boolean(
-      sub?.plan === "plus" &&
-        sub?.current_period_end &&
-        new Date(sub.current_period_end) > new Date()
-    );
+    const isPlus = isPlusActive(sub);
 
     // Save default address if requested
     if (save_default_address && address) {

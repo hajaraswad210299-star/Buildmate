@@ -1,6 +1,7 @@
 import { Order, OrderPhoto } from "./types";
 import { MOCK_ORDERS } from "../mock/data";
 import { Actor, canTransition, OrderStatus } from "../orders/transitions";
+import { isPlusActive } from "../subscriptions/is-plus-active";
 
 const inMemoryOrders = [...MOCK_ORDERS];
 
@@ -169,11 +170,7 @@ export async function getOrders(filter: OrderFilter = {}): Promise<Order[]> {
 
         const plusUserSet = new Set(
           (subs || [])
-            .filter(
-              (s) =>
-                s.plan === "plus" &&
-                (!s.current_period_end || new Date(s.current_period_end) > new Date())
-            )
+            .filter((s) => isPlusActive(s))
             .map((s) => s.user_id)
         );
 
@@ -329,10 +326,7 @@ export async function getOrderById(id: string): Promise<Order | null> {
           .select("plan, current_period_end")
           .eq("user_id", dbOrder.customer_id)
           .single();
-        const isPlus = Boolean(
-          sub?.plan === "plus" &&
-            (!sub.current_period_end || new Date(sub.current_period_end) > new Date())
-        );
+        const isPlus = isPlusActive(sub);
         const mapped = mapDbOrderToOrder(dbOrder, isPlus);
         registerClientOrder(mapped);
         return mapped;
@@ -343,6 +337,51 @@ export async function getOrderById(id: string): Promise<Order | null> {
   }
 
   return null;
+}
+
+/**
+ * Selalu baca pesanan langsung dari database (server-side), lalu segarkan cache memori.
+ * Pakai fungsi ini di API route, bukan getOrderById.
+ */
+export async function getOrderByIdFromDb(id: string): Promise<Order | null> {
+  if (typeof window !== "undefined") return null;
+  const { createAdminClient } = await import("../supabase/admin");
+  const adminSupabase = createAdminClient();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+  let query = adminSupabase
+    .from("orders")
+    .select(`
+      *,
+      customer:profiles!customer_id (id, full_name, phone, avatar_url),
+      worker:workers!worker_id (id, full_name, phone, service_area, is_verified, user_id, photo_path),
+      package:service_packages!package_id (id, name, inclusions, exclusions, categories(name)),
+      photos:order_photos(*),
+      events:order_events(*),
+      complaints(*)
+    `);
+  query = isUuid ? query.eq("id", id) : query.eq("order_code", id);
+
+  const { data: dbOrder, error } = await query.maybeSingle();
+  if (error) {
+    console.error("getOrderByIdFromDb error:", error);
+    return null;
+  }
+  if (!dbOrder) return null;
+
+  const { data: sub } = await adminSupabase
+    .from("subscriptions")
+    .select("plan, current_period_end")
+    .eq("user_id", dbOrder.customer_id)
+    .maybeSingle();
+  const isPlus = Boolean(
+    sub?.plan === "plus" &&
+      sub.current_period_end &&
+      new Date(sub.current_period_end) > new Date()
+  );
+  const mapped = mapDbOrderToOrder(dbOrder, isPlus);
+  registerClientOrder(mapped);
+  return mapped;
 }
 
 export async function transitionOrder(

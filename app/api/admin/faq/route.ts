@@ -9,6 +9,8 @@ import {
 import { logAdminAudit } from "@/lib/data/audit";
 
 export async function GET() {
+  const auth = await requireApiPermission("content.manage");
+  if (!auth.authorized) return auth.response;
   try {
     const items = await getFaqItems(false);
     return NextResponse.json({

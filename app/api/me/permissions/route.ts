@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserPermissions } from "@/lib/supabase/auth";
 
 export async function GET() {
@@ -17,11 +18,11 @@ export async function GET() {
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await createAdminClient()
       .from("profiles")
       .select("*")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     const permContext = await getUserPermissions(user, profile);
 

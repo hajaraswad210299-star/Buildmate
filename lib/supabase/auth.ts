@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import {
@@ -25,28 +26,7 @@ export async function getUserPermissions(
   user: any,
   profile: any
 ): Promise<UserPermissionContext> {
-  const userEmail = (user?.email || "").toLowerCase();
-  const isCustomerExplicit = userEmail === "hajaraswad210299@gmail.com";
-
-  if (isCustomerExplicit) {
-    return {
-      permissions: [],
-      isAdmin: false,
-      isStaff: false,
-      roleName: "customer",
-      staffStatus: null,
-    };
-  }
-
-  const configuredAdmins = [
-    (process.env.ADMIN_EMAIL || "").toLowerCase(),
-    (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
-    "jonathanhuang88@proton.me",
-  ].filter((e) => Boolean(e) && e !== "hajaraswad210299@gmail.com");
-  const isSuperAdmin = Boolean(
-    (user.email && configuredAdmins.includes(user.email.toLowerCase())) ||
-    profile?.role === "admin"
-  );
+  const isSuperAdmin = profile?.role === "admin";
 
   if (isSuperAdmin) {
     return {
@@ -58,10 +38,10 @@ export async function getUserPermissions(
     };
   }
 
-  const role = profile?.role || user.user_metadata?.role || user.user_metadata?.signup_as;
+  const role = profile?.role || "customer";
   if (role === "staff") {
-    const status = profile?.staff_status || user.user_metadata?.staff_status || "invited";
-    const roleId = profile?.staff_role_id || user.user_metadata?.staff_role_id;
+    const status = profile?.staff_status || "invited";
+    const roleId = profile?.staff_role_id;
 
     if (status !== "active") {
       return {
@@ -122,44 +102,16 @@ export async function requireRole(
     redirect(options?.redirectUrl || "/admin/login");
   }
 
-  const { data: profile } = await supabase
+  const { data: profile } = await createAdminClient()
     .from("profiles")
     .select("*")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-  const userEmail = (user?.email || "").toLowerCase();
-  const isCustomerExplicit = userEmail === "hajaraswad210299@gmail.com";
-
-  if (isCustomerExplicit) {
-    if (roles.includes("customer")) {
-      return { user, profile: { ...profile, role: "customer" } };
-    }
-    redirect(options?.deniedUrl || "/admin/denied");
-  }
-
-  const configuredAdmins = [
-    (process.env.ADMIN_EMAIL || "").toLowerCase(),
-    (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
-    "jonathanhuang88@proton.me",
-  ].filter((e) => Boolean(e) && e !== "hajaraswad210299@gmail.com");
-  const isConfiguredAdmin = Boolean(user.email && configuredAdmins.includes(user.email.toLowerCase()));
 
   if (profile && roles.includes(profile.role as UserRole)) {
     return { user, profile };
-  }
-
-  if (isConfiguredAdmin && roles.includes("admin")) {
-    return {
-      user,
-      profile: profile || {
-        id: user.id,
-        full_name: user.user_metadata?.full_name || "Super Admin",
-        role: "admin",
-        onboarding_completed: true,
-      },
-    };
   }
 
   redirect(options?.deniedUrl || "/admin/denied");
@@ -184,11 +136,11 @@ export async function requirePermission(
     redirect(options?.redirectUrl || "/admin/login");
   }
 
-  const { data: profile } = await supabase
+  const { data: profile } = await createAdminClient()
     .from("profiles")
     .select("*")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   const permContext = await getUserPermissions(user, profile);
 
@@ -269,11 +221,11 @@ export async function requireApiPermission(
       };
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await createAdminClient()
       .from("profiles")
       .select("*")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     const permContext = await getUserPermissions(user, profile);
 
@@ -335,11 +287,11 @@ export async function requireApiSuperAdmin(): Promise<ApiAuthResult> {
       };
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await createAdminClient()
       .from("profiles")
       .select("*")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     const permContext = await getUserPermissions(user, profile);
 
@@ -378,11 +330,11 @@ export async function getCurrentUser() {
 
     if (!user || error) return null;
 
-    const { data: profile } = await supabase
+    const { data: profile } = await createAdminClient()
       .from("profiles")
       .select("*")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     return { user, profile };
   } catch {
@@ -403,11 +355,11 @@ export async function getCurrentAdmin() {
 
     if (!user || error) return null;
 
-    const { data: profile } = await supabase
+    const { data: profile } = await createAdminClient()
       .from("profiles")
       .select("*")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     return { user, profile };
   } catch {
