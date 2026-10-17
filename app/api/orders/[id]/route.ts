@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getOrderById, registerClientOrder } from "@/lib/data/orders";
+import { registerClientOrder } from "@/lib/data/orders";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getOrderForRequester } from "@/lib/orders/access";
 
 export async function GET(
   request: Request,
@@ -8,7 +9,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    let order = await getOrderById(id);
+    // Owner, or admin/staff with orders.view (C08, B13)
+    const access = await getOrderForRequester(id, "owner_or_staff");
+    if (!access.ok) return access.response;
+    let order = access.order;
 
     // If still pending, auto-sync with Midtrans Status API in case webhook was delayed
     if (order && order.status === "pending_payment") {
@@ -30,40 +34,49 @@ export async function GET(
             statusData.transaction_status === "settlement" ||
             (statusData.transaction_status === "capture" && statusData.fraud_status === "accept");
 
-          if (isSuccess) {
+          const amountMatches =
+            Number(parseFloat(statusData.gross_amount)) === Number(order.total);
+
+          if (isSuccess && amountMatches) {
             const nowIso = new Date().toISOString();
             const adminSupabase = createAdminClient();
 
-            await adminSupabase
+            // Server-to-server status check (same trust as the webhook); only the
+            // request that actually moves the row writes the event.
+            const { data: moved } = await adminSupabase
               .from("orders")
               .update({ status: "paid", paid_at: nowIso, updated_at: nowIso })
-              .eq("id", order.id);
+              .eq("id", order.id)
+              .eq("status", "pending_payment")
+              .select("id");
+            const didMove = Boolean(moved && moved.length > 0);
+            if (didMove) {
+              await adminSupabase.from("order_events").insert({
+                order_id: order.id,
+                event_type: "payment_settled",
+                from_status: "pending_payment",
+                to_status: "paid",
+                actor_type: "system",
+                actor_name: "Midtrans Sync",
+                note: `Pembayaran terkonfirmasi via Midtrans Sync (${statusData.payment_type || "snap"}).`,
+              });
 
-            await adminSupabase.from("order_events").insert({
-              order_id: order.id,
-              event_type: "payment_settled",
-              from_status: "pending_payment",
-              to_status: "paid",
-              actor_type: "system",
-              actor_name: "Midtrans Sync",
-              note: `Pembayaran terkonfirmasi via Midtrans Sync (${statusData.payment_type || "snap"}).`,
-            });
+              await adminSupabase
+                .from("payments")
+                .update({
+                  status: "success",
+                  raw_payload: statusData,
+                  processed_at: nowIso,
+                })
+                .eq("provider_order_id", `ORD-${order.order_code}`);
 
-            await adminSupabase
-              .from("payments")
-              .update({
-                status: "success",
-                raw_payload: statusData,
-                processed_at: nowIso,
-              })
-              .eq("provider_order_id", `ORD-${order.order_code}`);
-
-            order = {
-              ...order,
-              status: "paid",
-              paid_at: nowIso,
-            };
-            registerClientOrder(order);
+              order = {
+                ...order,
+                status: "paid",
+                paid_at: nowIso,
+              };
+              registerClientOrder(order);
+            }
           }
         }
       } catch (syncErr) {

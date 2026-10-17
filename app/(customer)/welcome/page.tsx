@@ -10,7 +10,16 @@ import { toast } from "sonner";
 function WelcomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/";
+  // B11.11: only internal customer paths are allowed as redirect targets
+  const rawNext = searchParams.get("next") || "/";
+  const next =
+    rawNext.startsWith("/") &&
+    !rawNext.startsWith("//") &&
+    !rawNext.startsWith("/\\") &&
+    !rawNext.startsWith("/admin") &&
+    !rawNext.startsWith("/mitra")
+      ? rawNext
+      : "/";
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");

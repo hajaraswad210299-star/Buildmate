@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { getMitraApplication, saveMitraApplication } from "@/lib/data/mitra";
+import { requireWorkerApi } from "@/lib/mitra/auth";
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const userId = user?.id || "usr-w-1"; // Fallback to demo worker user in mock mode
+    const auth = await requireWorkerApi();
+    if (!auth.ok) return auth.response;
+    const userId = auth.user.id;
     const application = await getMitraApplication(userId);
 
     return NextResponse.json({
@@ -27,15 +24,15 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const userId = user?.id || "usr-w-1";
+    const auth = await requireWorkerApi();
+    if (!auth.ok) return auth.response;
+    const userId = auth.user.id;
     const body = await request.json();
 
     const result = await saveMitraApplication(userId, body);
+    if (!result.success) {
+      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
+    }
 
     return NextResponse.json({
       success: true,

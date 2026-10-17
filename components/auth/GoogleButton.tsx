@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getSupabaseUrl } from "@/lib/supabase/url";
 
 interface GoogleButtonProps {
   label?: string;
@@ -19,8 +20,7 @@ export function GoogleButton({
   const [copied, setCopied] = useState(false);
 
   // Dynamic Supabase URLs for setup assistance
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "https://izryebajgljqffgixqak.supabase.co";
+  const supabaseUrl = getSupabaseUrl("https://izryebajgljqffgixqak.supabase.co");
   const projectRef = supabaseUrl.includes("supabase.co")
     ? supabaseUrl.replace("https://", "").split(".")[0]
     : "izryebajgljqffgixqak";

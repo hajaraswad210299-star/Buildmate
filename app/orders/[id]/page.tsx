@@ -358,7 +358,12 @@ function CustomerOrderDetailContent({ params }: PageProps) {
               afterLabel="Sesudah (Hasil Tukang)"
             />
 
-            {/* Action Buttons: Selesai vs Masalah */}
+            {/* Action Buttons: Selesai vs Masalah — hidden while a complaint is open (C08) */}
+            {order.complaint?.status === "open" ? (
+              <div className="rounded-2xl bg-orange-50 border border-orange-200 p-4 text-xs text-orange-800 leading-relaxed">
+                Komplainmu sedang ditangani tim BuildMate. Dana tetap ditahan sampai masalahnya selesai.
+              </div>
+            ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               <button
                 type="button"
@@ -378,6 +383,7 @@ function CustomerOrderDetailContent({ params }: PageProps) {
                 <span>Ada Masalah / Belum Rapi</span>
               </button>
             </div>
+            )}
           </div>
         )}
 

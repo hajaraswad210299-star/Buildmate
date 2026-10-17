@@ -83,22 +83,27 @@ function MitraJobDetailContent({
     }
   };
 
+  // Throws on failure so SlideToConfirm reverts and the worker can retry (W05)
   const handleTransitionStatus = async (toStatus: OrderStatus) => {
+    let data: any = null;
+    let ok = false;
     try {
       const res = await fetch(`/api/mitra/jobs/${id}/status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: toStatus }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        alert(data.error || "Gagal mengubah status pekerjaan.");
-        return;
-      }
-      await loadJob();
+      data = await res.json();
+      ok = res.ok && data?.success;
     } catch {
       alert("Terjadi kesalahan koneksi saat mengubah status.");
+      throw new Error("network");
     }
+    if (!ok) {
+      alert(data?.error || "Gagal mengubah status pekerjaan.");
+      throw new Error(data?.error || "transition_failed");
+    }
+    await loadJob();
   };
 
   const handleUploadResultPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -371,6 +371,35 @@ export async function DELETE(request: Request) {
       // Abaikan jika user tidak ada di auth
     }
 
+    // Only customer accounts can be deleted here; workers and staff are never deleted (A04, A10)
+    const { data: targetProfile } = await adminSupabase
+      .from("profiles")
+      .select("role")
+      .eq("id", id)
+      .maybeSingle();
+    if (targetProfile && targetProfile.role !== "customer") {
+      return NextResponse.json(
+        { error: "Hanya akun pelanggan yang dapat dihapus dari halaman ini" },
+        { status: 400 }
+      );
+    }
+
+    // Money records must be kept (escrow, refunds, payouts): refuse when any payment settled
+    const { count: settledPayments } = await adminSupabase
+      .from("payments")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_id", id)
+      .in("status", ["success", "refunded"]);
+    if ((settledPayments || 0) > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Pelanggan ini memiliki riwayat pembayaran, sehingga datanya tidak dapat dihapus.",
+        },
+        { status: 400 }
+      );
+    }
+
     // 1. Hapus subscriptions
     try {
       await adminSupabase.from("subscriptions").delete().eq("user_id", id);

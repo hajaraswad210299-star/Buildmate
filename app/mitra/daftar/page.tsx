@@ -6,8 +6,10 @@ import { ApplicationStepper } from "@/components/mitra/ApplicationStepper";
 import { CategoryPickCard } from "@/components/mitra/CategoryPickCard";
 import { AvatarCropper } from "@/components/mitra/AvatarCropper";
 import { SERVICE_AREAS } from "@/lib/constants/areas";
-import { MOCK_CATEGORIES, MOCK_PACKAGES } from "@/lib/mock/data";
+import { getCategories, getPackages } from "@/lib/data/services";
+import type { Category, ServicePackage } from "@/lib/data/types";
 import { formatRupiah } from "@/lib/format";
+import { fileToResizedDataUrl } from "@/lib/image";
 import {
   TickCircle,
   Warning2,
@@ -24,8 +26,21 @@ export default function MitraDaftarPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved">("saved");
+  const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("saved");
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+
+  // Catalog (real categories & packages, so saved package ids exist in the DB)
+  const [catalogCategories, setCatalogCategories] = useState<Category[]>([]);
+  const [catalogPackages, setCatalogPackages] = useState<ServicePackage[]>([]);
+
+  useEffect(() => {
+    Promise.all([getCategories(), getPackages()])
+      .then(([cats, pkgs]) => {
+        setCatalogCategories(cats.filter((c) => c.is_active !== false));
+        setCatalogPackages(pkgs.filter((p) => p.is_active !== false));
+      })
+      .catch(() => {});
+  }, []);
 
   // Form Fields
   const [fullName, setFullName] = useState("");
@@ -33,8 +48,8 @@ export default function MitraDaftarPage() {
   const [serviceArea, setServiceArea] = useState("Jakarta Selatan");
   const [experienceYears, setExperienceYears] = useState(3);
   const [bio, setBio] = useState("");
-  const [categoryIds, setCategoryIds] = useState<string[]>(["cat-1"]);
-  const [packageIds, setPackageIds] = useState<string[]>(["pkg-1"]);
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [packageIds, setPackageIds] = useState<string[]>([]);
   const [photoPath, setPhotoPath] = useState("");
   const [portfolioPaths, setPortfolioPaths] = useState<string[]>([]);
   const [agreePublic, setAgreePublic] = useState(false);
@@ -107,14 +122,20 @@ export default function MitraDaftarPage() {
             ...overrides,
           };
 
-          await fetch("/api/mitra/application", {
+          const res = await fetch("/api/mitra/application", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || json.success === false) {
+            setAutosaveStatus("error");
+            setFormError(json.error || "Draf gagal disimpan. Periksa koneksi lalu coba lagi.");
+            return;
+          }
           setAutosaveStatus("saved");
         } catch {
-          setAutosaveStatus("idle");
+          setAutosaveStatus("error");
         }
       }, 1000);
     },
@@ -146,19 +167,23 @@ export default function MitraDaftarPage() {
   const toggleCategory = (catId: string) => {
     let nextCats: string[];
     if (categoryIds.includes(catId)) {
-      if (categoryIds.length === 1) return; // Keep at least one
       nextCats = categoryIds.filter((c) => c !== catId);
     } else {
       nextCats = [...categoryIds, catId];
     }
+    // Packages of a deselected category are hidden, so drop them from the selection too
+    const nextPkgs = packageIds.filter((pid) => {
+      const pkg = catalogPackages.find((p) => p.id === pid);
+      return pkg ? nextCats.includes(pkg.category_id) : false;
+    });
     setCategoryIds(nextCats);
-    triggerAutosave({ category_ids: nextCats });
+    setPackageIds(nextPkgs);
+    triggerAutosave({ category_ids: nextCats, package_ids: nextPkgs });
   };
 
   const togglePackage = (pkgId: string) => {
     let nextPkgs: string[];
     if (packageIds.includes(pkgId)) {
-      if (packageIds.length === 1) return; // Keep at least one
       nextPkgs = packageIds.filter((p) => p !== pkgId);
     } else {
       nextPkgs = [...packageIds, pkgId];
@@ -171,14 +196,13 @@ export default function MitraDaftarPage() {
     const file = e.target.files?.[0];
     if (!file || portfolioPaths.length >= 3) return;
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const url = ev.target?.result as string;
-      const next = [...portfolioPaths, url];
-      setPortfolioPaths(next);
-      triggerAutosave({ portfolio_paths: next });
-    };
-    reader.readAsDataURL(file);
+    fileToResizedDataUrl(file, 1024)
+      .then((url) => {
+        const next = [...portfolioPaths, url];
+        setPortfolioPaths(next);
+        triggerAutosave({ portfolio_paths: next });
+      })
+      .catch((err) => setFormError(err.message));
   };
 
   const handleRemovePortfolio = (index: number) => {
@@ -198,8 +222,35 @@ export default function MitraDaftarPage() {
       setSubmitting(true);
       setFormError("");
 
+      // Flush the latest form state (autosave is debounced) before submitting
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      const saveRes = await fetch("/api/mitra/application", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: fullName,
+          phone,
+          service_area: serviceArea,
+          experience_years: experienceYears,
+          bio,
+          category_ids: categoryIds,
+          package_ids: packageIds,
+          photo_path: photoPath,
+          portfolio_paths: portfolioPaths,
+          agreement_terms: agreePublic,
+          agreement_data: agreeCoord,
+        }),
+      });
+      const saveJson = await saveRes.json().catch(() => ({}));
+      if (!saveRes.ok || saveJson.success === false) {
+        setFormError(saveJson.error || "Gagal menyimpan formulir.");
+        return;
+      }
+
       const res = await fetch("/api/mitra/application/submit", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agreement_terms: agreePublic, agreement_data: agreeCoord }),
       });
 
       const json = await res.json();
@@ -225,7 +276,7 @@ export default function MitraDaftarPage() {
   }
 
   // Filter packages for selected categories
-  const relevantPackages = MOCK_PACKAGES.filter((p) =>
+  const relevantPackages = catalogPackages.filter((p) =>
     categoryIds.includes(p.category_id)
   );
 
@@ -401,7 +452,7 @@ export default function MitraDaftarPage() {
                   1. Pilih Kategori Keahlian:
                 </label>
                 <div className="grid grid-cols-1 gap-2.5">
-                  {MOCK_CATEGORIES.map((cat) => (
+                  {catalogCategories.map((cat) => (
                     <CategoryPickCard
                       key={cat.id}
                       id={cat.id}
@@ -592,7 +643,7 @@ export default function MitraDaftarPage() {
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {MOCK_PACKAGES.filter((p) => packageIds.includes(p.id)).map((p) => (
+                    {catalogPackages.filter((p) => packageIds.includes(p.id)).map((p) => (
                       <span
                         key={p.id}
                         className="text-[11px] font-medium bg-lavender-50 text-lavender-800 px-2.5 py-1 rounded-lg border border-lavender-200/60"

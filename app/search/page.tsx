@@ -136,6 +136,21 @@ function SearchPageContent() {
       result = result.filter((w) => w.is_verified);
     }
 
+    if (selectedCategory !== "all") {
+      const cat = categories.find((c) => c.slug === selectedCategory || c.id === selectedCategory);
+      const categoryPackageIds = new Set(
+        packages
+          .filter(
+            (p) =>
+              p.category_slug === selectedCategory ||
+              p.category_id === selectedCategory ||
+              (cat && (p.category_id === cat.id || p.category_name === cat.name))
+          )
+          .map((p) => p.id)
+      );
+      result = result.filter((w) => (w.package_ids || []).some((id) => categoryPackageIds.has(id)));
+    }
+
     // Sort
     if (selectedSort === "most_jobs") {
       result.sort((a, b) => (b.completed_jobs_count || 0) - (a.completed_jobs_count || 0));
@@ -144,7 +159,7 @@ function SearchPageContent() {
     }
 
     return result;
-  }, [workers, query, selectedArea, verifiedOnly, selectedSort]);
+  }, [workers, packages, categories, query, selectedArea, verifiedOnly, selectedCategory, selectedSort]);
 
   // Filtered packages
   const filteredPackages = useMemo(() => {
@@ -161,10 +176,13 @@ function SearchPageContent() {
     }
 
     if (selectedCategory !== "all") {
+      // Chips and homepage tiles pass the category slug (C01 → /search?category={slug})
+      const cat = categories.find((c) => c.slug === selectedCategory || c.id === selectedCategory);
       result = result.filter(
         (p) =>
+          p.category_slug === selectedCategory ||
           p.category_id === selectedCategory ||
-          p.category_name?.toLowerCase().includes(selectedCategory.toLowerCase())
+          (cat && (p.category_id === cat.id || p.category_name === cat.name))
       );
     }
 
@@ -180,7 +198,7 @@ function SearchPageContent() {
     }
 
     return result;
-  }, [packages, query, selectedCategory, maxPrice, selectedSort]);
+  }, [packages, categories, query, selectedCategory, maxPrice, selectedSort]);
 
   const currentCount =
     activeTab === "workers" ? filteredWorkers.length : filteredPackages.length;

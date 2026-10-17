@@ -183,13 +183,15 @@ export default function AcceptInvitePage() {
         console.warn("Client updateUser warning:", authErr.message);
       }
 
-      // 2. Call backend endpoint to update profiles and log audit trail
+      // 2. Call backend endpoint to update profiles and log audit trail. The password
+      //    only goes to the server if the client update failed: an admin-side password
+      //    change revokes every session, which would log the new staff member out.
       const res = await fetch("/api/admin/accept-invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fullName: name.trim(),
-          password,
+          ...(authErr ? { password } : {}),
         }),
       });
 
@@ -199,6 +201,13 @@ export default function AcceptInvitePage() {
       }
 
       toast.success("Akun staf kamu berhasil diaktifkan!");
+
+      if (authErr) {
+        // Password was set server-side, so the invite session is gone: sign in again
+        await supabase.auth.signOut().catch(() => {});
+        router.replace("/admin/login");
+        return;
+      }
 
       // 3. Redirect to first allowed route
       const nextRoute = data.nextRoute || "/admin";

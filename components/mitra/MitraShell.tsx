@@ -28,7 +28,7 @@ export function MitraShell({
   title,
   showBack = false,
   backHref,
-  isVerified = true,
+  isVerified = false,
   hideNav = false,
   newOffersCount = 1,
   rightAction,

@@ -58,10 +58,12 @@ export async function getUserPermissions(
     };
   }
 
-  const role = profile?.role || user.user_metadata?.role || user.user_metadata?.signup_as;
+  // Role, staff status and staff role come only from profiles: user_metadata can be
+  // edited by the user themself via auth.updateUser (B2, A12)
+  const role = profile?.role;
   if (role === "staff") {
-    const status = profile?.staff_status || user.user_metadata?.staff_status || "invited";
-    const roleId = profile?.staff_role_id || user.user_metadata?.staff_role_id;
+    const status = profile?.staff_status || "invited";
+    const roleId = profile?.staff_role_id;
 
     if (status !== "active") {
       return {

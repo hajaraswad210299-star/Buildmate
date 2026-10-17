@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getSupabaseUrl } from "@/lib/supabase/url";
 
 const OPEN_ADMIN_PATHS = [
   "/admin/login",
@@ -33,7 +34,7 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dummy.supabase.co";
+  const supabaseUrl = getSupabaseUrl();
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "dummy-anon-key";
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -199,10 +200,15 @@ export async function middleware(request: NextRequest) {
     const isConfiguredAdmin = Boolean(user.email && configuredAdmins.includes(user.email.toLowerCase()));
 
     if (!isConfiguredAdmin) {
-      const meta = user.user_metadata || {};
-      const isStaff = meta.role === "staff" || meta.signup_as === "staff";
-      if (isStaff) {
-        const status = meta.staff_status || "invited";
+      // Role & staff status come from profiles, never from user-editable metadata (B2, A12)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, staff_status")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role === "staff") {
+        const status = profile.staff_status || "invited";
         if (status === "invited" && pathname !== "/admin/accept-invite") {
           const acceptUrl = request.nextUrl.clone();
           acceptUrl.pathname = "/admin/accept-invite";
@@ -213,20 +219,12 @@ export async function middleware(request: NextRequest) {
           deniedUrl.pathname = "/admin/denied";
           return NextResponse.redirect(deniedUrl);
         }
-      } else {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-
-        if (!profile || profile.role !== "admin") {
-          const deniedUrl = request.nextUrl.clone();
-          deniedUrl.pathname = "/admin/denied";
-          const redirectRes = NextResponse.redirect(deniedUrl);
-          redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-          return redirectRes;
-        }
+      } else if (!profile || profile.role !== "admin") {
+        const deniedUrl = request.nextUrl.clone();
+        deniedUrl.pathname = "/admin/denied";
+        const redirectRes = NextResponse.redirect(deniedUrl);
+        redirectRes.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+        return redirectRes;
       }
     }
 
@@ -246,8 +244,12 @@ export async function middleware(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
+    // Reset & verify pages need the (recovery) session itself — never bounce them (B11.9)
+    const isSessionPage =
+      pathname === "/mitra/reset-password" || pathname === "/mitra/verify-email";
+
     if (isOpenMitra) {
-      if (user) {
+      if (user && !isSessionPage) {
         const { data: profile } = await supabase
           .from("profiles")
           .select("role")
@@ -296,10 +298,11 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (profile?.role === "admin") {
+    if (profile?.role === "admin" || profile?.role === "staff") {
       return NextResponse.redirect(new URL("/admin", request.url));
     }
-    if (profile?.role === "customer") {
+    if (profile?.role !== "worker") {
+      // Customer, or a profile we cannot read: never treat as a worker (A8)
       return NextResponse.redirect(new URL("/mitra/login?error=email_is_customer", request.url));
     }
 

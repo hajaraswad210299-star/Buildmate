@@ -297,7 +297,7 @@ export function DispatchPanel({
 
         {/* Dispatch Action Buttons */}
         <div className="pt-2 border-t border-neutral-100 flex flex-wrap gap-2">
-          {(!order.worker || dispatchStatus === "exhausted") && (
+          {order.status === "paid" && (!order.worker || dispatchStatus === "exhausted") && (
             <>
               <Button
                 variant="primary"

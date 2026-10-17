@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Camera, Gallery, InfoCircle } from "@/lib/icons";
+import { fileToResizedDataUrl } from "@/lib/image";
 
 interface AvatarCropperProps {
   photoPath: string;
@@ -26,13 +27,12 @@ export function AvatarCropper({ photoPath, onPhotoSelected }: AvatarCropperProps
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const url = event.target?.result as string;
-      setPreview(url);
-      onPhotoSelected(url);
-    };
-    reader.readAsDataURL(file);
+    fileToResizedDataUrl(file, 512)
+      .then((url) => {
+        setPreview(url);
+        onPhotoSelected(url);
+      })
+      .catch((err) => alert(err.message));
   };
 
   return (

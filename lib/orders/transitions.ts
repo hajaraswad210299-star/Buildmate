@@ -28,6 +28,7 @@ export const TRANSITIONS: Record<
   worker_confirmed: {
     on_the_way: ["worker", "admin"],
     cancelled: ["admin"],
+    paid: ["admin"], // lepas tukang & cari ulang
   },
   on_the_way: {
     in_progress: ["worker", "admin"],
@@ -36,7 +37,7 @@ export const TRANSITIONS: Record<
     awaiting_confirmation: ["worker", "admin"], // Wajib foto hasil
   },
   awaiting_confirmation: {
-    completed: ["customer", "admin"], // admin: setelah batas waktu
+    completed: ["customer", "system", "admin"], // system: auto_complete_tick; admin: setelah batas waktu
     in_progress: ["admin"], // garansi Plus
   },
   completed: {},

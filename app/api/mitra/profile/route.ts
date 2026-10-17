@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { updateMitraProfile } from "@/lib/data/mitra";
+import { requireWorkerApi } from "@/lib/mitra/auth";
 
 export async function PATCH(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const userId = user?.id || "usr-w-1";
+    const auth = await requireWorkerApi();
+    if (!auth.ok) return auth.response;
+    const userId = auth.user.id;
     const body = await request.json();
 
     const result = await updateMitraProfile(userId, {

@@ -6,7 +6,7 @@ import { TickCircle } from "@/lib/icons";
 interface ApplicationStepperProps {
   currentStep: number; // 1 to 4
   onStepClick?: (step: number) => void;
-  autosaveStatus?: "idle" | "saving" | "saved";
+  autosaveStatus?: "idle" | "saving" | "saved" | "error";
 }
 
 const STEPS = [
@@ -39,6 +39,10 @@ export function ApplicationStepper({
             <span className="flex items-center gap-1 text-success-700 bg-success-50 px-2 py-0.5 rounded-full border border-success-200/60">
               <TickCircle size={13} className="text-success-600" />
               Draf tersimpan
+            </span>
+          ) : autosaveStatus === "error" ? (
+            <span className="flex items-center gap-1 text-danger-700 bg-danger-50 px-2 py-0.5 rounded-full border border-danger-200/60">
+              Draf gagal disimpan
             </span>
           ) : null}
         </div>

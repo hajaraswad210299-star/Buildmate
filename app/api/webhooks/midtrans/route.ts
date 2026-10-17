@@ -20,16 +20,21 @@ export async function POST(request: Request) {
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
 
     // 1. Verifikasi Signature Key (B12 & B20): sha512(order_id + status_code + gross_amount + ServerKey)
-    if (serverKey && serverKey !== "dummy-midtrans-server-key" && signature_key) {
-      const expected = crypto
-        .createHash("sha512")
-        .update(order_id + status_code + gross_amount + serverKey)
-        .digest("hex");
-
-      if (expected !== signature_key) {
-        console.warn("Midtrans webhook: invalid signature key rejection");
-        return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
-      }
+    // Signature is mandatory: a notification without a valid one never changes any status.
+    if (!serverKey || serverKey === "dummy-midtrans-server-key") {
+      console.error("Midtrans webhook: MIDTRANS_SERVER_KEY is not configured");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+    }
+    if (typeof signature_key !== "string" || !order_id) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+    }
+    const expected = crypto
+      .createHash("sha512")
+      .update(order_id + status_code + gross_amount + serverKey)
+      .digest("hex");
+    if (expected !== signature_key) {
+      console.warn("Midtrans webhook: invalid signature key rejection");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
     }
 
     const isSuccess =
@@ -68,8 +73,9 @@ export async function POST(request: Request) {
       if (targetOrder) {
         const receivedGross = parseFloat(gross_amount);
         const orderTotal = Number(targetOrder.total) || Number((targetOrder as any).total_price) || 0;
-        if (!isNaN(receivedGross) && orderTotal > 0 && receivedGross !== orderTotal) {
+        if (isNaN(receivedGross) || (orderTotal > 0 && receivedGross !== orderTotal)) {
           console.warn(`Nominal mismatch for order ${targetOrder.order_code}: expected ${orderTotal}, got ${receivedGross}`);
+          return NextResponse.json({ error: "Gross amount mismatch" }, { status: 400 });
         }
 
         // Idempotensi: jika status sudah final (paid atau cancelled), jangan proses ulang
@@ -170,11 +176,34 @@ export async function POST(request: Request) {
         const supabase = createAdminClient();
         const { data: payment } = await supabase
           .from("payments")
-          .select("customer_id")
+          .select("customer_id, status, amount")
           .eq("provider_order_id", order_id)
           .single();
 
-        if (payment?.customer_id && isSuccess) {
+        // Idempotensi (B6): a payment already settled or failed is never processed again
+        if (payment && (payment.status === "success" || payment.status === "failed")) {
+          return NextResponse.json({ status: "OK", message: "Subscription payment already processed (idempotent)" });
+        }
+
+        const receivedGross = parseFloat(gross_amount);
+        if (payment && (isNaN(receivedGross) || receivedGross !== Number(payment.amount))) {
+          console.warn(`Nominal mismatch for ${order_id}: expected ${payment.amount}, got ${receivedGross}`);
+          return NextResponse.json({ error: "Gross amount mismatch" }, { status: 400 });
+        }
+
+        // Claim the pending payment atomically; only the claimer extends Plus
+        const { data: claimed } = await supabase
+          .from("payments")
+          .update({
+            status: paymentStatus,
+            raw_payload: body,
+            processed_at: nowIso,
+          })
+          .eq("provider_order_id", order_id)
+          .eq("status", "pending")
+          .select("provider_order_id");
+
+        if (payment?.customer_id && isSuccess && claimed && claimed.length > 0) {
           const daysToAdd = Number(process.env.PLUS_DURATION_DAYS) || 30;
           const { data: currSub } = await supabase
             .from("subscriptions")
@@ -194,17 +223,9 @@ export async function POST(request: Request) {
             user_id: payment.customer_id,
             plan: "plus",
             current_period_end: baseDate.toISOString(),
+            updated_at: nowIso,
           });
         }
-
-        await supabase
-          .from("payments")
-          .update({
-            status: paymentStatus,
-            raw_payload: body,
-            processed_at: nowIso,
-          })
-          .eq("provider_order_id", order_id);
       } catch (subErr) {
         console.warn("Subscription webhook update error:", subErr);
       }

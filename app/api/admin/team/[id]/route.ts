@@ -56,7 +56,7 @@ export async function PATCH(
     }
 
     if (action === "resend_invite") {
-      const res = await resendInvite({ userId: id, actorId, actorName });
+      const res = await resendInvite({ userId: id, actorId, actorName, origin: new URL(request.url).origin });
       return NextResponse.json({
         success: true,
         emailSent: res.emailSent,
@@ -68,7 +68,7 @@ export async function PATCH(
     }
 
     if (action === "get_invite_link") {
-      const res = await getStaffInviteLink({ userId: id });
+      const res = await getStaffInviteLink({ userId: id, origin: new URL(request.url).origin });
       if (!res.success) {
         return NextResponse.json({ error: res.error || "Gagal membuat tautan" }, { status: 400 });
       }
