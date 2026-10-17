@@ -20,9 +20,10 @@ begin
   if jwt_role is null or jwt_role = 'service_role' or public.my_role() = 'admin' then
     return new;
   end if;
+  -- to_jsonb keeps this working on databases without the staff columns yet
   if new.role is distinct from old.role
-     or new.staff_role_id is distinct from old.staff_role_id
-     or new.staff_status is distinct from old.staff_status then
+     or (to_jsonb(new) ->> 'staff_role_id') is distinct from (to_jsonb(old) ->> 'staff_role_id')
+     or (to_jsonb(new) ->> 'staff_status') is distinct from (to_jsonb(old) ->> 'staff_status') then
     raise exception 'privileged_profile_columns_are_read_only';
   end if;
   return new;
@@ -67,7 +68,12 @@ create policy worker_select_own_profile on public.workers
 
 -- 5. Offers can only be answered through the server, and pending offers
 --    must not expose the full order row before acceptance (B25.6)
-drop policy if exists worker_update_job_offers on public.job_offers;
+do $$
+begin
+  if to_regclass('public.job_offers') is not null then
+    execute 'drop policy if exists worker_update_job_offers on public.job_offers';
+  end if;
+end $$;
 
 drop policy if exists worker_select_assigned_orders on public.orders;
 create policy worker_select_assigned_orders on public.orders
