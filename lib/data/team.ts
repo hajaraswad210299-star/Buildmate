@@ -214,9 +214,14 @@ export async function inviteStaffMember(params: {
 
     // Safely ensure profiles record has full_name without violating constraints
     try {
+      // The invite (made by an admin, server-side) is what marks the profile as an
+      // invited staff member; accept-invite later checks exactly this (A00e, B2).
       await supabase.from("profiles").upsert({
         id: newUserId,
         full_name: cleanName,
+        role: "staff",
+        staff_role_id: role.id,
+        staff_status: "invited",
       });
     } catch {
       // ignore
@@ -543,12 +548,37 @@ export async function acceptStaffInvite(params: {
   let userEmail: string | undefined;
   let roleId: string | undefined;
 
+  // 0. Only a profile an admin invited may be activated. user_metadata is editable
+  //    by the user, so the decision comes from profiles (or the in-memory mock list).
+  const inMemInvite = inMemoryStaff.find((m) => m.id === params.userId);
+  let invitedProfile: { role?: string; staff_status?: string | null; staff_role_id?: string | null } | null = null;
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("role, staff_status, staff_role_id")
+      .eq("id", params.userId)
+      .maybeSingle();
+    invitedProfile = data;
+  } catch {
+    invitedProfile = null;
+  }
+
+  const isInvitedInDb = invitedProfile?.role === "staff" && invitedProfile?.staff_status === "invited";
+  const isInvitedInMemory = inMemInvite?.staff_status === "invited";
+  if (!isInvitedInDb && !isInvitedInMemory) {
+    return {
+      success: false,
+      error: "Undangan tidak ditemukan atau sudah digunakan. Minta Admin Utama mengirim ulang undangan.",
+    };
+  }
+  roleId = invitedProfile?.staff_role_id || inMemInvite?.role_id || undefined;
+
   // 1. Try to fetch & update Auth user (if exists in auth.users)
   try {
     const { data: userRes } = await supabase.auth.admin.getUserById(params.userId);
     if (userRes?.user) {
       userEmail = userRes.user.email;
-      roleId = userRes.user.user_metadata?.staff_role_id;
+      roleId = roleId || userRes.user.user_metadata?.staff_role_id;
       const updatePayload: any = {
         user_metadata: {
           ...userRes.user.user_metadata,
@@ -567,16 +597,20 @@ export async function acceptStaffInvite(params: {
     console.warn("Auth admin updateUserById notice:", authErr?.message);
   }
 
-  // 2. Safely update profiles table (only full_name to avoid check constraint on role or missing columns)
-  try {
-    await supabase
+  // 2. Activate the staff profile (permissions are read from profiles first)
+  if (isInvitedInDb) {
+    const { error: activateError } = await supabase
       .from("profiles")
       .update({
         full_name: params.fullName.trim(),
+        staff_status: "active",
       })
-      .eq("id", params.userId);
-  } catch (dbErr: any) {
-    console.warn("Profiles update notice:", dbErr?.message);
+      .eq("id", params.userId)
+      .eq("role", "staff");
+    if (activateError) {
+      console.warn("Profiles activate error:", activateError.message);
+      return { success: false, error: "Gagal mengaktifkan akun staf. Coba lagi." };
+    }
   }
 
   // 3. Update in-memory staff if present

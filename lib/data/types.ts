@@ -152,7 +152,7 @@ export interface Order {
   awaiting_confirmation_at?: string;
   completed_at?: string;
   cancelled_at?: string;
-  completed_by?: "customer" | "admin";
+  completed_by?: "customer" | "admin" | "system";
   created_at: string;
   updated_at: string;
   photos?: OrderPhoto[];

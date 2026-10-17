@@ -69,7 +69,8 @@ function OrderFormContent({ params }: PageProps) {
   const dateOptions = Array.from({ length: 14 }).map((_, idx) => {
     const d = new Date();
     d.setDate(d.getDate() + idx + 1); // starting tomorrow
-    const iso = d.toISOString().split("T")[0];
+    // Local calendar date (WIB), not UTC — toISOString() is a day behind before 07:00
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const dayName = d.toLocaleDateString("id-ID", { weekday: "short" });
     const dayDate = d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
     return { iso, dayName, dayDate };
@@ -232,10 +233,21 @@ function OrderFormContent({ params }: PageProps) {
     try {
       setSubmitting(true);
 
-      const idempotencyKey =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `idemp-${Date.now()}`;
+      // One key per draft, so repeated clicks/retries never create a second order (C05)
+      const idemStorageKey = `bm_order_idem_${pkg?.id || "draft"}`;
+      let idempotencyKey = "";
+      try {
+        idempotencyKey = sessionStorage.getItem(idemStorageKey) || "";
+      } catch {}
+      if (!idempotencyKey) {
+        idempotencyKey =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `idemp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        try {
+          sessionStorage.setItem(idemStorageKey, idempotencyKey);
+        } catch {}
+      }
 
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -267,6 +279,7 @@ function OrderFormContent({ params }: PageProps) {
 
       // Clear draft
       sessionStorage.removeItem("bm_order_draft");
+      sessionStorage.removeItem(idemStorageKey);
 
       // Register order locally in browser
       if (typeof window !== "undefined") {

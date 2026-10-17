@@ -6,7 +6,8 @@ import { ApplicationStepper } from "@/components/mitra/ApplicationStepper";
 import { CategoryPickCard } from "@/components/mitra/CategoryPickCard";
 import { AvatarCropper } from "@/components/mitra/AvatarCropper";
 import { SERVICE_AREAS } from "@/lib/constants/areas";
-import { MOCK_CATEGORIES, MOCK_PACKAGES } from "@/lib/mock/data";
+import { getCategories, getPackages } from "@/lib/data/services";
+import type { Category, ServicePackage } from "@/lib/data/types";
 import { formatRupiah } from "@/lib/format";
 import {
   TickCircle,
@@ -26,6 +27,19 @@ export default function MitraDaftarPage() {
   const [submitting, setSubmitting] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved">("saved");
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+
+  // Catalog (real categories & packages, so saved package ids exist in the DB)
+  const [catalogCategories, setCatalogCategories] = useState<Category[]>([]);
+  const [catalogPackages, setCatalogPackages] = useState<ServicePackage[]>([]);
+
+  useEffect(() => {
+    Promise.all([getCategories(), getPackages()])
+      .then(([cats, pkgs]) => {
+        setCatalogCategories(cats.filter((c) => c.is_active !== false));
+        setCatalogPackages(pkgs.filter((p) => p.is_active !== false));
+      })
+      .catch(() => {});
+  }, []);
 
   // Form Fields
   const [fullName, setFullName] = useState("");
@@ -198,8 +212,35 @@ export default function MitraDaftarPage() {
       setSubmitting(true);
       setFormError("");
 
+      // Flush the latest form state (autosave is debounced) before submitting
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      const saveRes = await fetch("/api/mitra/application", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: fullName,
+          phone,
+          service_area: serviceArea,
+          experience_years: experienceYears,
+          bio,
+          category_ids: categoryIds,
+          package_ids: packageIds,
+          photo_path: photoPath,
+          portfolio_paths: portfolioPaths,
+          agreement_terms: agreePublic,
+          agreement_data: agreeCoord,
+        }),
+      });
+      const saveJson = await saveRes.json().catch(() => ({}));
+      if (!saveRes.ok || saveJson.success === false) {
+        setFormError(saveJson.error || "Gagal menyimpan formulir.");
+        return;
+      }
+
       const res = await fetch("/api/mitra/application/submit", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agreement_terms: agreePublic, agreement_data: agreeCoord }),
       });
 
       const json = await res.json();
@@ -225,7 +266,7 @@ export default function MitraDaftarPage() {
   }
 
   // Filter packages for selected categories
-  const relevantPackages = MOCK_PACKAGES.filter((p) =>
+  const relevantPackages = catalogPackages.filter((p) =>
     categoryIds.includes(p.category_id)
   );
 
@@ -401,7 +442,7 @@ export default function MitraDaftarPage() {
                   1. Pilih Kategori Keahlian:
                 </label>
                 <div className="grid grid-cols-1 gap-2.5">
-                  {MOCK_CATEGORIES.map((cat) => (
+                  {catalogCategories.map((cat) => (
                     <CategoryPickCard
                       key={cat.id}
                       id={cat.id}
@@ -592,7 +633,7 @@ export default function MitraDaftarPage() {
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {MOCK_PACKAGES.filter((p) => packageIds.includes(p.id)).map((p) => (
+                    {catalogPackages.filter((p) => packageIds.includes(p.id)).map((p) => (
                       <span
                         key={p.id}
                         className="text-[11px] font-medium bg-lavender-50 text-lavender-800 px-2.5 py-1 rounded-lg border border-lavender-200/60"

@@ -238,7 +238,26 @@ export async function GET(request: Request) {
     }
 
     if (as === "worker" && profile?.role === "customer") {
-      return NextResponse.redirect(new URL("/mitra/login?error=email_is_customer", baseOrigin));
+      // B11.5: a brand-new Google account signing up as mitra already got a
+      // 'customer' profile from the trigger — claim the worker role for it.
+      // claim_worker_role refuses older accounts or ones with orders.
+      let claimed = false;
+      if (!isCustomerExplicit) {
+        try {
+          const { createAdminClient } = await import("@/lib/supabase/admin");
+          const adminSupabase = createAdminClient();
+          const { error: claimError } = await adminSupabase.rpc("claim_worker_role", {
+            target: user.id,
+          });
+          claimed = !claimError;
+        } catch (claimErr) {
+          console.warn("claim_worker_role failed:", claimErr);
+        }
+      }
+      if (!claimed) {
+        return NextResponse.redirect(new URL("/mitra/login?error=email_is_customer", baseOrigin));
+      }
+      profile = { ...profile, role: "worker" };
     }
 
     if (profile?.role === "worker") {

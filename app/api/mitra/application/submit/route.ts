@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { submitMitraApplication } from "@/lib/data/mitra";
+import { requireWorkerApi } from "@/lib/mitra/auth";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const userId = user?.id || "usr-w-1";
-    const result = await submitMitraApplication(userId);
+    const auth = await requireWorkerApi();
+    if (!auth.ok) return auth.response;
+    const userId = auth.user.id;
+    const body = await request.json().catch(() => ({}));
+    // Agreements are confirmed explicitly at submit time (W01 step 4)
+    const result = await submitMitraApplication(userId, {
+      agreement_terms: body.agreement_terms === true,
+      agreement_data: body.agreement_data === true,
+    });
 
     if (!result.success) {
       return NextResponse.json(

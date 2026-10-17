@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { acceptMitraJob } from "@/lib/data/mitra";
+import { requireWorkerApi } from "@/lib/mitra/auth";
 
 export async function POST(
   request: Request,
@@ -8,12 +8,9 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const workerId = user?.id || "w-1";
+    const auth = await requireWorkerApi({ requireApproved: true });
+    if (!auth.ok) return auth.response;
+    const workerId = auth.workerId;
     const result = await acceptMitraJob(workerId, id);
 
     if (!result.success) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireWorkerApi } from "@/lib/mitra/auth";
 import { getMitraJobs } from "@/lib/data/mitra";
 
 export async function GET(request: NextRequest) {
@@ -8,13 +8,9 @@ export async function GET(request: NextRequest) {
     const tab = (searchParams.get("tab") || "offers") as "offers" | "active" | "completed";
     const month = searchParams.get("month") || undefined;
 
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    // Default to mock worker w-1 if offline/demo
-    const workerId = user?.id || "w-1";
+    const auth = await requireWorkerApi({ requireApproved: true });
+    if (!auth.ok) return auth.response;
+    const workerId = auth.workerId;
     const jobs = await getMitraJobs(workerId, tab, month);
 
     return NextResponse.json({

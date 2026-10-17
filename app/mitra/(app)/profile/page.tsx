@@ -213,10 +213,12 @@ export default function MitraProfilePage() {
                 <h3 className="font-serif text-lg font-medium text-neutral-900 truncate">
                   {worker?.full_name || "Budi Santoso"}
                 </h3>
-                <span className="flex items-center gap-0.5 text-[10px] font-semibold text-success-700 bg-success-50 px-1.5 py-0.5 rounded-full border border-success-200">
-                  <Verify size={11} variant="Bold" className="text-success-600" />
-                  Terverifikasi
-                </span>
+                {worker?.is_verified && (
+                  <span className="flex items-center gap-0.5 text-[10px] font-semibold text-success-700 bg-success-50 px-1.5 py-0.5 rounded-full border border-success-200">
+                    <Verify size={11} variant="Bold" className="text-success-600" />
+                    Terverifikasi
+                  </span>
+                )}
               </div>
               <p className="text-xs text-neutral-500">
                 Area {worker?.service_area || "Jakarta Selatan"} · Pengalaman {worker?.experience_years || 5} Thn

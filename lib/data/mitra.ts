@@ -4,6 +4,7 @@ import { MOCK_ORDERS, MOCK_PACKAGES, MOCK_WORKERS } from "@/lib/mock/data";
 import { Order, Worker, ApplicationStatus } from "./types";
 import { canTransition, OrderStatus } from "../orders/transitions";
 import { formatRupiah } from "../format";
+import { DISTRICTS, SERVICE_AREAS } from "../constants/areas";
 
 export interface WorkerApplication {
   id?: string;
@@ -23,6 +24,7 @@ export interface WorkerApplication {
   is_verified?: boolean;
   agreement_terms?: boolean;
   agreement_data?: boolean;
+  slug?: string;
 }
 
 // In-memory applications cache for offline/mock development
@@ -79,13 +81,15 @@ export async function getMitraApplication(userId: string): Promise<WorkerApplica
       const adminClient = createAdminClient();
       const { data: worker, error } = await adminClient
         .from("workers")
-        .select("*, worker_packages(package_id)")
+        .select("*, worker_packages(package_id, service_packages(category_id))")
         .eq("user_id", userId)
         .maybeSingle();
 
       if (!error && worker) {
         const pkgIds = worker.worker_packages?.map((wp: any) => wp.package_id) || [];
-        const catIds = MOCK_PACKAGES.filter((p) => pkgIds.includes(p.id)).map((p) => p.category_id);
+        const catIds = (worker.worker_packages || [])
+          .map((wp: any) => wp.service_packages?.category_id)
+          .filter(Boolean);
 
         return {
           id: worker.id,
@@ -103,6 +107,7 @@ export async function getMitraApplication(userId: string): Promise<WorkerApplica
           rejection_reason: worker.rejection_reason,
           reviewed_at: worker.reviewed_at,
           is_verified: worker.is_verified,
+          slug: worker.slug,
         };
       }
     } catch (e) {
@@ -149,8 +154,14 @@ export async function getMitraApplication(userId: string): Promise<WorkerApplica
 export async function saveMitraApplication(
   userId: string,
   data: Partial<WorkerApplication>
-): Promise<{ success: boolean; data?: WorkerApplication }> {
+): Promise<{ success: boolean; error?: string; data?: WorkerApplication }> {
   const existing = await getMitraApplication(userId);
+
+  // B10 / B6.11: the form is only editable while draft or rejected
+  if (existing && existing.application_status !== "draft" && existing.application_status !== "rejected") {
+    return { success: false, error: "Pendaftaran sedang ditinjau atau sudah disetujui dan tidak bisa diubah" };
+  }
+
   const updated: WorkerApplication = {
     id: existing?.id || `w-${Date.now()}`,
     user_id: userId,
@@ -202,12 +213,16 @@ export async function saveMitraApplication(
         .single();
 
       if (upsertedWorker && updated.package_ids.length > 0) {
-        await adminClient.from("worker_packages").delete().eq("worker_id", upsertedWorker.id);
         const inserts = updated.package_ids.map((pkgId) => ({
           worker_id: upsertedWorker.id,
           package_id: pkgId,
         }));
-        await adminClient.from("worker_packages").insert(inserts);
+        await adminClient.from("worker_packages").delete().eq("worker_id", upsertedWorker.id);
+        const { error: linkError } = await adminClient.from("worker_packages").insert(inserts);
+        if (linkError) {
+          console.warn("Error saving worker packages:", linkError);
+          return { success: false, error: "Paket layanan yang dipilih tidak valid. Muat ulang halaman lalu pilih lagi." };
+        }
       }
     } catch (e) {
       console.warn("Error upserting worker draft in DB:", e);
@@ -221,11 +236,21 @@ export async function saveMitraApplication(
  * Submit application for admin review (transitions from 'draft' to 'pending')
  */
 export async function submitMitraApplication(
-  userId: string
+  userId: string,
+  agreements: { agreement_terms?: boolean; agreement_data?: boolean } = {}
 ): Promise<{ success: boolean; error?: string; application?: WorkerApplication }> {
   const current = await getMitraApplication(userId);
   if (!current) {
     return { success: false, error: "Draf pendaftaran tidak ditemukan" };
+  }
+
+  // B10: only a draft can be submitted (rejected applications return to draft when edited)
+  if (current.application_status !== "draft") {
+    return { success: false, error: "Pendaftaran ini sudah diajukan" };
+  }
+
+  if (!agreements.agreement_terms || !agreements.agreement_data) {
+    return { success: false, error: "Setujui syarat mitra dan penggunaan data terlebih dahulu" };
   }
 
   if (!current.full_name || !current.phone || !current.service_area) {
@@ -345,27 +370,72 @@ export async function getMitraDashboardStats(workerId: string) {
 }
 
 /**
- * Helper to mask customer sensitive info before worker accepts the job (A1, A4, B6)
+ * Area label from the address without revealing the street (W05, B25.6):
+ * only a known district (kecamatan) and/or city name is ever returned.
+ */
+function areaFromAddress(address: string): string {
+  const lower = (address || "").toLowerCase();
+  const district = DISTRICTS.find((d) => lower.includes(d.name.toLowerCase()));
+  if (district) return `${district.name}, ${district.area}`;
+  const city = SERVICE_AREAS.find((a) => a !== "Semua Area" && lower.includes(a.toLowerCase()));
+  return city || "Area layanan BuildMate";
+}
+
+/**
+ * Before acceptance a worker only receives an allow-listed view of the order:
+ * no street address, customer name/contact, admin notes, payment data, or other
+ * workers' offers (A1, A4, B6, B25.6).
  */
 export function sanitizeOrderForMitra(order: Order, isAccepted: boolean): Order {
   if (isAccepted) {
-    return order;
+    const accepted: Order = { ...order };
+    delete accepted.snap_token;
+    delete accepted.admin_notes;
+    delete accepted.dispatch_offers;
+    return accepted;
   }
 
-  // Mask address to only show district/area
-  const areaOnly = order.address.includes("Jakarta") || order.address.includes("Depok") || order.address.includes("Tangerang") || order.address.includes("Bekasi")
-    ? order.address.split(",").slice(-2).join(",").trim()
-    : "Area " + (order.worker?.service_area || "Jabodetabek");
-
   return {
-    ...order,
-    address: `${areaOnly} (Alamat lengkap tampil setelah menerima)`,
+    id: order.id,
+    order_code: order.order_code,
+    worker_id: null,
+    customer_id: "",
     customer: {
-      ...order.customer,
-      phone: "••••-••••-•••• (Terkunci)",
-      email: "•••••@••••.com",
+      id: "",
+      name: "Pelanggan BuildMate",
+      email: "",
+      phone: "",
+      is_plus: false,
     },
+    package_id: order.package_id,
+    package: order.package,
+    package_price: order.package_price,
+    service_fee: 0,
+    total: order.package_price,
+    address: `${areaFromAddress(order.address)} (Alamat lengkap tampil setelah menerima)`,
+    scheduled_date: order.scheduled_date,
+    time_slot: order.time_slot,
+    description: order.description,
+    status: order.status,
+    worker_response: order.worker_response,
+    created_at: order.created_at,
+    updated_at: order.updated_at,
+    photos: (order.photos || []).filter((p) => p.type === "problem"),
+    events: [],
   };
+}
+
+// Offers a worker declined are never shown to that worker again
+const declinedOffers = new Map<string, Set<string>>();
+
+function isAssignedTo(order: Order, workerId: string): boolean {
+  return order.worker_id === workerId || order.worker?.id === workerId;
+}
+
+function isOfferedTo(order: Order, workerId: string): boolean {
+  if (order.status !== "paid") return false;
+  if (declinedOffers.get(order.id)?.has(workerId)) return false;
+  return !order.worker_id || isAssignedTo(order, workerId);
 }
 
 /**
@@ -381,11 +451,7 @@ export async function getMitraJobs(
 
   if (tab === "offers") {
     // New incoming offers with status 'paid' waiting for worker acceptance
-    const offers = allOrders.filter(
-      (o) =>
-        o.status === "paid" &&
-        (o.worker_id === workerId || o.worker?.id === workerId || !o.worker_id || o.customer_preferred_worker_name === "Budi Santoso")
-    );
+    const offers = allOrders.filter((o) => isOfferedTo(o, workerId));
 
     return offers.map((o) => sanitizeOrderForMitra(o, false));
   }
@@ -430,11 +496,12 @@ export async function getMitraJobDetail(workerId: string, orderId: string): Prom
   const order = MOCK_ORDERS.find((o) => o.id === orderId || o.order_code === orderId);
   if (!order) return null;
 
-  // Determine if this worker has accepted this job
+  // A8: a worker only sees their own jobs, or an offer made to them
+  const assigned = isAssignedTo(order, workerId);
+  if (!assigned && !isOfferedTo(order, workerId)) return null;
+
   const isAccepted =
-    (order.worker_id === workerId || order.worker?.id === workerId) &&
-    order.status !== "paid" &&
-    order.status !== "pending_payment";
+    assigned && order.status !== "paid" && order.status !== "pending_payment";
 
   return sanitizeOrderForMitra(order, isAccepted);
 }
@@ -451,7 +518,7 @@ export async function acceptMitraJob(
     return { success: false, error: "Pesanan tidak ditemukan" };
   }
 
-  if (order.status !== "paid") {
+  if (!isOfferedTo(order, workerId)) {
     return { success: false, error: "Tawaran pekerjaan ini sudah tidak berlaku" };
   }
 
@@ -503,7 +570,18 @@ export async function declineMitraJob(
   if (!order) {
     return { success: false, error: "Pesanan tidak ditemukan" };
   }
+  if (!isOfferedTo(order, workerId)) {
+    return { success: false, error: "Tawaran pekerjaan ini sudah tidak berlaku" };
+  }
 
+  const declinedBy = declinedOffers.get(order.id) || new Set<string>();
+  declinedBy.add(workerId);
+  declinedOffers.set(order.id, declinedBy);
+  if (isAssignedTo(order, workerId)) {
+    // A directly offered worker declined: free the order for dispatch again
+    order.worker_id = null;
+    order.worker = undefined;
+  }
   order.worker_response = "declined";
   order.events = [
     {
@@ -531,7 +609,7 @@ export async function updateMitraJobStatus(
   photoPaths?: string[]
 ): Promise<{ success: boolean; error?: string; order?: Order }> {
   const order = MOCK_ORDERS.find((o) => o.id === orderId || o.order_code === orderId);
-  if (!order) {
+  if (!order || !isAssignedTo(order, workerId)) {
     return { success: false, error: "Pesanan tidak ditemukan" };
   }
 
@@ -621,6 +699,8 @@ export async function updateMitraJobStatus(
   return { success: true, order };
 }
 
+const MAX_RESULT_PHOTOS = 3; // W05
+
 /**
  * Add photo to job (W05 - Foto bukti hasil kerja)
  */
@@ -631,8 +711,14 @@ export async function addMitraJobPhoto(
   type: "problem" | "result" = "result"
 ): Promise<{ success: boolean; error?: string; photo?: any; photos?: any[] }> {
   const order = MOCK_ORDERS.find((o) => o.id === orderId || o.order_code === orderId);
-  if (!order) {
+  if (!order || !isAssignedTo(order, workerId)) {
     return { success: false, error: "Pesanan tidak ditemukan" };
+  }
+  if (order.status !== "in_progress") {
+    return { success: false, error: "Foto hasil hanya bisa diunggah saat pekerjaan sedang dikerjakan" };
+  }
+  if ((order.photos || []).filter((p) => p.type === "result").length >= MAX_RESULT_PHOTOS) {
+    return { success: false, error: `Maksimal ${MAX_RESULT_PHOTOS} foto hasil` };
   }
 
   const newPhoto = {

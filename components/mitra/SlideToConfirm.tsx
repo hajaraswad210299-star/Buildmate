@@ -24,6 +24,8 @@ export function SlideToConfirm({
 
   const trackRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
+  // Guards against firing onConfirm twice before React re-renders
+  const firedRef = useRef(false);
 
   // Maximum travel distance
   const getTrackWidth = () => {
@@ -54,6 +56,8 @@ export function SlideToConfirm({
   );
 
   const triggerSuccess = async () => {
+    if (firedRef.current) return;
+    firedRef.current = true;
     setIsDragging(false);
     setSliderPosition(1);
     setIsConfirmed(true);
@@ -68,7 +72,8 @@ export function SlideToConfirm({
     try {
       await onConfirm();
     } catch {
-      // Revert if failed
+      // Revert if failed so the worker can retry
+      firedRef.current = false;
       setIsConfirmed(false);
       setSliderPosition(0);
     } finally {

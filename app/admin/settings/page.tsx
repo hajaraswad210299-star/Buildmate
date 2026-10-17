@@ -216,7 +216,6 @@ function AdminSettingsContent() {
             id: currentId,
             avatar_url: versionedUrl,
             full_name: fullName.trim() || "Super Admin",
-            role: "admin",
             onboarding_completed: true,
           },
           { onConflict: "id" }
@@ -306,7 +305,6 @@ function AdminSettingsContent() {
               id: currentId,
               full_name: fullName.trim(),
               avatar_url: avatarUrl || null,
-              role: "admin",
               onboarding_completed: true,
             },
             { onConflict: "id" }

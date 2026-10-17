@@ -19,6 +19,7 @@ import {
 export default function MitraHomePage() {
   const [loading, setLoading] = useState(true);
   const [workerName, setWorkerName] = useState("Budi");
+  const [isVerified, setIsVerified] = useState(false);
   const [stats, setStats] = useState({
     jobs_this_month: 3,
     earnings_this_month: 450000,
@@ -39,6 +40,7 @@ export default function MitraHomePage() {
       const appRes = await fetch("/api/mitra/application");
       if (appRes.ok) {
         const appJson = await appRes.json();
+        setIsVerified(Boolean(appJson.application?.is_verified));
         if (appJson.application?.full_name) {
           const first = appJson.application.full_name.split(" ")[0];
           setWorkerName(first);
@@ -98,7 +100,7 @@ export default function MitraHomePage() {
   };
 
   return (
-    <MitraShell newOffersCount={offers.length} isVerified={true}>
+    <MitraShell newOffersCount={offers.length} isVerified={isVerified}>
       <div className="p-4 space-y-6">
         {/* Sapaan Header (W03) */}
         <div className="flex items-center justify-between">

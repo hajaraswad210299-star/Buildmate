@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, use } from "react";
+import React, { useState, useEffect, useCallback, useRef, use } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -11,17 +11,9 @@ import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { WaButton } from "@/components/shared/WaButton";
 import { Button } from "@/components/shared/Button";
-import {
-  getOrderById,
-  transitionOrder,
-  addOrderPhoto,
-  replaceWorker,
-  resolveComplaint,
-  manualAssignWorker,
-  retryDispatch,
-  releaseWorkerAndRedispatch,
-} from "@/lib/data/orders";
+import { getOrderById, registerClientOrder } from "@/lib/data/orders";
 import { DispatchPanel } from "@/components/admin/DispatchPanel";
+import { RequirePermission } from "@/components/admin/PermissionGate";
 import { getWorkers } from "@/lib/data/workers";
 import { MOCK_ORDERS, MOCK_WORKERS } from "@/lib/mock/data";
 import { Order, Worker } from "@/lib/data/types";
@@ -72,7 +64,7 @@ function OrderDetailContent({
   );
   const [isCopied, setIsCopied] = useState(false);
   const [internalNotes, setInternalNotes] = useState("");
-  const [notesSaveStatus, setNotesSaveStatus] = useState<"saved" | "saving">("saved");
+  const [notesSaveStatus, setNotesSaveStatus] = useState<"saved" | "saving" | "error">("saved");
 
   // Modals & Lightbox
   const [lightboxImage, setLightboxImage] = useState<{
@@ -153,71 +145,98 @@ function OrderDetailContent({
     loadData();
   }, [loadData]);
 
-  // Autosave internal notes
+  // All admin actions run on the server (persisted, permission-checked, B5-validated)
+  const runOrderAction = async (
+    payload: Record<string, unknown>
+  ): Promise<{ success: boolean; error?: string; order?: Order }> => {
+    try {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(order?.id || orderId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || "Aksi gagal dijalankan" };
+      }
+      if (data.order) {
+        registerClientOrder(data.order);
+        setOrder({ ...data.order });
+      }
+      return { success: true, order: data.order };
+    } catch {
+      return { success: false, error: "Koneksi bermasalah. Coba lagi." };
+    }
+  };
+
+  // Autosave internal notes (debounced)
+  const notesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleNotesChange = (val: string) => {
     setInternalNotes(val);
     setNotesSaveStatus("saving");
-    const timer = setTimeout(() => {
-      if (order) order.admin_notes = val;
-      setNotesSaveStatus("saved");
-      toast.success("Catatan internal tersimpan");
+    if (notesTimerRef.current) clearTimeout(notesTimerRef.current);
+    notesTimerRef.current = setTimeout(async () => {
+      const res = await runOrderAction({ action: "update_notes", notes: val });
+      if (res.success) {
+        setNotesSaveStatus("saved");
+      } else {
+        setNotesSaveStatus("error");
+        toast.error(res.error || "Gagal menyimpan catatan");
+      }
     }, 800);
-    return () => clearTimeout(timer);
   };
 
   const handleManualAssign = async (worker: Worker, note?: string) => {
     if (!order) return;
-    const res = await manualAssignWorker(
-      order.id,
-      {
+    const res = await runOrderAction({
+      action: "assign_worker",
+      worker: {
         id: worker.id,
         name: worker.full_name,
         phone: worker.phone,
         service_area: worker.service_area,
-        is_verified: true,
+        is_verified: worker.is_verified,
         has_account: !!worker.user_id,
         avatar_url: worker.photo_path || undefined,
       },
-      note
-    );
-    if (res.success && res.order) {
-      setOrder({ ...res.order });
+      note,
+    });
+    if (res.success) {
       toast.success(`Tukang ${worker.full_name} berhasil ditugaskan`);
     } else {
-      toast.error("Gagal menugaskan tukang");
+      toast.error(res.error || "Gagal menugaskan tukang");
     }
   };
 
   const handleRetryDispatch = async () => {
     if (!order) return;
-    const res = await retryDispatch(order.id);
-    if (res.success && res.order) {
-      setOrder({ ...res.order });
+    const res = await runOrderAction({ action: "retry_dispatch" });
+    if (res.success) {
       toast.success("Mencari ulang kandidat dispatch...");
     } else {
-      toast.error("Gagal mengulang dispatch");
+      toast.error(res.error || "Gagal mengulang dispatch");
     }
   };
 
   const handleReleaseWorker = async (reason: string, consent: boolean) => {
     if (!order) return;
-    const res = await releaseWorkerAndRedispatch(order.id, reason, consent);
-    if (res.success && res.order) {
-      setOrder({ ...res.order });
+    const res = await runOrderAction({ action: "release_worker", reason, consent });
+    if (res.success) {
       toast.success("Tukang dilepas dan proses dispatch dimulai kembali");
     } else {
-      toast.error("Gagal melepas tukang");
+      toast.error(res.error || "Gagal melepas tukang");
     }
   };
 
   const handleAutoCompleteNow = async (note: string) => {
     if (!order) return;
-    const res = await transitionOrder(order.id, "completed", "admin", {
+    const res = await runOrderAction({
+      action: "transition",
+      to_status: "completed",
       note: `Override selesai otomatis oleh admin: ${note}`,
     });
     if (res.success) {
       toast.success("Pesanan berhasil diselesaikan");
-      loadData();
     } else {
       toast.error(res.error || "Gagal menyelesaikan pesanan");
     }
@@ -274,9 +293,10 @@ function OrderDetailContent({
     targetStatus: OrderStatus,
     reason?: string
   ) => {
-    const res = await transitionOrder(order.id, targetStatus, "admin", {
+    const res = await runOrderAction({
+      action: "transition",
+      to_status: targetStatus,
       note: reason,
-      cancelReason: reason,
     });
 
     if (!res.success) {
@@ -287,7 +307,6 @@ function OrderDetailContent({
     toast.success(
       `Status pesanan berhasil diubah menjadi ${ORDER_STATUS_INFO[targetStatus].label}`
     );
-    loadData();
   };
 
   const handleConfirmAction = (targetStatus: OrderStatus) => {
@@ -327,12 +346,12 @@ function OrderDetailContent({
     source_note: string;
     type: "problem" | "result";
   }) => {
-    await addOrderPhoto(order.id, {
-      ...photo,
-      uploaded_by: "admin",
-    });
+    const res = await runOrderAction({ action: "add_photo", photo });
+    if (!res.success) {
+      toast.error(res.error || "Gagal menyimpan foto");
+      return;
+    }
     setShowUploader(false);
-    loadData();
   };
 
   const handleReplaceWorkerSubmit = async () => {
@@ -346,9 +365,11 @@ function OrderDetailContent({
       return;
     }
 
-    await replaceWorker(
-      order.id,
-      {
+    const res = await runOrderAction({
+      action: "replace_worker",
+      consent: replacementConsent,
+      note: replacementNote,
+      worker: {
         id: w.id,
         name: w.full_name,
         phone: w.phone,
@@ -356,12 +377,14 @@ function OrderDetailContent({
         is_verified: w.is_verified,
         has_account: !!w.user_id,
       },
-      replacementNote
-    );
+    });
+    if (!res.success) {
+      toast.error(res.error || "Gagal mengganti tukang");
+      return;
+    }
 
     toast.success(`Tukang berhasil diganti ke ${w.full_name}`);
     setShowReplaceWorkerModal(false);
-    loadData();
   };
 
   const handleResolveComplaintSubmit = async () => {
@@ -370,10 +393,17 @@ function OrderDetailContent({
       return;
     }
 
-    await resolveComplaint(order.id, complaintResolution, complaintAction);
+    const res = await runOrderAction({
+      action: "resolve_complaint",
+      resolution: complaintResolution,
+      resolution_action: complaintAction,
+    });
+    if (!res.success) {
+      toast.error(res.error || "Gagal menindaklanjuti komplain");
+      return;
+    }
     toast.success("Komplain berhasil ditutup dan ditindaklanjuti");
     setShowResolveComplaintModal(false);
-    loadData();
   };
 
   const hasResultPhotos = Boolean(
@@ -382,6 +412,7 @@ function OrderDetailContent({
 
   return (
     <AdminShell>
+      <RequirePermission permission="orders.view">
       <div className="space-y-6">
         {/* STICKY HEADER — Full width, flush with topbar, no margins, sticky top-0 in main */}
         <div
@@ -906,7 +937,7 @@ function OrderDetailContent({
                   Catatan Internal
                 </h3>
                 <span className="text-[10px] text-neutral-400">
-                  {notesSaveStatus === "saving" ? "Menyimpan..." : "Tersimpan"}
+                  {notesSaveStatus === "saving" ? "Menyimpan..." : notesSaveStatus === "error" ? "Gagal disimpan" : "Tersimpan"}
                 </span>
               </div>
 
@@ -1172,6 +1203,7 @@ function OrderDetailContent({
           </div>
         </div>
       )}
+      </RequirePermission>
     </AdminShell>
   );
 }

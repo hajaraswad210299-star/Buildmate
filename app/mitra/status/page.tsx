@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import confetti from "canvas-confetti";
@@ -23,6 +23,15 @@ export default function MitraStatusPage() {
   const [status, setStatus] = useState<"pending" | "approved" | "rejected">("pending");
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
   const [appData, setAppData] = useState<any>(null);
+  // Celebrate only once, when the status actually becomes approved
+  const lastStatusRef = useRef<string | null>(null);
+
+  const applyStatus = (st: string) => {
+    if (st === "approved" && lastStatusRef.current !== "approved") {
+      triggerCelebration();
+    }
+    lastStatusRef.current = st;
+  };
 
   // Load application status
   const loadStatus = async () => {
@@ -35,10 +44,7 @@ export default function MitraStatusPage() {
           setStatus(st || "pending");
           setRejectionReason(json.application.rejection_reason || null);
           setAppData(json.application);
-
-          if (st === "approved") {
-            triggerCelebration();
-          }
+          applyStatus(st);
         }
       }
     } catch (err) {
@@ -65,32 +71,38 @@ export default function MitraStatusPage() {
     // Fallback polling 30 seconds
     const interval = setInterval(loadStatus, 30000);
 
-    // Supabase Realtime subscription on workers table
+    // Supabase Realtime: only this applicant's own workers row (W02)
     const supabase = createClient();
-    const channel = supabase
-      .channel("worker_status_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "workers",
-        },
-        (payload: any) => {
-          if (payload.new?.application_status) {
-            setStatus(payload.new.application_status);
-            setRejectionReason(payload.new.rejection_reason || null);
-            if (payload.new.application_status === "approved") {
-              triggerCelebration();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user || cancelled) return;
+      channel = supabase
+        .channel(`worker_status_${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "workers",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload: any) => {
+            if (payload.new?.application_status) {
+              setStatus(payload.new.application_status);
+              setRejectionReason(payload.new.rejection_reason || null);
+              applyStatus(payload.new.application_status);
             }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    });
 
     return () => {
+      cancelled = true;
       clearInterval(interval);
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, []);
 

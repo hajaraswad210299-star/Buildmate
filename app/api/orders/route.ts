@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createCustomerOrder, mapDbOrderToOrder } from "@/lib/data/orders";
 import { MOCK_ORDERS } from "@/lib/mock/data";
 import { Order, OrderStatus } from "@/lib/data/types";
+import { getUserPermissions } from "@/lib/supabase/auth";
+import { hasPermission } from "@/lib/auth/permissions";
 
 export async function GET(request: Request) {
   try {
@@ -21,31 +23,22 @@ export async function GET(request: Request) {
 
     const adminSupabase = createAdminClient();
 
-    // Check user role
-    let role = "customer";
+    // Who may see every order: Admin Utama, or active staff with orders.view (A02, A12)
+    let canViewAll = false;
     if (user) {
-      const userEmail = (user.email || "").toLowerCase();
-      const configuredAdmins = [
-        (process.env.ADMIN_EMAIL || "").toLowerCase(),
-        (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
-        "jonathanhuang88@proton.me",
-      ].filter((e) => Boolean(e) && e !== "hajaraswad210299@gmail.com");
-
-      if (configuredAdmins.includes(userEmail)) {
-        role = "admin";
-      } else {
-        const { data: prof } = await adminSupabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-        if (prof?.role) {
-          role = prof.role;
-        } else if (user.user_metadata?.role) {
-          role = user.user_metadata.role;
-        }
-      }
+      const { data: prof } = await adminSupabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      const perms = await getUserPermissions(user, prof);
+      canViewAll =
+        perms.isAdmin ||
+        (perms.isStaff &&
+          perms.staffStatus === "active" &&
+          hasPermission(perms.permissions, "orders.view", false));
     }
+    const role = canViewAll ? "admin" : "customer";
 
     // Query orders from Supabase with joins
     let query = adminSupabase
@@ -61,8 +54,8 @@ export async function GET(request: Request) {
       `)
       .order("created_at", { ascending: false });
 
-    // Non-admin users can ONLY see their own orders
-    if (role !== "admin" && role !== "staff") {
+    // Everyone else can ONLY see their own orders
+    if (role !== "admin") {
       if (!user) {
         return NextResponse.json({ success: true, orders: [] });
       }
@@ -109,9 +102,9 @@ export async function GET(request: Request) {
       )
     );
 
-    // If admin, merge with mock orders (putting real DB orders first)
+    // Mock mode only: merge demo orders for admins (real DB orders first)
     let combined: Order[] = [...mappedDbOrders];
-    if (role === "admin" || role === "staff") {
+    if (role === "admin" && process.env.USE_MOCK_DATA === "true") {
       const existingCodes = new Set(mappedDbOrders.map((o) => o.order_code));
       for (const m of MOCK_ORDERS) {
         if (!existingCodes.has(m.order_code)) {
@@ -152,7 +145,7 @@ export async function GET(request: Request) {
           break;
         case "complaint":
         case "complaints":
-          combined = combined.filter((o) => !!o.complaint);
+          combined = combined.filter((o) => o.complaint?.status === "open");
           break;
         default:
           break;
@@ -229,6 +222,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // C05 server-side validation
+    if (typeof description !== "string" || description.trim().length < 10) {
+      return NextResponse.json(
+        { error: "Ceritakan masalahnya minimal 10 karakter." },
+        { status: 400 }
+      );
+    }
+    if (!isAllowedScheduleDate(String(scheduled_date))) {
+      return NextResponse.json(
+        { error: "Pilih jadwal antara besok sampai 14 hari ke depan." },
+        { status: 400 }
+      );
+    }
+    if (!ALLOWED_SLOT_PREFIXES.some((prefix) => String(time_slot).startsWith(prefix))) {
+      return NextResponse.json({ error: "Slot waktu tidak valid." }, { status: 400 });
+    }
+
     const adminSupabase = createAdminClient();
 
     // Fetch user profile
@@ -237,6 +247,38 @@ export async function POST(request: Request) {
       .select("full_name, phone, default_address, onboarding_completed, role")
       .eq("id", user.id)
       .single();
+
+    if (profile?.role && profile.role !== "customer") {
+      return NextResponse.json(
+        { error: "Hanya akun pelanggan yang dapat membuat pesanan." },
+        { status: 403 }
+      );
+    }
+    if (!profile?.phone) {
+      return NextResponse.json(
+        { error: "Lengkapi nomor WhatsApp kamu terlebih dahulu." },
+        { status: 400 }
+      );
+    }
+
+    // C05: one click on "Bayar" never creates two orders
+    const idemKey =
+      typeof body.idempotency_key === "string" && body.idempotency_key
+        ? `${user.id}:${body.idempotency_key}`
+        : null;
+    if (idemKey) {
+      const previous = recentOrderRequests.get(idemKey);
+      if (previous && Date.now() - previous.at < IDEMPOTENCY_TTL_MS) {
+        const prevResult = await previous.result;
+        if (prevResult.success && prevResult.order) {
+          return NextResponse.json({
+            success: true,
+            order: prevResult.order,
+            snap_token: prevResult.snapToken,
+          });
+        }
+      }
+    }
 
     // Check Plus subscription status safely via admin client
     const { data: sub } = await adminSupabase
@@ -259,7 +301,7 @@ export async function POST(request: Request) {
         .eq("id", user.id);
     }
 
-    const result = await createCustomerOrder({
+    const resultPromise = createCustomerOrder({
       packageId: package_id,
       workerId: worker_id || null,
       address,
@@ -275,6 +317,13 @@ export async function POST(request: Request) {
       customerEmail: user.email || "pelanggan@buildmate.id",
       isPlus,
     });
+    if (idemKey) {
+      recentOrderRequests.set(idemKey, { at: Date.now(), result: resultPromise });
+    }
+    const result = await resultPromise;
+    if (idemKey && !result.success) {
+      recentOrderRequests.delete(idemKey);
+    }
 
     if (!result.success || !result.order) {
       return NextResponse.json(
@@ -295,4 +344,21 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+const IDEMPOTENCY_TTL_MS = 10 * 60 * 1000;
+const recentOrderRequests = new Map<
+  string,
+  { at: number; result: ReturnType<typeof createCustomerOrder> }
+>();
+
+const ALLOWED_SLOT_PREFIXES = ["Pagi", "Siang", "Sore"];
+
+/** C05: scheduled date must be between tomorrow and +14 days (WIB calendar). */
+function isAllowedScheduleDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const wibToday = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const toDay = (iso: string) => Math.round(new Date(`${iso}T00:00:00Z`).getTime() / 86400000);
+  const diff = toDay(value) - toDay(wibToday);
+  return diff >= 1 && diff <= 14;
 }

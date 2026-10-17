@@ -52,8 +52,7 @@ function AdminLoginForm() {
             }
           }
           if (isAdminOrStaff) {
-            const next = searchParams.get("next") || "/admin";
-            window.location.replace(next);
+            window.location.replace(safeAdminNext(searchParams.get("next")));
           }
         }
       } catch {
@@ -166,7 +165,7 @@ function AdminLoginForm() {
       }
 
       toast.success("Berhasil masuk ke dashboard admin!");
-      const next = searchParams.get("next") || "/admin";
+      const next = safeAdminNext(searchParams.get("next"));
       // Replace history state so back button does not return to login
       window.location.replace(next);
     } catch (err: any) {
@@ -362,4 +361,10 @@ export default function AdminLoginPage() {
       <AdminLoginForm />
     </Suspense>
   );
+}
+
+// B11.11: only internal /admin paths are allowed as redirect targets
+function safeAdminNext(next: string | null): string {
+  if (next && next.startsWith("/admin") && !next.startsWith("//")) return next;
+  return "/admin";
 }

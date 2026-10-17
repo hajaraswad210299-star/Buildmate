@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { cancelCustomerPendingOrder, getOrderById } from "@/lib/data/orders";
+import { cancelCustomerPendingOrder } from "@/lib/data/orders";
+import { getOrderForRequester } from "@/lib/orders/access";
 
 export async function POST(
   request: Request,
@@ -8,19 +8,10 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Akses tidak diizinkan." }, { status: 401 });
-    }
-
-    const order = await getOrderById(id);
-    if (!order) {
-      return NextResponse.json({ error: "Pesanan tidak ditemukan." }, { status: 404 });
-    }
+    // Only the customer who owns the order may act on it (C08, B10)
+    const access = await getOrderForRequester(id, "owner");
+    if (!access.ok) return access.response;
+    const order = access.order;
 
     if (order.status !== "pending_payment") {
       return NextResponse.json(
