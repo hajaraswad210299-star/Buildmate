@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getSupabaseUrl } from "@/lib/supabase/url";
 
 const OPEN_ADMIN_PATHS = [
   "/admin/login",
@@ -33,7 +34,7 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dummy.supabase.co";
+  const supabaseUrl = getSupabaseUrl();
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "dummy-anon-key";
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
