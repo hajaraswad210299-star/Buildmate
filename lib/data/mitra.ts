@@ -192,7 +192,7 @@ export async function saveMitraApplication(
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "") + "-" + userId.slice(0, 4);
 
-      const { data: upsertedWorker } = await adminClient
+      const { data: upsertedWorker, error: upsertError } = await adminClient
         .from("workers")
         .upsert(
           {
@@ -212,7 +212,15 @@ export async function saveMitraApplication(
         .select()
         .single();
 
-      if (upsertedWorker && updated.package_ids.length > 0) {
+      if (upsertError || !upsertedWorker) {
+        console.error("Error upserting worker draft in DB:", upsertError);
+        return {
+          success: false,
+          error: `Draf gagal disimpan ke server: ${upsertError?.message || "baris mitra tidak terbentuk"}`,
+        };
+      }
+
+      if (updated.package_ids.length > 0) {
         const inserts = updated.package_ids.map((pkgId) => ({
           worker_id: upsertedWorker.id,
           package_id: pkgId,
@@ -224,8 +232,9 @@ export async function saveMitraApplication(
           return { success: false, error: "Paket layanan yang dipilih tidak valid. Muat ulang halaman lalu pilih lagi." };
         }
       }
-    } catch (e) {
-      console.warn("Error upserting worker draft in DB:", e);
+    } catch (e: any) {
+      console.error("Error upserting worker draft in DB:", e);
+      return { success: false, error: `Draf gagal disimpan ke server: ${e?.message || "kesalahan tak dikenal"}` };
     }
   }
 
